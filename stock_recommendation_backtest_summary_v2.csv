@@ -1,0 +1,2 @@
+﻿total_trades,wins,losses,win_rate_pct,avg_win_pct,avg_loss_pct,avg_return_pct,total_return_pct_sum,hit_1d_2pct_rate,hit_3d_3pct_rate,hit_5d_5pct_rate,avg_max_gain_pct,avg_max_drawdown_pct,max_losing_streak,profit_factor,take_profit_count,stop_loss_count,time_exit_count
+14,4,10,28.57,3.06,-2.77,-1.1,-15.4,42.86,64.29,50.0,7.17,-6.2,8,0.443,2,9,3

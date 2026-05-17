@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "updated_at": "2026-05-17T17:44:05.271380",
+    "source_dates": {
+      "futures": "2026-05-16",
+      "spot": "2026-05-15",
+      "option_oi": "2026-05-15",
+      "tech": "2026-05-18"
+    },
+    "version": "v2.0",
+    "threshold_note": "V1靜態門檻，待歷史百分位校準後升級"
+  },
+  "futures_chip": {
+    "source_date": "2026-05-16",
+    "foreign_long": 20970,
+    "foreign_short": 71933,
+    "foreign_net": -50963,
+    "foreign_net_chg_1d": 0,
+    "foreign_net_chg_3d": 1797,
+    "foreign_net_chg_5d": 3262,
+    "foreign_long_chg": 0,
+    "foreign_short_chg": 0,
+    "foreign_action": "無明顯變化",
+    "foreign_net_level": "極強空",
+    "foreign_notional_bn": 4178.2,
+    "dealer_net": 734,
+    "dealer_net_chg": 0,
+    "history_7d": [
+      -54530,
+      -54225,
+      -53072,
+      -52760,
+      -51068,
+      -50963,
+      -50963
+    ],
+    "historical_percentile": null,
+    "spot_vs_futures_direction": "同向空"
+  },
+  "spot_chip": {
+    "spot_source_date": "2026-05-15",
+    "spot_foreign_net_buy_bn": -104265.86,
+    "spot_foreign_5d_sum_bn": -907907.2,
+    "spot_trust_net_buy_bn": -13672.38
+  },
+  "option_oi": {
+    "oi_source_date": "2026-05-15",
+    "call_wall_strike": 42500,
+    "call_wall_oi": 1516,
+    "put_wall_strike": 40000,
+    "put_wall_oi": 2029,
+    "total_call_oi": 50173,
+    "total_put_oi": 77752,
+    "call_put_ratio": 0.645,
+    "max_pain_strike": 40000,
+    "nearby_call_oi": 11939,
+    "nearby_put_oi": 14144,
+    "price_position_pct": 39.7,
+    "zone_width": 2500,
+    "current_price_ref": 40992.0
+  },
+  "tech_levels": {
+    "tech_source_date": "2026-05-18",
+    "prev_high": 41223.0,
+    "prev_low": 40448.0,
+    "prev_close": 40511.0,
+    "pivot": 40727.3,
+    "r1": 41006.6,
+    "s1": 40231.6,
+    "mid_range": 40835.5,
+    "atr_5d": 942.0,
+    "atr_20d": 792.1,
+    "ma5": 41191.2,
+    "ma20": 40214.6,
+    "price_vs_ma5": -680.2,
+    "price_vs_ma20": 296.4
+  },
+  "fear_greed": {
+    "fg_source_date": "2026-05-15",
+    "fear_greed": 62,
+    "fear_greed_emotion": "greed"
+  },
+  "large_traders": {
+    "lt_source_date": "2026-05-15",
+    "top5_buy_oi": 0,
+    "top5_sell_oi": 0,
+    "top5_net": 0,
+    "top10_buy_oi": 0,
+    "top10_sell_oi": 0,
+    "top10_net": 0,
+    "market_oi": 0,
+    "top5_long_pct": 0,
+    "top5_short_pct": 0
+  },
+  "foreign_cost_estimate": {
+    "estimated_cost": 41191.2,
+    "estimated_direction": "空",
+    "estimated_notional_bn": 4178.2,
+    "cost_note": "外資空單估算成本約 41191.2（近5日均收），持倉規模約 NT$4178億（V1粗估，僅供參考）"
+  },
+  "sentiment": {
+    "s1_futures_direction": -3,
+    "s2_action_quality": 0,
+    "s3_spot_confirm": -2,
+    "s4_oi_structure": 0,
+    "s5_volatility_risk": 0,
+    "s6_large_traders": 0,
+    "total_score": -5,
+    "bias_label": "偏空",
+    "warnings": [
+      "⚠️ 外資期貨淨部位達極端水平：-50,963口（V1靜態門檻，尚未用歷史百分位校準）"
+    ]
+  }
+}

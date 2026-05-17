@@ -1,0 +1,4 @@
+﻿trade_date,signal,direction,entry_time,entry_price,exit_time,exit_price,exit_reason,pnl_points,max_favorable_points,max_adverse_points,bars_held,stop_loss_points,take_profit_points,max_holding_minutes,flip,pivot,r1,s1,is_neutral_zone
+2026-05-06,SHORT_RETEST_FAIL,SHORT,2026-05-06 09:55:00,41400.0,2026-05-06 10:00:00,41440.0,STOP_LOSS,-40.0,180.0,400.0,1,40,80,60,41503.0,41515.3,41992.7,41025.7,False
+2026-05-08,SHORT_RETEST_FAIL,SHORT,2026-05-08 10:15:00,41725.0,2026-05-08 10:20:00,41765.0,STOP_LOSS,-40.0,41591.0,196.0,1,40,80,60,41937.0,41939.7,42340.3,41536.3,False
+2026-05-12,LONG_CONFIRM,LONG,2026-05-12 09:45:00,41950.0,2026-05-12 09:50:00,41910.0,STOP_LOSS,-40.0,650.0,179.0,1,40,80,60,41695.0,41888.3,42169.7,41413.7,False

@@ -1,0 +1,1110 @@
+# evening_report_engine.py
+
+from datetime import datetime, date
+
+from persistent_state import load_state
+from messenger import send_to_telegram
+from alert_log_engine import summarize_today_alerts, build_alert_log_text
+
+
+# --------------------------------------------------
+# Basic Helpers
+# --------------------------------------------------
+
+def format_price(value):
+    if value is None:
+        return "N/A"
+
+    try:
+        return round(float(value), 1)
+    except Exception:
+        return value
+
+
+def today_str():
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def normalize_date_str(value):
+    """
+    將各種日期格式轉成 YYYY-MM-DD。
+    """
+
+    if value is None:
+        return None
+
+    try:
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%d")
+
+        if isinstance(value, date):
+            return value.strftime("%Y-%m-%d")
+
+        text = str(value).strip()
+
+        if not text:
+            return None
+
+        # 若是 '2026-05-15 13:40:00'
+        if len(text) >= 10:
+            return text[:10]
+
+        return text
+
+    except Exception:
+        return None
+
+
+def is_today(value) -> bool:
+    return normalize_date_str(value) == today_str()
+
+
+def get_first_existing(state: dict, keys: list, default=None):
+    for key in keys:
+        value = state.get(key)
+
+        if value is not None:
+            return value
+
+    return default
+
+
+def is_valid_value(value) -> bool:
+    if value is None:
+        return False
+
+    if isinstance(value, str):
+        if value.strip() == "":
+            return False
+
+        if value.strip().upper() in ["N/A", "NONE", "NULL", "UNKNOWN"]:
+            return False
+
+    return True
+
+
+def is_valid_number(value) -> bool:
+    try:
+        if value is None:
+            return False
+
+        float(value)
+        return True
+
+    except Exception:
+        return False
+
+
+# --------------------------------------------------
+# Data Readiness Gate
+# --------------------------------------------------
+
+def get_day_session_context(state: dict) -> dict:
+    """
+    從 state 整理日盤價格資料。
+
+    注意：
+    - 晚盤報告要檢討「日盤」，所以優先讀 day_session_* 欄位。
+    - 避免 15:00 後夜盤 / 盤後 snapshot 覆蓋 state["price"] / state["latest_k_time"]。
+    - 關鍵價位優先使用 preopen_plan["key_levels"]，用早上原始劇本做複盤。
+    """
+
+    levels = state.get("levels", {}) or {}
+
+    preopen_plan = state.get("preopen_plan", {}) or {}
+    preopen_key_levels = {}
+
+    if isinstance(preopen_plan, dict):
+        preopen_key_levels = preopen_plan.get("key_levels", {}) or {}
+
+    # 日盤專用欄位優先，避免被夜盤 / 盤後資料覆蓋
+    price = (
+        state.get("day_session_close")
+        or state.get("day_close")
+        or state.get("session_close")
+        or state.get("price")
+    )
+
+    latest_k_time = (
+        state.get("day_session_last_k_time")
+        or state.get("day_last_k_time")
+        or state.get("session_last_k_time")
+        or state.get("latest_k_time")
+    )
+
+    # 關鍵價位優先讀盤前劇本，因為晚盤要檢討「早上給出的價位是否有效」
+    flip = (
+        preopen_key_levels.get("flip")
+        or preopen_key_levels.get("Flip")
+        or state.get("flip")
+        or levels.get("flip")
+        or levels.get("Flip")
+    )
+
+    pivot = (
+        preopen_key_levels.get("pivot")
+        or preopen_key_levels.get("Pivot")
+        or preopen_key_levels.get("PIVOT")
+        or state.get("pivot")
+        or levels.get("pivot")
+        or levels.get("Pivot")
+        or levels.get("PIVOT")
+    )
+
+    r1 = (
+        preopen_key_levels.get("r1")
+        or preopen_key_levels.get("R1")
+        or state.get("r1")
+        or state.get("R1")
+        or levels.get("R1")
+        or levels.get("r1")
+    )
+
+    s1 = (
+        preopen_key_levels.get("s1")
+        or preopen_key_levels.get("S1")
+        or state.get("s1")
+        or state.get("S1")
+        or levels.get("S1")
+        or levels.get("s1")
+    )
+
+    today_high = get_first_existing(
+        state,
+        [
+            "day_session_high",
+            "today_high",
+            "day_high",
+            "session_high",
+            "high",
+        ],
+    )
+
+    today_low = get_first_existing(
+        state,
+        [
+            "day_session_low",
+            "today_low",
+            "day_low",
+            "session_low",
+            "low",
+        ],
+    )
+
+    tick_source = (
+        state.get("day_session_source")
+        or state.get("tick_source")
+        or "FINMIND_TXF_SNAPSHOT_5MIN"
+    )
+
+    data_delay = (
+        state.get("day_session_data_delay_minutes")
+        or state.get("data_delay_minutes")
+        or "N/A"
+    )
+
+    return {
+        "price": price,
+        "flip": flip,
+        "pivot": pivot,
+        "r1": r1,
+        "s1": s1,
+        "today_high": today_high,
+        "today_low": today_low,
+        "latest_k_time": latest_k_time,
+        "tick_source": tick_source,
+        "data_delay": data_delay,
+    }
+
+def get_chip_context(state: dict) -> dict:
+    """
+    讀取當日法人 / 期貨籌碼狀態。
+
+    建議未來資料引擎寫入任一組：
+    - state["chip_ready"] = True
+    - state["chip_date"] = "YYYY-MM-DD"
+    - state["institutional_sentiment"] = "..."
+    - state["foreign_futures_net"] = -51068
+
+    或：
+    - state["today_chip"] = {...}
+    """
+
+    chip_ready_flag = state.get("chip_ready")
+    chip_date = get_first_existing(
+        state,
+        [
+            "chip_date",
+            "institutional_date",
+            "futures_chip_date",
+            "foreign_futures_date",
+        ],
+    )
+
+    sentiment = (
+        state.get("sentiment")
+        or state.get("institutional_sentiment")
+        or state.get("chip_sentiment")
+    )
+
+    foreign_futures_net = get_first_existing(
+        state,
+        [
+            "foreign_futures_net",
+            "foreign_net_futures",
+            "foreign_future_oi",
+            "foreign_futures_position",
+        ],
+    )
+
+    today_chip = state.get("today_chip")
+
+    ready = False
+
+    if chip_ready_flag is True:
+        ready = True
+
+    if isinstance(today_chip, dict) and today_chip:
+        ready = True
+
+    if is_valid_value(sentiment) and chip_date and is_today(chip_date):
+        ready = True
+
+    if is_valid_number(foreign_futures_net) and chip_date and is_today(chip_date):
+        ready = True
+
+    return {
+        "ready": ready,
+        "date": normalize_date_str(chip_date),
+        "sentiment": sentiment,
+        "foreign_futures_net": foreign_futures_net,
+        "raw": today_chip,
+    }
+
+
+def get_option_oi_context(state: dict) -> dict:
+    """
+    讀取當日選擇權 OI 狀態。
+
+    建議未來資料引擎寫入任一組：
+    - state["option_oi_ready"] = True
+    - state["option_oi_date"] = "YYYY-MM-DD"
+    - state["option_oi_summary"] = {...}
+
+    或：
+    - state["today_option_oi"] = {...}
+    - state["oi_pressure_support"] = {...}
+    """
+
+    oi_ready_flag = state.get("option_oi_ready") or state.get("oi_ready")
+
+    oi_date = get_first_existing(
+        state,
+        [
+            "option_oi_date",
+            "oi_date",
+            "today_oi_date",
+            "option_chain_date",
+        ],
+    )
+
+    option_oi_summary = get_first_existing(
+        state,
+        [
+            "option_oi_summary",
+            "today_option_oi",
+            "oi_summary",
+            "option_oi",
+            "oi_pressure_support",
+        ],
+    )
+
+    max_call_oi = get_first_existing(
+        state,
+        [
+            "max_call_oi",
+            "call_wall",
+            "call_pressure",
+            "max_call_strike",
+        ],
+    )
+
+    max_put_oi = get_first_existing(
+        state,
+        [
+            "max_put_oi",
+            "put_wall",
+            "put_support",
+            "max_put_strike",
+        ],
+    )
+
+    ready = False
+
+    if oi_ready_flag is True:
+        ready = True
+
+    if isinstance(option_oi_summary, dict) and option_oi_summary:
+        if oi_date is None or is_today(oi_date):
+            ready = True
+
+    if is_valid_value(max_call_oi) and is_valid_value(max_put_oi):
+        if oi_date is None or is_today(oi_date):
+            ready = True
+
+    return {
+        "ready": ready,
+        "date": normalize_date_str(oi_date),
+        "summary": option_oi_summary,
+        "max_call_oi": max_call_oi,
+        "max_put_oi": max_put_oi,
+    }
+
+
+def build_option_oi_text(oi_ctx: dict) -> str:
+    """
+    將選擇權 OI summary 轉成晚報可讀格式。
+
+    顯示邏輯：
+    - 優先顯示現價附近有效 Call / Put OI
+    - 若 data_engine 有寫入全市場最大 OI，額外顯示全市場極端位置
+    - 避免直接印出 dict
+    """
+
+    summary = oi_ctx.get("summary")
+
+    if not isinstance(summary, dict):
+        return (
+            f"Call 壓力：{oi_ctx.get('max_call_oi', 'N/A')}\\n"
+            f"Put 支撐：{oi_ctx.get('max_put_oi', 'N/A')}"
+        )
+
+    # --------------------------------------------------
+    # 近價有效 OI：目前 data_engine.py 會把這組寫在 call_pressure / put_support
+    # --------------------------------------------------
+
+    nearby_call_pressure = (
+        summary.get("call_pressure")
+        or summary.get("nearby_call_pressure")
+        or summary.get("near_call_strike")
+        or summary.get("call_wall")
+    )
+
+    nearby_put_support = (
+        summary.get("put_support")
+        or summary.get("nearby_put_support")
+        or summary.get("near_put_strike")
+        or summary.get("put_wall")
+    )
+
+    nearby_call_oi = (
+        summary.get("nearby_call_oi")
+        or summary.get("near_call_oi")
+        or summary.get("call_pressure_oi")
+        or summary.get("max_call_oi")
+    )
+
+    nearby_put_oi = (
+        summary.get("nearby_put_oi")
+        or summary.get("near_put_oi")
+        or summary.get("put_support_oi")
+        or summary.get("max_put_oi")
+    )
+
+    # --------------------------------------------------
+    # 全市場最大 OI：作為極端籌碼牆參考，不取代近價支撐壓力
+    # --------------------------------------------------
+
+    global_call_strike = (
+        summary.get("global_max_call_strike")
+        or summary.get("all_market_max_call_strike")
+        or summary.get("absolute_max_call_strike")
+    )
+
+    global_put_strike = (
+        summary.get("global_max_put_strike")
+        or summary.get("all_market_max_put_strike")
+        or summary.get("absolute_max_put_strike")
+    )
+
+    global_call_oi = (
+        summary.get("global_max_call_oi")
+        or summary.get("all_market_max_call_oi")
+        or summary.get("absolute_max_call_oi")
+    )
+
+    global_put_oi = (
+        summary.get("global_max_put_oi")
+        or summary.get("all_market_max_put_oi")
+        or summary.get("absolute_max_put_oi")
+    )
+
+    contract_date = summary.get("contract_date") or summary.get("contract")
+    source = summary.get("source") or "N/A"
+
+    reference_price = (
+        summary.get("reference_price")
+        or summary.get("near_price")
+        or summary.get("ref_price")
+    )
+
+    nearby_window = (
+        summary.get("nearby_window_points")
+        or summary.get("near_window_points")
+        or summary.get("window_points")
+    )
+
+    call_mode = summary.get("call_pressure_mode")
+    put_mode = summary.get("put_support_mode")
+
+    lines = [
+        f"近價 Call 壓力：{format_price(nearby_call_pressure)}｜OI：{nearby_call_oi if nearby_call_oi is not None else 'N/A'}",
+        f"近價 Put 支撐：{format_price(nearby_put_support)}｜OI：{nearby_put_oi if nearby_put_oi is not None else 'N/A'}",
+    ]
+
+    if reference_price is not None:
+        lines.append(f"參考現價：{format_price(reference_price)}")
+
+    if nearby_window is not None:
+        lines.append(f"近價篩選：現價上下 {nearby_window} 點內")
+
+    if call_mode or put_mode:
+        lines.append(
+            "近價模式："
+            f"Call={call_mode or 'N/A'}｜Put={put_mode or 'N/A'}"
+        )
+
+    if global_call_strike is not None or global_put_strike is not None:
+        lines.append("")
+        lines.append("全市場最大 OI：")
+
+        lines.append(
+            f"全市場最大 Call：{format_price(global_call_strike)}｜OI："
+            f"{global_call_oi if global_call_oi is not None else 'N/A'}"
+        )
+
+        lines.append(
+            f"全市場最大 Put：{format_price(global_put_strike)}｜OI："
+            f"{global_put_oi if global_put_oi is not None else 'N/A'}"
+        )
+
+    if contract_date:
+        lines.append(f"合約月份：{contract_date}")
+
+    lines.append(f"資料來源：{source}")
+
+    return "\\n".join(lines)
+
+
+def get_preopen_plan_context(state: dict) -> dict:
+    """
+    讀取盤前劇本。
+
+    建議未來盤前報告產生時寫入 state：
+    - state["preopen_plan_ready"] = True
+    - state["preopen_plan_date"] = "YYYY-MM-DD"
+    - state["preopen_plan"] = {...}
+
+    或至少：
+    - state["morning_scenario"]
+    - state["preopen_bias"]
+    """
+
+    ready_flag = state.get("preopen_plan_ready")
+
+    plan_date = get_first_existing(
+        state,
+        [
+            "preopen_plan_date",
+            "morning_plan_date",
+            "scenario_date",
+            "preopen_report_date",
+        ],
+    )
+
+    plan = get_first_existing(
+        state,
+        [
+            "preopen_plan",
+            "morning_plan",
+            "morning_scenario",
+            "preopen_scenario",
+            "scenario",
+        ],
+    )
+
+    preopen_bias = get_first_existing(
+        state,
+        [
+            "preopen_bias",
+            "morning_bias",
+            "expected_trend",
+            "day_bias",
+        ],
+    )
+
+    ready = False
+
+    if ready_flag is True:
+        ready = True
+
+    if isinstance(plan, dict) and plan:
+        if plan_date is None or is_today(plan_date):
+            ready = True
+
+    if is_valid_value(preopen_bias):
+        if plan_date is None or is_today(plan_date):
+            ready = True
+
+    return {
+        "ready": ready,
+        "date": normalize_date_str(plan_date),
+        "plan": plan,
+        "bias": preopen_bias,
+    }
+
+
+def get_alert_context(summary: dict) -> dict:
+    """
+    檢查盤中警報紀錄。
+
+    注意：
+    - 0 則警報不代表資料不足
+    - 只要 alert_log_engine 可以正常回傳 summary，就視為已取得
+    - 晚報第六段會顯示「今日盤中警報：0 則」
+    """
+
+    if not isinstance(summary, dict):
+        return {
+            "ready": False,
+            "total": 0,
+        }
+
+    total = int(summary.get("total", 0) or 0)
+
+    return {
+        "ready": True,
+        "total": total,
+    }
+
+def check_evening_report_readiness(state: dict, summary: dict) -> dict:
+    """
+    晚盤報告資料完整性檢查。
+
+    資料不足：
+    - 不發 Telegram
+    - 只在終端機 print 缺少資料
+    """
+
+    missing = []
+
+    day_ctx = get_day_session_context(state)
+    chip_ctx = get_chip_context(state)
+    oi_ctx = get_option_oi_context(state)
+    preopen_ctx = get_preopen_plan_context(state)
+    alert_ctx = get_alert_context(summary)
+
+    # 1. 日盤價格 / 5分K
+    if not is_valid_number(day_ctx.get("price")):
+        missing.append("日盤收盤參考價")
+
+    if not is_valid_value(day_ctx.get("latest_k_time")):
+        missing.append("日盤最後 5分K 時間")
+
+    # 2. 今日高低點
+    if not is_valid_number(day_ctx.get("today_high")):
+        missing.append("今日實際高點")
+
+    if not is_valid_number(day_ctx.get("today_low")):
+        missing.append("今日實際低點")
+
+    # 3. 關鍵價位
+    if not is_valid_number(day_ctx.get("flip")):
+        missing.append("Flip 多空分界")
+
+    if not is_valid_number(day_ctx.get("pivot")):
+        missing.append("Pivot 盤中重心")
+
+    if not is_valid_number(day_ctx.get("r1")):
+        missing.append("R1 上方壓力")
+
+    if not is_valid_number(day_ctx.get("s1")):
+        missing.append("S1 下方支撐")
+
+    # 4. 當日籌碼
+    if not chip_ctx.get("ready"):
+        missing.append("當日法人 / 期貨籌碼")
+
+    # 5. 當日選擇權 OI
+    if not oi_ctx.get("ready"):
+        missing.append("當日選擇權 OI")
+
+    # 6. 盤前劇本
+    if not preopen_ctx.get("ready"):
+        missing.append("盤前劇本 / 盤前方向")
+
+    # 7. 盤中警報紀錄
+    if not alert_ctx.get("ready"):
+        missing.append("今日盤中警報紀錄")
+
+    return {
+        "ready": len(missing) == 0,
+        "missing": missing,
+        "day": day_ctx,
+        "chip": chip_ctx,
+        "oi": oi_ctx,
+        "preopen": preopen_ctx,
+        "alert": alert_ctx,
+    }
+
+
+# --------------------------------------------------
+# Review Logic
+# --------------------------------------------------
+
+def classify_day_result(day_ctx: dict) -> str:
+    """
+    根據日盤高低收與關鍵價位做簡單日盤型態判斷。
+    """
+
+    price = day_ctx.get("price")
+    high = day_ctx.get("today_high")
+    low = day_ctx.get("today_low")
+    flip = day_ctx.get("flip")
+    pivot = day_ctx.get("pivot")
+    r1 = day_ctx.get("r1")
+    s1 = day_ctx.get("s1")
+
+    try:
+        price = float(price)
+        high = float(high)
+        low = float(low)
+        flip = float(flip)
+        pivot = float(pivot)
+        r1 = float(r1)
+        s1 = float(s1)
+    except Exception:
+        return "日盤型態資料不足"
+
+    if high >= r1 and price < flip:
+        return "上攻壓力後轉弱，偏向開高走低 / 假突破結構"
+
+    if low <= s1 and price > flip:
+        return "下探支撐後收回，偏向開低走高 / 假跌破結構"
+
+    if price < s1:
+        return "收盤跌破 S1，日盤空方明顯主控"
+
+    if price > r1:
+        return "收盤站上 R1，日盤多方明顯主控"
+
+    if price < flip:
+        return "收盤低於 Flip，日盤偏空"
+
+    if price > flip:
+        return "收盤高於 Flip，日盤偏多"
+
+    if low < pivot < high:
+        return "價格圍繞 Pivot 震盪，日盤偏區間盤"
+
+    return "日盤結構中性"
+
+
+def evaluate_preopen_plan(preopen_ctx: dict, day_ctx: dict, chip_ctx: dict, oi_ctx: dict) -> str:
+    """
+    檢討盤前劇本是否被日盤結果驗證。
+
+    這裡先做保守版文字判斷。
+    後續若 preopen_plan 結構固定，可再做更精準的 score。
+    """
+
+    day_result = classify_day_result(day_ctx)
+    bias = preopen_ctx.get("bias")
+    plan = preopen_ctx.get("plan")
+
+    lines = []
+
+    lines.append("盤前劇本檢討：")
+
+    if is_valid_value(bias):
+        lines.append(f"● 盤前方向：{bias}")
+    elif isinstance(plan, dict):
+        plan_text = (
+            plan.get("bias")
+            or plan.get("direction")
+            or plan.get("scenario")
+            or plan.get("summary")
+            or "已有盤前劇本，但未提供方向欄位"
+        )
+        lines.append(f"● 盤前劇本：{plan_text}")
+    else:
+        lines.append("● 盤前劇本：已取得，但格式未標準化")
+
+    lines.append(f"● 日盤結果：{day_result}")
+
+    chip_text = chip_ctx.get("sentiment")
+    if is_valid_value(chip_text):
+        lines.append(f"● 籌碼驗證：{chip_text}")
+    elif is_valid_number(chip_ctx.get("foreign_futures_net")):
+        lines.append(f"● 外資期貨淨部位：{chip_ctx.get('foreign_futures_net')}")
+    else:
+        lines.append("● 籌碼驗證：已取得當日籌碼，但摘要欄位未標準化")
+
+    if isinstance(oi_ctx.get("summary"), dict):
+        lines.append("● OI 驗證：已取得當日選擇權 OI，允許納入壓力支撐檢討")
+    else:
+        lines.append("● OI 驗證：已取得當日 OI 基礎欄位")
+
+    return "\n".join(lines)
+
+
+def build_level_review(day_ctx: dict) -> str:
+    """
+    檢討 R1 / Flip / Pivot / S1 是否有效。
+    """
+
+    price = day_ctx.get("price")
+    high = day_ctx.get("today_high")
+    low = day_ctx.get("today_low")
+    flip = day_ctx.get("flip")
+    pivot = day_ctx.get("pivot")
+    r1 = day_ctx.get("r1")
+    s1 = day_ctx.get("s1")
+
+    try:
+        price = float(price)
+        high = float(high)
+        low = float(low)
+        flip = float(flip)
+        pivot = float(pivot)
+        r1 = float(r1)
+        s1 = float(s1)
+    except Exception:
+        return "價位驗證資料不足。"
+
+    lines = []
+
+    lines.append("價位驗證：")
+
+    if high >= r1:
+        if price < r1:
+            lines.append(f"● R1 {format_price(r1)}：盤中觸及 / 突破後未能收穩，壓力有效。")
+        else:
+            lines.append(f"● R1 {format_price(r1)}：收盤站上，壓力失效，轉為多方延伸觀察。")
+    else:
+        lines.append(f"● R1 {format_price(r1)}：日盤未觸及。")
+
+    if low <= s1:
+        if price > s1:
+            lines.append(f"● S1 {format_price(s1)}：盤中跌破 / 測試後收回，支撐有反應。")
+        else:
+            lines.append(f"● S1 {format_price(s1)}：收盤跌破，支撐失效。")
+    else:
+        lines.append(f"● S1 {format_price(s1)}：日盤未觸及。")
+
+    if low <= flip <= high:
+        if price < flip:
+            lines.append(f"● Flip {format_price(flip)}：盤中穿越後收低於 Flip，空方較有控制權。")
+        else:
+            lines.append(f"● Flip {format_price(flip)}：盤中穿越後收高於 Flip，多方較有控制權。")
+    else:
+        if price < flip:
+            lines.append(f"● Flip {format_price(flip)}：全日未有效站上，偏空。")
+        else:
+            lines.append(f"● Flip {format_price(flip)}：全日守穩上方，偏多。")
+
+    if low <= pivot <= high:
+        lines.append(f"● Pivot {format_price(pivot)}：位於日內波動區間，屬今日重心驗證價。")
+    else:
+        lines.append(f"● Pivot {format_price(pivot)}：未落入今日主要波動區間，參考性降低。")
+
+    return "\n".join(lines)
+
+
+def build_alert_review(summary: dict) -> str:
+    """
+    檢討今日盤中警報是否具有策略意義。
+    """
+
+    lines = []
+
+    lines.append("警報驗證：")
+    lines.append(f"● 今日盤中警報：{summary.get('total', 0)} 則")
+
+    if summary.get("has_flip_invalid"):
+        lines.append("● Flip Invalid：代表盤中原劇本曾被破壞，晚盤不能沿用單一方向。")
+
+    if summary.get("has_long_trap"):
+        lines.append("● Long Trap：多方假突破出現，追多風險提高。")
+
+    if summary.get("has_short_trap"):
+        lines.append("● Short Trap：空方假跌破出現，追空風險提高。")
+
+    if summary.get("has_sweep"):
+        lines.append("● Sweep：關鍵價附近有清洗行為，需等待 5分K 收盤確認。")
+
+    if summary.get("has_flip_break") and not summary.get("has_flip_recover"):
+        lines.append("● Flip Break 後未收復：偏空訊號較有效。")
+
+    if summary.get("has_flip_recover") and not summary.get("has_flip_break"):
+        lines.append("● Flip Recover 後未再跌破：偏多訊號較有效。")
+
+    if (
+        summary.get("has_flip_break")
+        and summary.get("has_flip_recover")
+    ):
+        lines.append("● Flip Break / Recover 同日出現：代表區間震盪，不適合追方向。")
+
+    return "\n".join(lines)
+
+
+def build_evening_conclusion(summary: dict, state: dict, readiness: dict) -> str:
+    """
+    根據今日警報、價位、籌碼與盤前劇本產生晚盤結論。
+    """
+
+    day_ctx = readiness["day"]
+    chip_ctx = readiness["chip"]
+
+    day_result = classify_day_result(day_ctx)
+
+    chip_text = chip_ctx.get("sentiment") or ""
+    if int(summary.get("total", 0) or 0) == 0:
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今日 08:45–13:45 日盤時段未觸發主要 ATOS 警報，"
+            "代表盤中沒有出現系統定義的 Flip、Trap、Sweep 或 R/S 關鍵事件。"
+            "晚盤仍以 Flip / Pivot 作為主控判斷，不因無警報而主動追單。"
+        )
+    if summary.get("has_flip_invalid"):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今天出現 Flip 失效訊號，代表原本日內方向曾經被破壞。"
+            "晚盤不適合沿用早盤單一劇本，應重新以 Flip / Pivot 判斷。"
+        )
+
+    if "強空" in str(chip_text) and float(day_ctx.get("price")) < float(day_ctx.get("flip")):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "籌碼背景偏空，且收盤低於 Flip，晚盤以反彈不過後偏空觀察為主。"
+            "但若夜盤重新站回 Flip，不追空，需改為中性觀察。"
+        )
+
+    if summary.get("has_long_trap"):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今天出現多方陷阱，晚盤若再拉高，不宜直接追多，"
+            "需觀察是否再次假突破。"
+        )
+
+    if summary.get("has_short_trap"):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今天出現空方陷阱，晚盤若再急跌，不宜直接追空，"
+            "需觀察是否再次收回關鍵價。"
+        )
+
+    if summary.get("has_sweep"):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今天有掃單訊號，表示關鍵價附近有清洗停損單的行為。"
+            "晚盤若接近同一區域，要等 5分K 收盤確認，不追第一波。"
+        )
+
+    if summary.get("has_flip_break") and not summary.get("has_flip_recover"):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今天盤中曾跌破 Flip，且沒有明確站回。"
+            "晚盤偏空觀察，但不追低，等反彈不過再看空方延續。"
+        )
+
+    if summary.get("has_flip_recover") and not summary.get("has_flip_break"):
+        return (
+            f"日盤結果：{day_result}。\n"
+            "今天盤中曾站回 Flip，且沒有明確再跌破。"
+            "晚盤偏多觀察，但不追高，等回測不破再看多方延續。"
+        )
+
+    return (
+        f"日盤結果：{day_result}。\n"
+        "今天盤中有多個關鍵事件，代表市場節奏偏震盪。"
+        "晚盤不適合預設單邊，應以 Flip / Pivot 作為第一判斷。"
+    )
+
+
+# --------------------------------------------------
+# Report Builder
+# --------------------------------------------------
+
+def build_evening_report_message(readiness: dict | None = None) -> str | None:
+    """
+    建立 ATOS 晚盤報告。
+
+    若資料不足，回傳 None。
+    """
+
+    state = load_state()
+    summary = summarize_today_alerts()
+
+    if readiness is None:
+        readiness = check_evening_report_readiness(state, summary)
+
+    if not readiness["ready"]:
+        print(f"⚠️ 晚盤報告資料不足，不發送：{readiness['missing']}")
+        return None
+
+    now_text = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    day_ctx = readiness["day"]
+    chip_ctx = readiness["chip"]
+    oi_ctx = readiness["oi"]
+    preopen_ctx = readiness["preopen"]
+
+    price = day_ctx.get("price")
+    flip = day_ctx.get("flip")
+    pivot = day_ctx.get("pivot")
+    r1 = day_ctx.get("r1")
+    s1 = day_ctx.get("s1")
+    today_high = day_ctx.get("today_high")
+    today_low = day_ctx.get("today_low")
+    tick_source = day_ctx.get("tick_source")
+    latest_k_time = day_ctx.get("latest_k_time")
+    data_delay = day_ctx.get("data_delay")
+
+    regime = state.get("regime", "N/A")
+
+    chip_text = chip_ctx.get("sentiment")
+    if not is_valid_value(chip_text):
+        chip_text = f"外資期貨淨部位：{chip_ctx.get('foreign_futures_net')}"
+
+    oi_text = build_option_oi_text(oi_ctx)
+
+    alert_text = build_alert_log_text()
+
+    preopen_review = evaluate_preopen_plan(
+        preopen_ctx=preopen_ctx,
+        day_ctx=day_ctx,
+        chip_ctx=chip_ctx,
+        oi_ctx=oi_ctx,
+    )
+
+    level_review = build_level_review(day_ctx)
+    alert_review = build_alert_review(summary)
+    conclusion = build_evening_conclusion(summary, state, readiness)
+
+    msg = (
+        "🌙 ATOS 晚盤作戰報告｜日盤複盤版\n"
+        f"時間：{now_text}\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "一、資料完整性確認\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"日盤價格：已取得\n"
+        f"當日高低點：已取得\n"
+        f"法人 / 期貨籌碼：已取得｜日期：{chip_ctx.get('date') or today_str()}\n"
+        f"選擇權 OI：已取得｜日期：{oi_ctx.get('date') or today_str()}\n"
+        f"盤前劇本：已取得｜日期：{preopen_ctx.get('date') or today_str()}\n"
+        f"盤中警報：已取得｜共 {summary.get('total', 0)} 則\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "二、日盤收盤狀態\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"日盤收盤參考價：{format_price(price)}\n"
+        f"日盤高點：{format_price(today_high)}\n"
+        f"日盤低點：{format_price(today_low)}\n"
+        f"目前 regime：{regime}\n"
+        f"資料來源：{tick_source}\n"
+        f"日盤最後 5分K：{latest_k_time}\n"
+        f"資料延遲：{data_delay} 分鐘\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "三、盤前劇本檢討\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"{preopen_review}\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "四、價位驗證\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"上方壓力 R1：{format_price(r1)}\n"
+        f"多空分界 Flip：{format_price(flip)}\n"
+        f"盤中重心 Pivot：{format_price(pivot)}\n"
+        f"下方支撐 S1：{format_price(s1)}\n\n"
+        f"{level_review}\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "五、籌碼與 OI 驗證\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"籌碼背景：\n{chip_text}\n\n"
+        f"選擇權 OI：\n{oi_text}\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "六、今日盤中警報複盤\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"{alert_text}\n\n"
+        f"{alert_review}\n\n"
+
+        "━━━━━━━━━━━━━━\n"
+        "七、晚盤策略結論\n"
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"{conclusion}\n\n"
+
+        "晚盤操作原則：\n"
+        "1. 不追第一波急拉或急殺。\n"
+        "2. 站上 Flip 後等回測不破，才觀察 Call / 多單。\n"
+        "3. 跌破 Flip 後等反彈不過，才觀察 Put / 空單。\n"
+        "4. 若價格卡在 Flip / Pivot 中間，不做方向單。\n"
+        "5. 若再次出現 Sweep / Trap，只做確認後的反應，不提前猜。\n\n"
+
+        "最終指令：\n"
+        "> 資料完整後才評估；晚盤以 Flip 為主控價，沒有確認就不交易。"
+    )
+
+    return msg
+
+
+# --------------------------------------------------
+# Sender
+# --------------------------------------------------
+
+def send_evening_report() -> bool:
+    """
+    發送 ATOS 晚盤報告。
+
+    規則：
+    - 資料不足：不發 Telegram，return False
+    - 資料完整：發送報告，return True / False
+    """
+
+    state = load_state()
+    summary = summarize_today_alerts()
+
+    readiness = check_evening_report_readiness(state, summary)
+
+    if not readiness["ready"]:
+        print("⚠️ 晚盤報告未發送，資料不足：")
+        for item in readiness["missing"]:
+            print(f"   - {item}")
+        return False
+
+    msg = build_evening_report_message(readiness=readiness)
+
+    if not msg:
+        return False
+
+    return send_to_telegram(msg)
+
+
+if __name__ == "__main__":
+    message = build_evening_report_message()
+
+    if message:
+        print(message)
+    else:
+        print("⚠️ 晚盤報告資料不足，不輸出報告。")
