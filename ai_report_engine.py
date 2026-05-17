@@ -315,6 +315,69 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
 
 
 # --------------------------------------------------
+# 即時事件報告（INTRADAY_EVENT）
+# --------------------------------------------------
+
+_EVENT_SYSTEM = """你是 ATOS 盤中事件快評引擎。
+
+收到重大事件時，根據事件內容與當前籌碼背景，產生簡短的台指期影響分析。
+
+規則：
+1. 只說明方向影響，不做操作建議
+2. 不修改任何籌碼數字與價位
+3. 純文字，不用 Markdown
+4. 使用繁體中文，100字以內"""
+
+
+@safe_execute
+def generate_event_report(event_desc: str, chip_ctx: Optional[dict] = None) -> Optional[str]:
+    """
+    重大事件即時分析。
+
+    Args:
+        event_desc: 事件描述文字（新聞標題 + 來源）
+        chip_ctx:   build_chip_context() 輸出；None 則自動載入
+
+    Returns:
+        事件快評文字，失敗回傳 None
+    """
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        print("⚠️ [ai_report_engine] ANTHROPIC_API_KEY 未設定")
+        return None
+
+    if chip_ctx is None:
+        chip_ctx = build_chip_context()
+
+    if not chip_ctx or chip_ctx.get("error"):
+        return None
+
+    score = chip_ctx.get("sentiment_score", 0)
+    chip_summary = (
+        f"外資期貨：{chip_ctx.get('foreign_net', 0):+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
+        f"情緒評分：{score:+d}（{chip_ctx.get('sentiment_bias', 'N/A')}）\n"
+        f"Call牆：{chip_ctx.get('call_wall', 'N/A')} / Put牆：{chip_ctx.get('put_wall', 'N/A')}"
+    )
+
+    user_prompt = (
+        f"重大事件：\n{event_desc}\n\n"
+        f"當前籌碼背景：\n{chip_summary}\n\n"
+        "請分析此事件對台指期的短期影響方向（100字以內）："
+    )
+
+    client = anthropic.Anthropic()
+    message = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=200,
+        system=_EVENT_SYSTEM,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+
+    text = message.content[0].text.strip()
+    print(f"✅ [ai_report_engine] INTRADAY_EVENT 快評完成（{len(text)} 字）")
+    return text
+
+
+# --------------------------------------------------
 # 手動測試
 # --------------------------------------------------
 
