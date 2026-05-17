@@ -28,6 +28,11 @@ try:
 except Exception:
     record_alert = None
 
+try:
+    from claude_advisor import advise as claude_advise
+except Exception:
+    claude_advise = None
+
 
 ALERT_COOLDOWN = {
     "LONG_TRAP": 1800,        # 30分鐘
@@ -658,6 +663,14 @@ def send_human_alert(context: dict):
         sections.append(strategy_filter_text)
 
     sections.append(ai_advice)
+
+    if claude_advise is not None:
+        try:
+            claude_instruction = claude_advise(context)
+            if claude_instruction:
+                sections.append(claude_instruction)
+        except Exception as e:
+            print(f"⚠️ claude_advisor 失敗：{e}")
 
     msg = "\n\n====================\n\n".join(sections)
 
