@@ -176,6 +176,10 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     return text
 
 
+# 向後相容別名
+get_intraday_advice = advise
+
+
 # --------------------------------------------------
 # 手動測試
 # --------------------------------------------------
