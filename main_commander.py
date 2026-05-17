@@ -1,7 +1,9 @@
 # main_commander.py
 
+import json
 import time
 from datetime import datetime
+from pathlib import Path
 
 import schedule
 from dotenv import load_dotenv
@@ -196,6 +198,7 @@ class AtosCommander:
     def __init__(self):
         self.state = load_state()
         self.sentinel = AtosSentinel()
+        self._evening_sent = False  # 每日發送後設為 True，14:55 重置
 
     # --------------------------------------------------
     # Cache Updates
@@ -508,6 +511,98 @@ class AtosCommander:
             print(f"📰 [news_engine] 本輪發送 {count} 則重大事件警報")
 
     # --------------------------------------------------
+    # Evening Report — Data-Ready Polling
+    # --------------------------------------------------
+
+    def _is_evening_data_ready(self) -> tuple[bool, list[str]]:
+        """
+        檢查晚盤報告三個就緒條件。
+
+        回傳 (全部就緒, 未就緒條件列表)
+        """
+        today = datetime.now().strftime("%Y-%m-%d")
+        missing = []
+
+        # 條件1: chip_cache.json 今日已更新
+        try:
+            chip_path = Path("chip_cache.json")
+            if chip_path.exists():
+                with open(chip_path, "r", encoding="utf-8") as f:
+                    chip = json.load(f)
+                updated_at = str(chip.get("meta", {}).get("updated_at", ""))
+                if not updated_at.startswith(today):
+                    label = updated_at[:10] if updated_at else "N/A"
+                    missing.append(f"chip_cache 今日尚未更新（updated_at: {label}）")
+            else:
+                missing.append("chip_cache.json 不存在")
+        except Exception as e:
+            missing.append(f"chip_cache 讀取失敗：{e}")
+
+        # 條件2: option_oi_ready = True
+        state = load_state()
+        if not state.get("option_oi_ready"):
+            missing.append("option_oi_ready 未就緒")
+
+        # 條件3: day_session_close 有值（日盤收盤資料已入）
+        if not state.get("day_session_close"):
+            missing.append("day_session_close 尚無值")
+
+        return len(missing) == 0, missing
+
+    @safe_execute
+    def check_and_send_evening_report(self):
+        """
+        每 2 分鐘輪詢資料就緒狀態，確認後才發送晚盤報告。
+
+        流程：
+        - 15:00 前直接返回，不做任何事
+        - 三個條件全滿足 → 發送報告
+        - 16:30 後強制發送，並先發送資料警示
+        - 發送完成後設 _evening_sent=True，後續呼叫直接返回
+        """
+        if self._evening_sent:
+            return
+
+        now = datetime.now()
+        if now.hour < 15:
+            return
+
+        ready, missing = self._is_evening_data_ready()
+
+        today = now.strftime("%Y-%m-%d")
+        deadline = datetime.strptime(f"{today} 16:30", "%Y-%m-%d %H:%M")
+        force = now >= deadline
+
+        if not ready and not force:
+            print(f"⏳ [evening] 等待資料就緒：{', '.join(missing)}")
+            return
+
+        # 強制發送時先送資料警示
+        if force and not ready:
+            send_to_telegram(
+                "⚠️ 晚盤報告 - 部分資料尚未更新\n"
+                + "\n".join(f"  - {w}" for w in missing)
+            )
+            print(f"⚠️ [evening] 16:30 強制發送（未就緒：{', '.join(missing)}）")
+
+        # 發送晚盤報告
+        if send_evening_report_func is None:
+            send_to_telegram("⚠️ 晚盤報告未啟用：找不到 evening_report_engine")
+        else:
+            send_evening_report_func()
+
+        self._evening_sent = True
+        status = "就緒發送" if ready else "強制發送"
+        print(f"✅ [evening] 晚盤報告已發送（{status}，{now.strftime('%H:%M')}）")
+
+    def reset_evening_sent(self):
+        """
+        每日 14:55 重置晚盤發送旗標，讓當天輪詢可以正常觸發。
+        """
+        self._evening_sent = False
+        print("✅ [evening] 晚盤報告發送旗標已重置")
+
+    # --------------------------------------------------
     # Monitor
     # --------------------------------------------------
 
@@ -552,7 +647,9 @@ class AtosCommander:
         # 盤後 / 夜盤前資料更新
         schedule.every().day.at("13:50").do(self.refresh_chip)
         schedule.every().day.at("14:50").do(self.refresh_flip)
-        schedule.every().day.at("15:05").do(self.send_evening_report)
+        # 晚盤報告：14:55 重置旗標，每 2 分鐘輪詢資料就緒後發送
+        schedule.every().day.at("14:55").do(self.reset_evening_sent)
+        schedule.every(2).minutes.do(self.check_and_send_evening_report)
 
         # 晚盤選股複盤報告
         schedule.every().day.at("15:10").do(self.send_evening_stock_report)
