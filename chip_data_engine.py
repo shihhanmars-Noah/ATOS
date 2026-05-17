@@ -752,50 +752,43 @@ def fetch_large_traders() -> Optional[dict]:
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date"]).sort_values("date")
 
-    # 取最新一日，取近月合約（contract_type 為空 or 近月）
+    # 取最新一日
     latest_date = df["date"].max()
     df = df[df["date"] == latest_date]
-
-    # 優先取非特定人（一般大戶，非法人避險帳戶）
-    # contract_type 欄位：有些版本叫 name 或沒有
-    name_col = _find_col(df, ["name", "contract_type"])
-    if name_col:
-        # 取全部合約（近月+遠月合計）或近月
-        near_mask = df[name_col].astype(str).str.contains(
-            "近月|近|all|全部|非特定", case=False, na=False
-        )
-        if near_mask.any():
-            df = df[near_mask]
 
     if df.empty:
         print("⚠️ 大額交易人：找不到有效資料列")
         return None
 
-    # 印出結構讓除錯更容易
-    name_col = _find_col(df, ["name", "contract_type"])
+    # 印出結構讓除錯更容易（name 是商品名稱，contract_type 才是合約分類）
     print(f"   大額交易人欄位: {df.columns.tolist()}")
-    if name_col:
-        print(f"   name 值: {df[name_col].unique().tolist()}")
+    if "name" in df.columns:
+        print(f"   name 值: {df['name'].unique().tolist()}")
+    if "contract_type" in df.columns:
+        print(f"   contract_type 值: {df['contract_type'].unique().tolist()}")
 
-    # 優先取「全部月份」或「所有月份」，其次取第一列
+    # 用 contract_type 選取最具代表性的列
+    # 優先：全部月份（all_months / 全部）；其次：近月；fallback：market_open_interest 最大列
     row = None
-    if name_col:
-        # 嘗試找包含「全部/所有/all」的列
-        all_mask = df[name_col].astype(str).str.contains(
+    if "contract_type" in df.columns:
+        all_mask = df["contract_type"].astype(str).str.contains(
             "全部|所有|all|total", case=False, na=False
         )
         if all_mask.any():
             row = df[all_mask].iloc[0]
         else:
-            # 找近月
-            near_mask = df[name_col].astype(str).str.contains(
-                "近月|近", case=False, na=False
+            near_mask = df["contract_type"].astype(str).str.contains(
+                "近月|near", case=False, na=False
             )
             if near_mask.any():
                 row = df[near_mask].iloc[0]
 
     if row is None:
-        row = df.iloc[0]
+        if "market_open_interest" in df.columns:
+            idx = df["market_open_interest"].apply(_safe_int).idxmax()
+            row = df.loc[idx]
+        else:
+            row = df.iloc[0]
 
     # 欄位名稱偵測（文件確認：buy_top5_trader_open_interest 等）
     def _get_val(r, candidates):

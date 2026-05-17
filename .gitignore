@@ -1,0 +1,21 @@
+# 敏感設定
+.env
+
+# Runtime 快取（每次執行重新產生）
+chip_cache.json
+atos_state.json
+*.pkl
+*.pickle
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Claude Code 內部
+.claude/
+
+# 系統
+.DS_Store
+Thumbs.db

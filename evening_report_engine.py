@@ -375,7 +375,7 @@ def build_option_oi_text(oi_ctx: dict) -> str:
 
     if not isinstance(summary, dict):
         return (
-            f"Call 壓力：{oi_ctx.get('max_call_oi', 'N/A')}\\n"
+            f"Call 壓力：{oi_ctx.get('max_call_oi', 'N/A')}\n"
             f"Put 支撐：{oi_ctx.get('max_put_oi', 'N/A')}"
         )
 
@@ -493,7 +493,7 @@ def build_option_oi_text(oi_ctx: dict) -> str:
 
     lines.append(f"資料來源：{source}")
 
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def get_preopen_plan_context(state: dict) -> dict:

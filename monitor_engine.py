@@ -626,11 +626,7 @@ class AtosSentinel:
             if levels.get("pivot"):
                 self.state["pivot"] = levels.get("pivot")
 
-            if levels.get("R1"):
-                self.state["r1"] = levels.get("R1")
-
-            if levels.get("S1"):
-                self.state["s1"] = levels.get("S1")
+            # r1/s1 不在此覆寫，保留 preopen 寫入的真實 Pivot 值
 
         self.state["risk_multiplier"] = risk_protocol["risk_multiplier"]
         self.state["allow"] = risk_protocol["allow"]
