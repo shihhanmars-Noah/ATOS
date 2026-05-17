@@ -439,6 +439,53 @@ def generate_stock_commentary(stock_item: dict, chip_ctx: Optional[dict] = None)
 
 
 # --------------------------------------------------
+# 個股選股市場快評（CHIP_MARKET_COMMENTARY）
+# --------------------------------------------------
+
+_CHIP_MARKET_COMMENTARY_SYSTEM = """你是 ATOS 盤後籌碼解讀員。
+根據目前台指期籌碼，用2-3行白話說明大戶動向和對個股操作的影響。
+規則：
+1. 聚焦外資期貨方向、OI框架和情緒評分對個股選股的含義
+2. 不做操作建議，不說做多/做空/買進/賣出
+3. 純文字，不用 Markdown 符號
+4. 使用繁體中文，80字以內"""
+
+
+@safe_execute
+def generate_chip_market_commentary(chip_ctx: Optional[dict] = None) -> Optional[str]:
+    """
+    根據籌碼背景產生2-3行市場快評，供個股報告市場狀態區塊使用。
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+
+    if chip_ctx is None:
+        chip_ctx = build_chip_context()
+    if not chip_ctx:
+        return None
+
+    fn = chip_ctx.get("foreign_net", 0)
+    score = chip_ctx.get("sentiment_score", 0)
+    user_prompt = (
+        f"外資期貨：{fn:+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
+        f"情緒評分：{score:+d}（{chip_ctx.get('sentiment_bias', 'N/A')}）\n"
+        f"Call牆：{chip_ctx.get('call_wall', 'N/A')}｜Put牆：{chip_ctx.get('put_wall', 'N/A')}\n"
+        f"現價位置：區間{chip_ctx.get('price_position_pct', 'N/A')}%\n"
+        f"外資現貨：{chip_ctx.get('spot_foreign_net_buy_bn', 0):+.1f}億\n\n"
+        "請用2-3行白話說明大戶動向，以及目前籌碼環境對個股操作的影響："
+    )
+
+    full_prompt = f"{_CHIP_MARKET_COMMENTARY_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(model=GEMINI_MODEL, contents=full_prompt)
+    text = response.text.strip()
+    print(f"✅ [ai_report_engine] 市場快評完成（{len(text)} 字）")
+    return text
+
+
+# --------------------------------------------------
 # 手動測試
 # --------------------------------------------------
 

@@ -7,13 +7,9 @@ from datetime import datetime, timedelta
 import pandas as pd
 
 try:
-    from stock_report_policy_engine import (
-        apply_stock_report_policy_to_picks,
-        build_stock_policy_report_section,
-    )
+    from stock_report_policy_engine import apply_stock_report_policy_to_picks
 except Exception:
     apply_stock_report_policy_to_picks = None
-    build_stock_policy_report_section = None
 
 from data_engine import get_finmind_api
 from error_handler import safe_execute
@@ -161,6 +157,63 @@ def get_market_bias_from_state():
             "label": "⚪ 大盤狀態未知",
             "score": 50,
         }
+
+
+# --------------------------------------------------
+# Report Formatting Helpers
+# --------------------------------------------------
+
+def _fmt_fear_greed(emotion: str) -> str:
+    table = {
+        "extreme fear": "極度恐慌",
+        "fear": "恐慌",
+        "neutral": "中性",
+        "greed": "貪婪",
+        "extreme greed": "極度貪婪",
+    }
+    return table.get(str(emotion).lower().strip(), emotion)
+
+
+def _price_position_label(pct) -> str:
+    if pct is None:
+        return "N/A"
+    pct = float(pct)
+    if pct < 35:
+        return "偏下方"
+    if pct <= 65:
+        return "中段"
+    return "偏上方"
+
+
+def _max_pain_label(max_pain, current_price) -> str:
+    if max_pain is None or current_price is None:
+        return ""
+    diff = float(max_pain) - float(current_price)
+    if abs(diff) < 200:
+        return "接近現價"
+    return "大戶希望往下結算" if diff < 0 else "大戶希望往上結算"
+
+
+def _spot_direction(val) -> str:
+    if val is None:
+        return ""
+    return "買超" if float(val) > 0 else "賣超"
+
+
+def _get_stock_ai_commentary(item: dict) -> str:
+    try:
+        from ai_report_engine import generate_stock_commentary
+        return generate_stock_commentary(item) or ""
+    except Exception:
+        return ""
+
+
+def _get_market_ai_commentary(chip_ctx: dict) -> str:
+    try:
+        from ai_report_engine import generate_chip_market_commentary
+        return generate_chip_market_commentary(chip_ctx) or ""
+    except Exception:
+        return ""
 
 
 # --------------------------------------------------
@@ -896,38 +949,6 @@ def build_legacy_stock_section(result: dict):
     )
 
 
-def _build_a_grade_ai_commentary(result: dict) -> str:
-    """
-    為 A 級個股產生 AI 白話快評（2-3 行）。
-    ANTHROPIC_API_KEY 未設定或 AI 呼叫失敗時回傳空字串。
-    """
-    try:
-        from ai_report_engine import generate_stock_commentary
-    except Exception:
-        return ""
-
-    policy_result = result.get("policy_result")
-    a_items = (
-        policy_result.get("priority", [])
-        if isinstance(policy_result, dict)
-        else result.get("A", [])
-    )
-
-    if not a_items:
-        return ""
-
-    lines = ["AI 個股快評（A 級）"]
-    for item in a_items[:3]:
-        stock_id = item.get("id") or item.get("stock_id", "N/A")
-        try:
-            commentary = generate_stock_commentary(item)
-            if commentary:
-                lines.append(f"{stock_id}：{commentary}")
-        except Exception:
-            pass
-
-    return "\n".join(lines) if len(lines) > 1 else ""
-
 
 @safe_execute
 def send_stock_picks_report(
@@ -936,75 +957,132 @@ def send_stock_picks_report(
     top_b: int = 5,
 ):
     """
-    發送 ATOS 個股觀察報告。
+    發送 ATOS 個股觀察報告（新版緊湊格式）。
     """
 
-    now = datetime.now().strftime("%H:%M")
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
 
+    # 籌碼背景
+    try:
+        from chip_data_engine import build_chip_context
+        chip_ctx = build_chip_context() or {}
+    except Exception:
+        chip_ctx = {}
+
+    # 大盤判斷
+    market = get_market_bias_from_state()
+    market_label = market.get("label", "N/A")
+
+    # 從 chip_ctx 取欄位
+    sentiment_score = chip_ctx.get("sentiment_score", 0)
+    bias_label = chip_ctx.get("sentiment_bias", "N/A")
+    fear_greed = chip_ctx.get("fear_greed_index", "N/A")
+    fear_greed_emotion = _fmt_fear_greed(chip_ctx.get("fear_greed_emotion", ""))
+
+    foreign_net = chip_ctx.get("foreign_net", 0)
+    foreign_net_level = chip_ctx.get("foreign_net_level", "N/A")
+    foreign_notional_bn = chip_ctx.get("foreign_notional_bn")
+
+    spot_val = chip_ctx.get("spot_foreign_net_buy_bn") or 0
+    spot_5d = chip_ctx.get("spot_foreign_5d_sum_bn") or 0
+    spot_dir = _spot_direction(spot_val)
+
+    call_wall = chip_ctx.get("call_wall", "N/A")
+    put_wall = chip_ctx.get("put_wall", "N/A")
+    price_position_pct = chip_ctx.get("price_position_pct")
+    max_pain = chip_ctx.get("max_pain")
+    pivot = chip_ctx.get("pivot")  # 用 pivot 作為現價估算（盤後）
+
+    pos_label = _price_position_label(price_position_pct)
+    pain_label = _max_pain_label(max_pain, pivot)
+
+    score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
+
+    # 建立股票清單
     result = build_stock_watchlist(
         candidate_limit=candidate_limit,
         top_a=top_a,
         top_b=top_b,
     )
 
-    market = result.get("market", {})
-    source = "快取資料" if result.get("is_cache") else "FinMind 更新資料"
-
     policy_result = result.get("policy_result")
-
-    if build_stock_policy_report_section is not None and policy_result is not None:
-        try:
-            stock_section = build_stock_policy_report_section(policy_result)
-        except Exception as e:
-            print(f"⚠️ build_stock_policy_report_section failed: {e}")
-            stock_section = build_legacy_stock_section(result)
+    if isinstance(policy_result, dict):
+        a_items = policy_result.get("priority", [])
+        b_items = policy_result.get("watchlist", [])
     else:
-        stock_section = build_legacy_stock_section(result)
+        a_items = result.get("A", [])
+        b_items = result.get("B", [])
 
-    ai_section = _build_a_grade_ai_commentary(result)
+    lines = []
 
-    if market.get("mode") == "BULL":
-        market_command = "大盤偏多，A級可列優先觀察，但仍不可追高或重倉。"
-    elif market.get("mode") == "BEAR":
-        market_command = "大盤偏空，個股全部降級，只觀察不主動進場。"
-    elif market.get("mode") == "BEAR_CHIP":
-        market_command = "台指期籌碼偏空，A級已降為觀察，不主動進場。"
-    elif market.get("mode") == "NEUTRAL":
-        market_command = "大盤中性，僅保留A級優先觀察，B級不主動進場。"
-    else:
-        market_command = "大盤狀態不明，個股報告僅作觀察。"
-
-    msg = (
-        "📈 ATOS 個股觀察報告 v3｜Defense Stock Mode\n"
-        f"時間：{now}\n"
-        f"資料來源：{source}\n"
-        f"產生時間：{result.get('generated_at')}\n"
-        f"策略模式：{result.get('strategy_mode', 'DEFENSE_STOCK_MODE')}\n"
-        "---\n\n"
-
-        "🌐 大盤過濾\n"
-        f"● 狀態：{market.get('label', 'N/A')}\n"
-        f"● 指令：{market_command}\n\n"
-
-        f"{stock_section}\n\n"
-
-        + (f"{ai_section}\n\n" if ai_section else "")
-
-        + "⚠️ 交易規則｜依 V2 回測修正\n"
-        "● A級：優先觀察，不等於直接買進\n"
-        "● B級：只觀察，不主動進場\n"
-        "● C級：剔除，不列入交易\n"
-        "● 正式進場法暫只保留：隔日開盤觀察\n"
-        "● 暫不採用：回測 5MA / 10MA、突破推薦日高點\n"
-        "● 不因法人買超直接追高\n"
-        "● 大盤偏空或不可交易時，全部降級處理\n"
-        "● 爆量長上影、距離 5MA 過遠，一律不追\n\n"
-
-        "💡 指揮官結論\n"
-        f"> {market_command}"
+    # 標頭
+    lines.append(f"📈 個股觀察 {date_str} {time_str}")
+    lines.append(
+        f"大盤：{market_label}｜台指情緒：{bias_label}({score_str})"
+        f"｜Fear&Greed：{fear_greed} {fear_greed_emotion}"
     )
+    lines.append("")
 
-    send_to_telegram(msg)
+    # A 級
+    lines.append("🟢 A級優先觀察")
+    if not a_items:
+        lines.append("今日無A級標的")
+    else:
+        for item in a_items:
+            stock_id = item.get("id") or item.get("stock_id", "N/A")
+            tech = item.get("tech", {}) or {}
+            chip = item.get("chip", {}) or {}
+            close = tech.get("close", "N/A")
+            ma5 = tech.get("ma5", "N/A")
+            consecutive = chip.get("consecutive_trust_buy_days", 0)
+            vol_ratio = tech.get("volume_ratio", "N/A")
+            lines.append(
+                f"{stock_id}｜{close}｜5MA {ma5}"
+                f"｜投信連買{consecutive}日｜量比{vol_ratio}"
+            )
+            commentary = _get_stock_ai_commentary(item)
+            if commentary:
+                lines.append(f"AI點評：{commentary}")
+    lines.append("")
+
+    # B 級
+    lines.append("🟡 B級觀察（不主動進場）")
+    if not b_items:
+        lines.append("今日無B級標的")
+    else:
+        for item in b_items:
+            stock_id = item.get("id") or item.get("stock_id", "N/A")
+            tech = item.get("tech", {}) or {}
+            close = tech.get("close", "N/A")
+            dist = tech.get("distance_to_ma5")
+            dist_str = f"{dist}%" if dist is not None else "N/A"
+            lines.append(f"{stock_id}｜{close}｜距5MA {dist_str}")
+    lines.append("")
+
+    # 市場狀態
+    lines.append("---")
+    lines.append("📊 目前市場狀態")
+
+    notional_str = f"（NT${foreign_notional_bn}億）" if foreign_notional_bn is not None else ""
+    lines.append(f"外資期貨：{foreign_net_level} {foreign_net:+,}口{notional_str}")
+    lines.append(f"現貨外資：{spot_dir} {spot_val:+.1f}億｜5日累計 {spot_5d:+.1f}億")
+    lines.append(f"Call wall：{call_wall}｜Put wall：{put_wall}")
+
+    pos_pct_str = f"{price_position_pct:.1f}" if price_position_pct is not None else "N/A"
+    lines.append(f"現價位置：區間{pos_pct_str}%（{pos_label}）")
+    lines.append(f"Max Pain：{max_pain}（{pain_label}）")
+    lines.append(f"情緒總分：{score_str}｜{bias_label}")
+
+    # AI 市場解讀
+    market_commentary = _get_market_ai_commentary(chip_ctx)
+    if market_commentary:
+        lines.append("")
+        lines.append("AI市場解讀：")
+        lines.append(market_commentary)
+
+    send_to_telegram("\n".join(lines))
 
 
 # --------------------------------------------------
