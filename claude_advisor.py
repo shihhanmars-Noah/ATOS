@@ -99,10 +99,11 @@ def _p(v) -> str:
 def _build_alert_text(ctx: dict) -> str:
     event = str(ctx.get("event", "UNKNOWN")).upper()
     label = _EVENT_LABELS.get(event, event)
+    flip_val = ctx.get("flip") or ctx.get("mid_range")
     lines = [
         f"警報事件：{label}（{event}）",
         f"當前價格：{_p(ctx.get('price'))}",
-        f"中軸 Flip：{_p(ctx.get('flip'))}",
+        f"中軸 Flip/mid_range：{_p(flip_val)}",
         f"Pivot：{_p(ctx.get('pivot'))}",
         f"R1：{_p(ctx.get('r1'))} / S1：{_p(ctx.get('s1'))}",
         f"法人情緒：{ctx.get('sentiment', 'N/A')}",

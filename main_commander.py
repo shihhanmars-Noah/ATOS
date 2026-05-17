@@ -234,21 +234,37 @@ class AtosCommander:
     @safe_execute
     def refresh_chip(self):
         """
-        更新法人期貨情緒。
+        更新完整籌碼快取（chip_cache.json），供晚盤報告使用。
         """
+        try:
+            from chip_data_engine import update_chip_cache, build_chip_context
+            ok = update_chip_cache()
+            if ok:
+                chip_ctx = build_chip_context() or {}
+                sentiment = chip_ctx.get("sentiment_bias") or chip_ctx.get("foreign_net_level") or "N/A"
+                score = chip_ctx.get("sentiment_score", 0)
+                self.state["sentiment"] = sentiment
+                self.state["institutional_sentiment"] = sentiment
+                self.state["sentiment_score"] = score
+                self.sentinel.state["sentiment"] = sentiment
+                self.sentinel.state["institutional_sentiment"] = sentiment
+                self.sentinel.state["sentiment_score"] = score
+                save_state(self.state)
+                print(f"✅ 籌碼快取更新完成：{sentiment}（評分 {score:+d}）")
+                return sentiment
+            else:
+                print("⚠️ update_chip_cache() 回傳 False，改用 get_institutional_sentiment() 補救")
+        except Exception as e:
+            print(f"⚠️ chip_data_engine 載入失敗：{e}，改用 get_institutional_sentiment()")
 
+        # 降級：僅更新舊版法人情緒文字
         sentiment = get_institutional_sentiment()
-
         self.state["sentiment"] = sentiment
         self.state["institutional_sentiment"] = sentiment
-
         self.sentinel.state["sentiment"] = sentiment
         self.sentinel.state["institutional_sentiment"] = sentiment
-
         save_state(self.state)
-
-        print(f"✅ 籌碼情緒更新完成：{sentiment}")
-
+        print(f"✅ 籌碼情緒（降級）更新完成：{sentiment}")
         return sentiment
 
     @safe_execute

@@ -241,14 +241,45 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
 
     sent = 0
     for item, h in candidates:
+        title = item.get("title", "")
+        score = _get_importance_score(title) or 0
+        if score < 4:
+            print(f"⚪ [news_engine] 重要性 {score}/5，略過：{title[:50]}")
+            continue
+        print(f"🔴 [news_engine] 重要性 {score}/5，發送警報：{title[:50]}")
         commentary = _get_commentary(item, chip_ctx)
         msg = _build_alert_message(item, commentary)
         if send_to_telegram(msg):
             _mark_sent(h)
             sent += 1
-            print(f"✅ [news_engine] 警報已發送：{item.get('title', '')[:50]}")
+            print(f"✅ [news_engine] 警報已發送：{title[:50]}")
 
     return sent
+
+
+@safe_execute
+def _get_importance_score(title: str) -> int:
+    """
+    用 Gemini 對新聞標題給重要性評分（1-5）。
+    1=無影響，5=極重大。回傳整數，失敗時回傳 0。
+    """
+    import os
+    from google import genai
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return 0
+
+    prompt = (
+        f"這則新聞對台股台指期的即時影響重要性是幾分（1-5）？"
+        f"1=無影響，5=極重大。只回答數字。標題：{title}"
+    )
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+    text = response.text.strip()
+    import re
+    m = re.search(r"[1-5]", text)
+    return int(m.group()) if m else 0
 
 
 @safe_execute

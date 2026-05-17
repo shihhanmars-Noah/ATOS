@@ -625,7 +625,7 @@ def check_evening_report_readiness(state: dict, summary: dict) -> dict:
 
     # 3. 關鍵價位
     if not is_valid_number(day_ctx.get("flip")):
-        missing.append("Flip 多空分界")
+        missing.append("多空中軸")
 
     if not is_valid_number(day_ctx.get("pivot")):
         missing.append("Pivot 盤中重心")
@@ -809,14 +809,14 @@ def build_level_review(day_ctx: dict) -> str:
 
     if low <= flip <= high:
         if price < flip:
-            lines.append(f"● Flip {format_price(flip)}：盤中穿越後收低於 Flip，空方較有控制權。")
+            lines.append(f"● 中軸 {format_price(flip)}：盤中穿越後收低於中軸，空方較有控制權。")
         else:
-            lines.append(f"● Flip {format_price(flip)}：盤中穿越後收高於 Flip，多方較有控制權。")
+            lines.append(f"● 中軸 {format_price(flip)}：盤中穿越後收高於中軸，多方較有控制權。")
     else:
         if price < flip:
-            lines.append(f"● Flip {format_price(flip)}：全日未有效站上，偏空。")
+            lines.append(f"● 中軸 {format_price(flip)}：全日未有效站上，偏空。")
         else:
-            lines.append(f"● Flip {format_price(flip)}：全日守穩上方，偏多。")
+            lines.append(f"● 中軸 {format_price(flip)}：全日守穩上方，偏多。")
 
     if low <= pivot <= high:
         lines.append(f"● Pivot {format_price(pivot)}：位於日內波動區間，屬今日重心驗證價。")
