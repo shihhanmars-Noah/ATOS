@@ -86,19 +86,21 @@ def get_market_bias_from_state():
     """
     從 ATOS state 判斷大盤環境。
 
-    回傳：
-    - BULL
-    - BEAR
-    - NEUTRAL
-    - UNKNOWN
+    回傳模式：
+    - BULL       現價站穩 mid_range +100 點以上
+    - BEAR       現價跌破 mid_range -100 點以下
+    - BEAR_CHIP  台指期情緒評分 ≤ -4（無論價位，強制降級）
+    - NEUTRAL    其他
+    - UNKNOWN    資料不足
     """
 
     try:
         state = load_state()
 
         price = state.get("price")
-        flip = state.get("flip")
+        mid_range = state.get("mid_range") or state.get("flip")
         allow_trade = state.get("allow_trade", True)
+        sentiment_score = state.get("sentiment_score")
 
         if not allow_trade:
             return {
@@ -107,7 +109,21 @@ def get_market_bias_from_state():
                 "score": 40,
             }
 
-        if price is None or flip is None or not flip:
+        # 台指期籌碼極端偏空 → 強制 BEAR_CHIP（優先於價格判斷）
+        if sentiment_score is not None:
+            try:
+                s = int(sentiment_score)
+                if s <= -4:
+                    return {
+                        "mode": "BEAR_CHIP",
+                        "label": f"🔴 台指期籌碼偏空（評分 {s}）",
+                        "score": 20,
+                        "sentiment_score": s,
+                    }
+            except Exception:
+                pass
+
+        if price is None or mid_range is None or not mid_range:
             return {
                 "mode": "UNKNOWN",
                 "label": "⚪ 大盤資料不足",
@@ -115,16 +131,16 @@ def get_market_bias_from_state():
             }
 
         price = float(price)
-        flip = float(flip)
+        mid_range = float(mid_range)
 
-        if price > flip + 50:
+        if price > mid_range + 100:
             return {
                 "mode": "BULL",
                 "label": "🟢 大盤偏多",
                 "score": 85,
             }
 
-        if price < flip - 50:
+        if price < mid_range - 100:
             return {
                 "mode": "BEAR",
                 "label": "🔴 大盤偏空",
@@ -566,6 +582,7 @@ def classify_stock(scores: dict, tech: dict, market: dict):
     """
 
     total = scores["total_score"]
+    distance_to_ma5 = tech.get("distance_to_ma5")
 
     # 大盤偏空時，不給 A 級
     if market["mode"] == "BEAR":
@@ -573,13 +590,24 @@ def classify_stock(scores: dict, tech: dict, market: dict):
             return "B", "大盤偏空，降級為觀察"
         return "C", "大盤偏空，剔除"
 
+    # 台指期籌碼極端偏空：A 級自動降為 B
+    if market["mode"] == "BEAR_CHIP":
+        sentiment_score = market.get("sentiment_score", 0)
+        if tech.get("upper_shadow_ratio", 0) >= 0.5 and tech.get("volume_ratio", 0) >= 2:
+            return "C", "爆量長上影，疑似上方賣壓"
+        if distance_to_ma5 is not None and distance_to_ma5 > 8:
+            return "B", "漲幅偏離 5MA 過遠，只觀察不追"
+        if total >= 80:
+            return "B", f"台指期籌碼偏空（{sentiment_score}分），降級觀察"
+        if total >= 60:
+            return "B", "B級：條件尚可，但需等待確認"
+        return "C", "剔除：條件不足"
+
     # 爆量長上影，直接降級
     if tech.get("upper_shadow_ratio", 0) >= 0.5 and tech.get("volume_ratio", 0) >= 2:
         return "C", "爆量長上影，疑似上方賣壓"
 
     # 距離 5MA 太遠，禁止追高
-    distance_to_ma5 = tech.get("distance_to_ma5")
-
     if distance_to_ma5 is not None and distance_to_ma5 > 8:
         return "B", "漲幅偏離 5MA 過遠，只觀察不追"
 
@@ -868,6 +896,39 @@ def build_legacy_stock_section(result: dict):
     )
 
 
+def _build_a_grade_ai_commentary(result: dict) -> str:
+    """
+    為 A 級個股產生 AI 白話快評（2-3 行）。
+    ANTHROPIC_API_KEY 未設定或 AI 呼叫失敗時回傳空字串。
+    """
+    try:
+        from ai_report_engine import generate_stock_commentary
+    except Exception:
+        return ""
+
+    policy_result = result.get("policy_result")
+    a_items = (
+        policy_result.get("priority", [])
+        if isinstance(policy_result, dict)
+        else result.get("A", [])
+    )
+
+    if not a_items:
+        return ""
+
+    lines = ["AI 個股快評（A 級）"]
+    for item in a_items[:3]:
+        stock_id = item.get("id") or item.get("stock_id", "N/A")
+        try:
+            commentary = generate_stock_commentary(item)
+            if commentary:
+                lines.append(f"{stock_id}：{commentary}")
+        except Exception:
+            pass
+
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 @safe_execute
 def send_stock_picks_report(
     candidate_limit: int = 30,
@@ -900,10 +961,14 @@ def send_stock_picks_report(
     else:
         stock_section = build_legacy_stock_section(result)
 
+    ai_section = _build_a_grade_ai_commentary(result)
+
     if market.get("mode") == "BULL":
         market_command = "大盤偏多，A級可列優先觀察，但仍不可追高或重倉。"
     elif market.get("mode") == "BEAR":
         market_command = "大盤偏空，個股全部降級，只觀察不主動進場。"
+    elif market.get("mode") == "BEAR_CHIP":
+        market_command = "台指期籌碼偏空，A級已降為觀察，不主動進場。"
     elif market.get("mode") == "NEUTRAL":
         market_command = "大盤中性，僅保留A級優先觀察，B級不主動進場。"
     else:
@@ -923,7 +988,9 @@ def send_stock_picks_report(
 
         f"{stock_section}\n\n"
 
-        "⚠️ 交易規則｜依 V2 回測修正\n"
+        + (f"{ai_section}\n\n" if ai_section else "")
+
+        + "⚠️ 交易規則｜依 V2 回測修正\n"
         "● A級：優先觀察，不等於直接買進\n"
         "● B級：只觀察，不主動進場\n"
         "● C級：剔除，不列入交易\n"

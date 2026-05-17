@@ -189,6 +189,13 @@ def evaluate_stock_report_policy(stock: dict, market: dict | None = None) -> dic
             "report_tag": "🟢 優先",
             "policy_reasons": reasons,
         })
+
+        # 台指期籌碼偏空時，A 級降為純觀察
+        if market_mode == "BEAR_CHIP":
+            base["risk_note"] = base["risk_note"] + "；當前台指期籌碼評分偏空，建議縮小部位或純觀察"
+            base["trade_permission"] = "WATCH_ONLY"
+            base["report_tag"] = "🟡 降級觀察（期貨偏空）"
+
         return base
 
     # --------------------------------------------------

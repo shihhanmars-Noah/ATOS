@@ -378,6 +378,65 @@ def generate_event_report(event_desc: str, chip_ctx: Optional[dict] = None) -> O
 
 
 # --------------------------------------------------
+# 個股快評（STOCK_COMMENTARY）
+# --------------------------------------------------
+
+_STOCK_COMMENTARY_SYSTEM = """你是 ATOS 個股籌碼解讀員。
+根據個股技術指標和法人籌碼，用2-3行白話說明該股目前技術位置和籌碼狀況。
+規則：
+1. 不做操作建議，不說買進/賣出/做多/做空
+2. 純文字，不用 Markdown 符號
+3. 使用繁體中文
+4. 100字以內"""
+
+
+@safe_execute
+def generate_stock_commentary(stock_item: dict, chip_ctx: Optional[dict] = None) -> Optional[str]:
+    """
+    為單一個股產生 2-3 行白話解讀。
+
+    Args:
+        stock_item: build_stock_watchlist() 輸出的單一個股 dict
+        chip_ctx:   目前不使用，保留參數供日後擴充
+
+    Returns:
+        2-3 行白話解讀，失敗回傳 None
+    """
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        return None
+
+    stock_id = stock_item.get("id") or stock_item.get("stock_id", "N/A")
+    tech = stock_item.get("tech", {}) or {}
+    chip = stock_item.get("chip", {}) or {}
+    scores = stock_item.get("scores", {}) or {}
+
+    user_prompt = (
+        f"股票：{stock_id}\n"
+        f"收盤：{tech.get('close', 'N/A')}｜5MA：{tech.get('ma5', 'N/A')}｜"
+        f"10MA：{tech.get('ma10', 'N/A')}｜20MA：{tech.get('ma20', 'N/A')}\n"
+        f"量比：{tech.get('volume_ratio', 'N/A')}｜上影比：{tech.get('upper_shadow_ratio', 'N/A')}\n"
+        f"距5MA：{tech.get('distance_to_ma5', 'N/A')}%｜距10MA：{tech.get('distance_to_ma10', 'N/A')}%\n"
+        f"投信淨買：{chip.get('trust_net_buy', 'N/A')}｜外資淨買：{chip.get('foreign_net_buy', 'N/A')}｜"
+        f"投信連買：{chip.get('consecutive_trust_buy_days', 'N/A')} 天\n"
+        f"總分：{scores.get('total_score', 'N/A')}"
+        f"（籌碼{scores.get('chip_score', 'N/A')}｜趨勢{scores.get('trend_score', 'N/A')}｜量能{scores.get('volume_score', 'N/A')}）\n\n"
+        "請用2-3行白話說明此股目前技術位置和籌碼狀況："
+    )
+
+    client = anthropic.Anthropic()
+    message = client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=150,
+        system=_STOCK_COMMENTARY_SYSTEM,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+
+    text = message.content[0].text.strip()
+    print(f"✅ [ai_report_engine] 個股 {stock_id} 快評完成（{len(text)} 字）")
+    return text
+
+
+# --------------------------------------------------
 # 手動測試
 # --------------------------------------------------
 
