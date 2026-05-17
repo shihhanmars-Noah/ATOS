@@ -1223,7 +1223,7 @@ def get_flip_level(
         flip = float(row["close"])
 
         print(
-            f"✅ Flip calculated: {round(flip, 1)} "
+            f"✅ prev_close: {round(flip, 1)} "
             f"| date={latest_date.date()} "
             f"| contract={row['contract_date']} "
             f"| volume={int(row['volume'])}"

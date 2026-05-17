@@ -289,23 +289,24 @@ class AtosCommander:
     @safe_execute
     def refresh_flip(self):
         """
-        更新市場分界 Flip，並同步儲存前一交易日主力期貨收盤資料。
+        更新前日收盤（prev_close）及 mid_range（前日高低中間值），
+        並同步儲存 R1/S1/Pivot 等技術關鍵價位。
         """
 
-        old_flip = self.state.get("flip", 0)
+        old_prev_close = self.state.get("prev_close") or self.state.get("flip", 0)
 
-        flip = get_flip_level(
+        prev_close = get_flip_level(
             futures_id="TX",
-            fallback=old_flip,
+            fallback=old_prev_close,
         )
 
         levels = get_dynamic_resistance_support(
             futures_id="TX",
         )
 
-        if flip:
-            self.state["flip"] = flip
-            self.sentinel.state["flip"] = flip
+        if prev_close:
+            self.state["prev_close"] = prev_close
+            self.sentinel.state["prev_close"] = prev_close
 
         if levels:
             self.state["daily_levels"] = levels
@@ -330,10 +331,17 @@ class AtosCommander:
                 self.state["s1"] = levels.get("S1")
                 self.sentinel.state["s1"] = levels.get("S1")
 
+            high = levels.get("high")
+            low = levels.get("low")
+            if high and low:
+                mid_range = round((high + low) / 2, 1)
+                self.state["mid_range"] = mid_range
+                self.sentinel.state["mid_range"] = mid_range
+
         save_state(self.state)
 
-        print(f"✅ Flip 更新完成：{flip}")
-        return flip
+        print(f"✅ prev_close 更新完成：{prev_close}")
+        return prev_close
 
     @safe_execute
     def refresh_chip(self):
