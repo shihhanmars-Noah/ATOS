@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -13,6 +14,7 @@ from chip_data_engine import build_chip_context
 CLAUDE_MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 500
 CONFIDENCE_THRESHOLD = 3
+COOLDOWN_SECONDS = 600  # 10 分鐘，同一事件同一方向不重複發指令
 
 _EVENT_LABELS = {
     "LONG_TRAP":              "多方陷阱（假突破）",
@@ -36,24 +38,48 @@ _SYSTEM = """你是 ATOS 盤中即時指令引擎。
 規則：
 1. 輸出嚴格使用下列格式，每行一個欄位，不增不減
 2. 所有點位數字只能來自輸入提供的關鍵價位，不得自行發明
-3. 【目標】和【停損】必須引用輸入中已存在的價位（R1、S1、Call牆、Put牆、Pivot、規則引擎目標/停損）
-4. 信心分評分基準（1-5）：
+3. 【目標】必須引用輸入中已存在的價位（R1、S1、Call牆、Put牆、Pivot）
+4. 【停損】動態決定，優先順序如下：
+   a. 首選：前K棒的反方向極值（做多用「前K低點」，做空用「前K高點」）
+   b. 無前K資料時：用「當前價格 ± ATR × 1.5」計算，ATR 取輸入中的 ATR 值
+   c. 只填計算出的具體數字，不填說明文字
+5. 信心分評分基準（1-5）：
    1 = 事件孤立，籌碼無共鳴
    2 = 弱共鳴，方向模糊
    3 = 事件有籌碼支撐，但條件不完整
    4 = 事件 + 籌碼 + 技術三者共振
    5 = 完全共振，多重確認
-5. 信心分 < 3：【指令】填「觀察」，【進場條件】填「暫不進場」，【目標】和【停損】填「N/A」
-6. 輸出純文字，不用任何 Markdown 符號
+6. 信心分 < 3：【指令】填「觀察」，【進場條件】填「暫不進場」，【目標】和【停損】填「N/A」
+7. 輸出純文字，不用任何 Markdown 符號
 
 輸出格式（固定七行）：
 【指令】做多 / 做空 / 觀察
 【進場條件】（描述進場觸發條件，或「暫不進場」）
 【目標】（填已存在的價位，或 N/A）
-【停損】（填已存在的價位，或 N/A）
+【停損】（填動態計算的具體點位，或 N/A）
 【信心分】X/5
 【根據】（支撐本指令的籌碼與技術依據，逗號分隔）
 【注意】（風險提示，無則填「無」）"""
+
+
+# --------------------------------------------------
+# 冷卻快取（session 內有效）
+# --------------------------------------------------
+
+_cooldown_cache: dict[tuple, float] = {}
+
+
+def _is_on_cooldown(event: str, direction: str) -> bool:
+    return time.time() - _cooldown_cache.get((event, direction), 0) < COOLDOWN_SECONDS
+
+
+def _set_cooldown(event: str, direction: str):
+    _cooldown_cache[(event, direction)] = time.time()
+
+
+def _cooldown_remaining(event: str, direction: str) -> int:
+    elapsed = time.time() - _cooldown_cache.get((event, direction), 0)
+    return max(0, int(COOLDOWN_SECONDS - elapsed))
 
 
 # --------------------------------------------------
@@ -91,6 +117,13 @@ def _build_alert_text(ctx: dict) -> str:
         lines.append(f"陷阱型態：{ctx.get('trap')}")
     if ctx.get("sweep"):
         lines.append(f"掃單型態：{ctx.get('sweep')}")
+    # 動態停損所需資料
+    if ctx.get("atr"):
+        lines.append(f"ATR（近5日）：{_p(ctx.get('atr'))}")
+    if ctx.get("prev_candle_high"):
+        lines.append(f"前K高點：{_p(ctx.get('prev_candle_high'))}")
+    if ctx.get("prev_candle_low"):
+        lines.append(f"前K低點：{_p(ctx.get('prev_candle_low'))}")
     return "\n".join(lines)
 
 
@@ -119,6 +152,19 @@ def _extract_confidence(text: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+def _extract_direction(text: str) -> str:
+    """從 AI 輸出中提取指令方向。"""
+    m = re.search(r"【指令】\s*(.+)", text)
+    if not m:
+        return "觀察"
+    raw = m.group(1).strip()
+    if "做多" in raw:
+        return "做多"
+    if "做空" in raw:
+        return "做空"
+    return "觀察"
+
+
 # --------------------------------------------------
 # 主函式
 # --------------------------------------------------
@@ -130,10 +176,11 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     Args:
         alert_context: monitor_engine.build_alert_context() 的輸出
+                       可選欄位：atr, prev_candle_high, prev_candle_low（供動態停損用）
         chip_ctx:      build_chip_context() 的輸出；None 則自動載入
 
     Returns:
-        指令文字；信心分 < 3 時回傳觀察提示；失敗回傳 None
+        指令文字；信心分 < 3 時回傳觀察提示；冷卻中或失敗回傳 None
     """
     if not os.getenv("ANTHROPIC_API_KEY"):
         print("⚠️ [claude_advisor] ANTHROPIC_API_KEY 未設定")
@@ -145,6 +192,8 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     # 非即時資料不發指令
     if not alert_context.get("is_realtime", True):
         return None
+
+    event = str(alert_context.get("event", "")).upper()
 
     if chip_ctx is None:
         chip_ctx = build_chip_context()
@@ -170,9 +219,23 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     text = message.content[0].text.strip()
     confidence = _extract_confidence(text)
-    event = str(alert_context.get("event", ""))
-    print(f"✅ [claude_advisor] {event} 指令完成（信心分：{confidence}/5）")
+    direction = _extract_direction(text)
 
+    # 信心分不足：回傳簡短觀察提示，不發操作指令
+    if confidence < CONFIDENCE_THRESHOLD:
+        label = _EVENT_LABELS.get(event, event)
+        print(f"⚪ [claude_advisor] {event} 信心分 {confidence}/5，發觀察提示")
+        return f"觀察中，條件未成熟（{label}，信心分 {confidence}/5）"
+
+    # 有方向指令才做冷卻檢查
+    if direction in ("做多", "做空"):
+        if _is_on_cooldown(event, direction):
+            remaining = _cooldown_remaining(event, direction)
+            print(f"⏳ [claude_advisor] {event} {direction} 冷卻中（剩餘 {remaining}s），略過")
+            return None
+        _set_cooldown(event, direction)
+
+    print(f"✅ [claude_advisor] {event} 指令完成（信心分：{confidence}/5，方向：{direction}）")
     return text
 
 
@@ -201,6 +264,9 @@ if __name__ == "__main__":
         "is_realtime": True,
         "stop": 41350,
         "target": 40800,
+        "atr": 420,
+        "prev_candle_high": 41250,
+        "prev_candle_low": 41150,
     }
 
     print("=== claude_advisor 測試 ===\n")
