@@ -6,6 +6,11 @@ from persistent_state import load_state
 from messenger import send_to_telegram
 from alert_log_engine import summarize_today_alerts, build_alert_log_text
 
+try:
+    from chip_data_engine import build_chip_context as _build_chip_ctx
+except Exception:
+    _build_chip_ctx = None
+
 
 # --------------------------------------------------
 # Basic Helpers
@@ -936,11 +941,22 @@ def build_evening_conclusion(summary: dict, state: dict, readiness: dict) -> str
 # Report Builder
 # --------------------------------------------------
 
+def _fp(v) -> str:
+    if v is None:
+        return "N/A"
+    try:
+        f = float(v)
+        return str(int(f)) if f == int(f) else str(round(f, 1))
+    except Exception:
+        return "N/A"
+
+
 def build_evening_report_message(readiness: dict | None = None) -> str | None:
     """
-    建立 ATOS 晚盤報告。
+    建立新版簡潔晚盤報告。
 
-    若資料不足，回傳 None。
+    傳送前由 send_evening_report() 做資料完整性把關。
+    build_evening_report_message() 本身盡量輸出，缺欄位填 N/A。
     """
 
     state = load_state()
@@ -949,16 +965,12 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     if readiness is None:
         readiness = check_evening_report_readiness(state, summary)
 
-    if not readiness["ready"]:
-        print(f"⚠️ 晚盤報告資料不足，不發送：{readiness['missing']}")
-        return None
+    # 只要有基本價格資料就輸出；缺籌碼或 OI 用 chip_data_engine 補
+    day_ctx = readiness.get("day") or get_day_session_context(state)
 
-    now_text = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    day_ctx = readiness["day"]
-    chip_ctx = readiness["chip"]
-    oi_ctx = readiness["oi"]
-    preopen_ctx = readiness["preopen"]
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M")
 
     price = day_ctx.get("price")
     flip = day_ctx.get("flip")
@@ -967,106 +979,113 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     s1 = day_ctx.get("s1")
     today_high = day_ctx.get("today_high")
     today_low = day_ctx.get("today_low")
-    tick_source = day_ctx.get("tick_source")
-    latest_k_time = day_ctx.get("latest_k_time")
-    data_delay = day_ctx.get("data_delay")
 
-    regime = state.get("regime", "N/A")
+    # 取完整籌碼資料
+    chip_ctx = {}
+    if _build_chip_ctx is not None:
+        try:
+            chip_ctx = _build_chip_ctx() or {}
+        except Exception:
+            pass
 
-    chip_text = chip_ctx.get("sentiment")
-    if not is_valid_value(chip_text):
-        chip_text = f"外資期貨淨部位：{chip_ctx.get('foreign_futures_net')}"
+    call_wall = chip_ctx.get("call_wall") or state.get("call_wall")
+    put_wall = chip_ctx.get("put_wall") or state.get("put_wall")
 
-    oi_text = build_option_oi_text(oi_ctx)
+    # call_wall - 500
+    try:
+        call_target = _fp(float(call_wall) - 500) if call_wall else "N/A"
+    except Exception:
+        call_target = "N/A"
 
-    alert_text = build_alert_log_text()
-
-    preopen_review = evaluate_preopen_plan(
-        preopen_ctx=preopen_ctx,
-        day_ctx=day_ctx,
-        chip_ctx=chip_ctx,
-        oi_ctx=oi_ctx,
+    # 籌碼一行摘要
+    fn = chip_ctx.get("foreign_net", 0)
+    fn_level = chip_ctx.get("foreign_net_level", "N/A")
+    chip_one_line = (
+        f"外資期貨 {fn_level} {fn:+,}口" if chip_ctx
+        else (state.get("institutional_sentiment") or "N/A")
     )
 
-    level_review = build_level_review(day_ctx)
-    alert_review = build_alert_review(summary)
-    conclusion = build_evening_conclusion(summary, state, readiness)
+    # 日盤結論（一行）
+    day_result = classify_day_result(day_ctx)
 
-    msg = (
-        "🌙 ATOS 晚盤作戰報告｜日盤複盤版\n"
-        f"時間：{now_text}\n\n"
+    # 複盤驗證
+    def _flip_status():
+        try:
+            return "已站上" if float(price) >= float(flip) else "未站上"
+        except Exception:
+            return "N/A"
 
-        "━━━━━━━━━━━━━━\n"
-        "一、資料完整性確認\n"
-        "━━━━━━━━━━━━━━\n\n"
+    def _r1_status():
+        try:
+            return "觸及" if float(today_high) >= float(r1) else "未觸及"
+        except Exception:
+            return "N/A"
 
-        f"日盤價格：已取得\n"
-        f"當日高低點：已取得\n"
-        f"法人 / 期貨籌碼：已取得｜日期：{chip_ctx.get('date') or today_str()}\n"
-        f"選擇權 OI：已取得｜日期：{oi_ctx.get('date') or today_str()}\n"
-        f"盤前劇本：已取得｜日期：{preopen_ctx.get('date') or today_str()}\n"
-        f"盤中警報：已取得｜共 {summary.get('total', 0)} 則\n\n"
+    def _s1_status():
+        try:
+            return "跌破" if float(today_low) <= float(s1) else "未跌破"
+        except Exception:
+            return "N/A"
 
-        "━━━━━━━━━━━━━━\n"
-        "二、日盤收盤狀態\n"
-        "━━━━━━━━━━━━━━\n\n"
+    # 警報列表
+    total_alerts = int(summary.get("total", 0) or 0)
+    alert_text = build_alert_log_text() or ""
 
-        f"日盤收盤參考價：{format_price(price)}\n"
-        f"日盤高點：{format_price(today_high)}\n"
-        f"日盤低點：{format_price(today_low)}\n"
-        f"目前 regime：{regime}\n"
-        f"資料來源：{tick_source}\n"
-        f"日盤最後 5分K：{latest_k_time}\n"
-        f"資料延遲：{data_delay} 分鐘\n\n"
+    # AI 解讀
+    ai_text = ""
+    try:
+        from ai_report_engine import generate_evening_guidance
+        ai_text = generate_evening_guidance(day_result, chip_ctx, summary) or ""
+    except Exception:
+        pass
 
-        "━━━━━━━━━━━━━━\n"
-        "三、盤前劇本檢討\n"
-        "━━━━━━━━━━━━━━\n\n"
+    lines = []
 
-        f"{preopen_review}\n\n"
+    lines.append(f"🌙 ATOS 晚盤 {date_str} {time_str}")
+    lines.append("")
 
-        "━━━━━━━━━━━━━━\n"
-        "四、價位驗證\n"
-        "━━━━━━━━━━━━━━\n\n"
+    # 日盤結果
+    lines.append("日盤結果")
+    lines.append(f"收盤：{_fp(price)}｜H {_fp(today_high)} / L {_fp(today_low)}")
+    lines.append(day_result)
+    lines.append("")
 
-        f"上方壓力 R1：{format_price(r1)}\n"
-        f"多空分界 Flip：{format_price(flip)}\n"
-        f"盤中重心 Pivot：{format_price(pivot)}\n"
-        f"下方支撐 S1：{format_price(s1)}\n\n"
-        f"{level_review}\n\n"
+    # 複盤驗證
+    lines.append("複盤驗證")
+    lines.append(f"● 中軸 {_fp(flip)}：{_flip_status()}")
+    lines.append(f"● R1 {_fp(r1)}：{_r1_status()}")
+    lines.append(f"● S1 {_fp(s1)}：{_s1_status()}")
+    lines.append(f"● 籌碼：{chip_one_line}")
+    lines.append("")
 
-        "━━━━━━━━━━━━━━\n"
-        "五、籌碼與 OI 驗證\n"
-        "━━━━━━━━━━━━━━\n\n"
+    # 今日警報
+    lines.append(f"今日警報（{total_alerts}則）")
+    if total_alerts == 0 or not alert_text.strip():
+        lines.append("今日無警報")
+    else:
+        lines.append(alert_text.strip())
+    lines.append("")
 
-        f"籌碼背景：\n{chip_text}\n\n"
-        f"選擇權 OI：\n{oi_text}\n\n"
+    # 夜盤操作指示
+    lines.append("夜盤操作指示")
+    lines.append(f"中軸：{_fp(flip)}｜Pivot：{_fp(pivot)}｜S1：{_fp(s1)}")
+    lines.append("")
+    lines.append(f"做多條件：重新站回 {_fp(flip)} 且5分K收盤確認")
+    lines.append(f"做空條件：反彈至 {_fp(flip)} 未過，等下一根確認")
+    lines.append(f"觀望條件：卡在 {_fp(pivot)}～{_fp(flip)} 之間不做")
+    lines.append("")
 
-        "━━━━━━━━━━━━━━\n"
-        "六、今日盤中警報複盤\n"
-        "━━━━━━━━━━━━━━\n\n"
+    # 選擇權
+    lines.append("選擇權")
+    lines.append(f"Call wall {_fp(call_wall)} 壓制，夜盤不追多超過 {call_target}")
+    lines.append(f"Put wall {_fp(put_wall)} 支撐，跌破需量能確認")
+    lines.append("")
 
-        f"{alert_text}\n\n"
-        f"{alert_review}\n\n"
+    # AI 解讀
+    lines.append("AI解讀：")
+    lines.append(ai_text if ai_text else "（AI 分析暫不可用）")
 
-        "━━━━━━━━━━━━━━\n"
-        "七、晚盤策略結論\n"
-        "━━━━━━━━━━━━━━\n\n"
-
-        f"{conclusion}\n\n"
-
-        "晚盤操作原則：\n"
-        "1. 不追第一波急拉或急殺。\n"
-        "2. 站上 Flip 後等回測不破，才觀察 Call / 多單。\n"
-        "3. 跌破 Flip 後等反彈不過，才觀察 Put / 空單。\n"
-        "4. 若價格卡在 Flip / Pivot 中間，不做方向單。\n"
-        "5. 若再次出現 Sweep / Trap，只做確認後的反應，不提前猜。\n\n"
-
-        "最終指令：\n"
-        "> 資料完整後才評估；晚盤以 Flip 為主控價，沒有確認就不交易。"
-    )
-
-    return msg
+    return "\n".join(lines)
 
 
 # --------------------------------------------------

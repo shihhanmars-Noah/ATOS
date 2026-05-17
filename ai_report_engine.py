@@ -439,6 +439,125 @@ def generate_stock_commentary(stock_item: dict, chip_ctx: Optional[dict] = None)
 
 
 # --------------------------------------------------
+# 盤前操作指引（PREOPEN_GUIDANCE）
+# --------------------------------------------------
+
+_PREOPEN_GUIDANCE_SYSTEM = """你是 ATOS 盤前操作指引引擎。
+
+根據籌碼數據和方向判斷，輸出兩段文字，中間用「---」分隔：
+
+段落1（1-2行）：白話說明今日大方向，最重要的注意事項
+段落2（3-4行）：分析外資動向、OI框架對今日操作的具體影響
+
+規則：
+1. 不說「建議做多/做空/買進/賣出」，描述結構和條件
+2. 純文字，不用 Markdown 符號
+3. 使用繁體中文"""
+
+
+@safe_execute
+def generate_preopen_guidance(chip_ctx: Optional[dict], bias_label: str) -> Optional[dict]:
+    """
+    產生盤前「今天怎麼做」和「AI判斷」兩段內容。
+    返回 {"today": str, "judgment": str}，失敗返回 None。
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+
+    if not chip_ctx:
+        return None
+
+    fn = chip_ctx.get("foreign_net", 0)
+    score = chip_ctx.get("sentiment_score", 0)
+
+    user_prompt = (
+        f"方向判斷：{bias_label}\n"
+        f"外資期貨：{fn:+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
+        f"情緒評分：{score:+d}（{chip_ctx.get('sentiment_bias', 'N/A')}）\n"
+        f"Call牆：{chip_ctx.get('call_wall', 'N/A')}（OI {chip_ctx.get('call_wall_oi', 'N/A')}）\n"
+        f"Put牆：{chip_ctx.get('put_wall', 'N/A')}（OI {chip_ctx.get('put_wall_oi', 'N/A')}）\n"
+        f"現價位置：區間{chip_ctx.get('price_position_pct', 'N/A')}%\n"
+        f"外資現貨：{chip_ctx.get('spot_foreign_net_buy_bn', 0):+.1f}億\n\n"
+        "請產生盤前操作指引（兩段，中間用「---」分隔）："
+    )
+
+    full_prompt = f"{_PREOPEN_GUIDANCE_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(model=GEMINI_MODEL, contents=full_prompt)
+    text = response.text.strip()
+
+    parts = text.split("---", 1)
+    today = parts[0].strip() if parts else ""
+    judgment = parts[1].strip() if len(parts) > 1 else text.strip()
+
+    print(f"✅ [ai_report_engine] 盤前指引完成（{len(text)} 字）")
+    return {"today": today, "judgment": judgment}
+
+
+# --------------------------------------------------
+# 晚盤解讀（EVENING_GUIDANCE）
+# --------------------------------------------------
+
+_EVENING_GUIDANCE_SYSTEM = """你是 ATOS 晚盤複盤分析引擎。
+
+根據今日盤面表現、警報和籌碼，用4-5行分析今日重點，並說明夜盤需關注的關鍵判斷點。
+
+規則：
+1. 不說「建議做多/做空/買進/賣出」，描述條件和結構
+2. 純文字，不用 Markdown 符號
+3. 使用繁體中文"""
+
+
+@safe_execute
+def generate_evening_guidance(
+    day_result: str,
+    chip_ctx: Optional[dict],
+    alert_summary: dict,
+) -> Optional[str]:
+    """
+    產生晚盤 AI 解讀（4-5行）。
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+
+    alert_types = []
+    if alert_summary.get("has_long_trap"):
+        alert_types.append("多方陷阱")
+    if alert_summary.get("has_short_trap"):
+        alert_types.append("空方陷阱")
+    if alert_summary.get("has_sweep"):
+        alert_types.append("掃單")
+    if alert_summary.get("has_flip_break"):
+        alert_types.append("跌破中軸")
+    if alert_summary.get("has_flip_recover"):
+        alert_types.append("站回中軸")
+
+    ctx = chip_ctx or {}
+    fn = ctx.get("foreign_net", 0)
+    score = ctx.get("sentiment_score", 0)
+
+    user_prompt = (
+        f"今日盤面結論：{day_result}\n"
+        f"今日警報類型：{', '.join(alert_types) if alert_types else '無主要事件'}\n"
+        f"外資期貨：{fn:+,}口（{ctx.get('foreign_net_level', 'N/A')}）\n"
+        f"情緒評分：{score:+d}（{ctx.get('sentiment_bias', 'N/A')}）\n"
+        f"Call牆：{ctx.get('call_wall', 'N/A')}｜Put牆：{ctx.get('put_wall', 'N/A')}\n\n"
+        "請用4-5行分析今日表現並說明夜盤需關注的關鍵點："
+    )
+
+    full_prompt = f"{_EVENING_GUIDANCE_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(model=GEMINI_MODEL, contents=full_prompt)
+    text = response.text.strip()
+    print(f"✅ [ai_report_engine] 晚盤解讀完成（{len(text)} 字）")
+    return text
+
+
+# --------------------------------------------------
 # 個股選股市場快評（CHIP_MARKET_COMMENTARY）
 # --------------------------------------------------
 
