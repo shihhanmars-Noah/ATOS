@@ -59,6 +59,16 @@ try:
 except Exception:
     update_event_cache = None
 
+try:
+    from news_engine import poll_news as news_engine_poll
+except Exception:
+    news_engine_poll = None
+
+try:
+    from ai_report_engine import generate_report as ai_generate_report
+except Exception:
+    ai_generate_report = None
+
 
 load_dotenv()
 
@@ -462,6 +472,33 @@ class AtosCommander:
 
         self.send_evening_report()
 
+    @safe_execute
+    def send_evening_stock_report(self):
+        """
+        發送晚盤選股複盤報告（15:10）。
+        使用 ai_report_engine 產生 EVENING_STOCKS 報告。
+        """
+        if ai_generate_report is None:
+            print("⚠️ ai_report_engine 未載入，跳過晚盤選股報告")
+            return
+
+        report = ai_generate_report("EVENING_STOCKS")
+        if report:
+            send_to_telegram(report)
+
+    @safe_execute
+    def poll_news(self):
+        """
+        輪詢新聞來源，發現重大事件時發送 Telegram 警報。
+        每 5 分鐘由 schedule 呼叫。
+        """
+        if news_engine_poll is None:
+            return
+
+        count = news_engine_poll()
+        if count:
+            print(f"📰 [news_engine] 本輪發送 {count} 則重大事件警報")
+
     # --------------------------------------------------
     # Monitor
     # --------------------------------------------------
@@ -509,8 +546,14 @@ class AtosCommander:
         schedule.every().day.at("14:50").do(self.refresh_flip)
         schedule.every().day.at("15:05").do(self.send_evening_report)
 
+        # 晚盤選股複盤報告
+        schedule.every().day.at("15:10").do(self.send_evening_stock_report)
+
         # 額外保險：15:30 再更新一次籌碼
         schedule.every().day.at("15:30").do(self.refresh_chip)
+
+        # 重大新聞輪詢（每 5 分鐘）
+        schedule.every(5).minutes.do(self.poll_news)
 
         print("✅ ATOS schedule setup completed")
 
