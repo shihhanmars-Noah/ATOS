@@ -76,121 +76,6 @@ load_dotenv()
 
 
 # --------------------------------------------------
-# Helper
-# --------------------------------------------------
-
-def format_price(value):
-    if value is None:
-        return "N/A"
-
-    try:
-        return round(float(value), 1)
-    except Exception:
-        return value
-
-
-def build_tactical_card_message(state: dict) -> str:
-    """
-    建立即時戰術卡。
-
-    注意：
-    - 主價格應來自 FINMIND_FUTURES_SNAPSHOT
-    - 若是 Fugle backup，代表不是台指期即時價，不應交易
-    """
-
-    price = state.get("price")
-    flip = state.get("flip")
-    levels = state.get("levels", {}) or state.get("daily_levels", {}) or {}
-
-    r1 = (
-        state.get("r1")
-        or levels.get("R1")
-    )
-
-    s1 = (
-        state.get("s1")
-        or levels.get("S1")
-    )
-
-    pivot = (
-        state.get("pivot")
-        or levels.get("pivot")
-    )
-
-    sentiment = (
-        state.get("sentiment")
-        or state.get("institutional_sentiment")
-        or "N/A"
-    )
-
-    tick_source = state.get("tick_source", "N/A")
-    tick_time = state.get("tick_time", "N/A")
-    is_realtime = state.get("is_realtime", False)
-
-    if tick_source == "FINMIND_FUTURES_SNAPSHOT":
-        price_label = "台指期即時價 TXF"
-        realtime_text = "REALTIME"
-        warning_text = ""
-    else:
-        price_label = "備援參考價"
-        realtime_text = "NOT_REALTIME"
-        warning_text = (
-            "\n⚠️ 注意：目前不是 FinMind TXF 即時價，"
-            "只允許觀察，不允許交易。\n"
-        )
-
-    if is_realtime and price and flip:
-        try:
-            if float(price) > float(flip):
-                instruction = "🟢 價格站在 Flip 上方，偏多觀察，但不追高，等回測確認。"
-            elif float(price) < float(flip):
-                instruction = "🔴 價格在 Flip 下方，偏空觀察，但不追低，等反彈不過。"
-            else:
-                instruction = "🟡 價格貼近 Flip，中性洗盤區，不急著進場。"
-        except Exception:
-            instruction = "⚪ 價格判斷失敗，等待下一筆資料。"
-    else:
-        instruction = "⚠️ 價格來源非 realtime 或關鍵價不足，禁止交易，只允許觀察。"
-
-    msg = (
-        "🛡️ ATOS 即時戰術卡\n"
-        f"時間：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
-        "━━━━━━━━━━━━━━\n"
-        "一、即時狀態\n"
-        "━━━━━━━━━━━━━━\n\n"
-
-        f"● {price_label}：{format_price(price)}\n"
-        f"● 價格來源：{tick_source} / {tick_time}\n"
-        f"● 即時狀態：{realtime_text}\n"
-        f"{warning_text}\n"
-
-        "━━━━━━━━━━━━━━\n"
-        "二、戰場地圖\n"
-        "━━━━━━━━━━━━━━\n\n"
-
-        f"● 上方壓力 R1：{format_price(r1)}\n"
-        f"● 多空分界 Flip：{format_price(flip)}\n"
-        f"● 盤中重心 Pivot：{format_price(pivot)}\n"
-        f"● 下方支撐 S1：{format_price(s1)}\n\n"
-
-        "━━━━━━━━━━━━━━\n"
-        "三、籌碼背景\n"
-        "━━━━━━━━━━━━━━\n\n"
-
-        f"{sentiment}\n\n"
-
-        "━━━━━━━━━━━━━━\n"
-        "四、指揮官指令\n"
-        "━━━━━━━━━━━━━━\n\n"
-
-        f"> {instruction}"
-    )
-
-    return msg
-
-
-# --------------------------------------------------
 # Main Commander
 # --------------------------------------------------
 
@@ -399,32 +284,16 @@ class AtosCommander:
     @safe_execute
     def send_startup_message(self):
         """
-        啟動訊息。
+        啟動訊息：更新關鍵資料後發送簡短通知。
         """
-
         self.refresh_flip()
         self.refresh_realtime_price()
         self.refresh_chip()
 
-        msg = build_tactical_card_message(self.state)
-
         send_to_telegram(
-            "🛡️ ATOS Commander 啟動成功\n\n"
-            f"{msg}"
+            f"🛡️ ATOS Commander 啟動\n"
+            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
-
-    @safe_execute
-    def send_daily_status(self):
-        """
-        即時狀態戰術卡。
-        """
-
-        self.refresh_realtime_price()
-        self.refresh_chip()
-
-        msg = build_tactical_card_message(self.state)
-
-        send_to_telegram(msg)
 
     @safe_execute
     def send_preopen_report(self):
@@ -455,6 +324,38 @@ class AtosCommander:
             return
 
         send_stock_picks_report()
+
+    @safe_execute
+    def send_opening_bell(self):
+        """
+        08:45 開盤提示：即時台指價格 + 籌碼關鍵數字。
+        """
+        try:
+            from chip_data_engine import build_chip_context
+            chip_ctx = build_chip_context() or {}
+        except Exception:
+            chip_ctx = {}
+
+        state = load_state()
+        now_str = datetime.now().strftime("%H:%M")
+
+        price = state.get("price") or "N/A"
+        mid_range = state.get("mid_range") or chip_ctx.get("mid_range") or "N/A"
+        bias_label = chip_ctx.get("sentiment_bias", "N/A")
+        sentiment_score = chip_ctx.get("sentiment_score", 0)
+        foreign_net = chip_ctx.get("foreign_net", 0)
+        call_wall = chip_ctx.get("call_wall", "N/A")
+        put_wall = chip_ctx.get("put_wall", "N/A")
+
+        score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
+
+        msg = (
+            f"🔔 開盤 {now_str}\n"
+            f"台指：{price}｜{mid_range}中軸\n"
+            f"情緒：{bias_label}({score_str})｜外資：{foreign_net:+,}口\n"
+            f"Call wall：{call_wall}｜Put wall：{put_wall}"
+        )
+        send_to_telegram(msg)
 
     @safe_execute
     def send_evening_report(self):
@@ -643,6 +544,9 @@ class AtosCommander:
 
         # 個股觀察報告
         schedule.every().day.at("08:40").do(self.send_stock_report)
+
+        # 開盤提示
+        schedule.every().day.at("08:45").do(self.send_opening_bell)
 
         # 盤後 / 夜盤前資料更新
         schedule.every().day.at("13:50").do(self.refresh_chip)
