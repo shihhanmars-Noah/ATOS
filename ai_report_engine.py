@@ -4,13 +4,12 @@ import os
 from datetime import datetime
 from typing import Optional
 
-import anthropic
+from google import genai
 
 from error_handler import safe_execute
 from chip_data_engine import build_chip_context
 
-CLAUDE_MODEL = "claude-sonnet-4-6"
-MAX_TOKENS = 1500
+GEMINI_MODEL = "gemini-2.0-flash"
 
 REPORT_TYPES = {"PREOPEN_FUTURES", "PREOPEN_STOCKS", "EVENING_FUTURES", "EVENING_STOCKS"}
 
@@ -280,8 +279,9 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
         print(f"⚠️ [ai_report_engine] 不支援的報告類型：{report_type}")
         return None
 
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("⚠️ [ai_report_engine] ANTHROPIC_API_KEY 未設定")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("⚠️ [ai_report_engine] GEMINI_API_KEY 未設定")
         return None
 
     if chip_ctx is None:
@@ -301,15 +301,15 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
         .replace("{chip_text}", chip_text)
     )
 
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=MAX_TOKENS,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": user_prompt}],
+    full_prompt = f"{_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=full_prompt,
     )
 
-    text = message.content[0].text.strip()
+    text = response.text.strip()
     print(f"✅ [ai_report_engine] {report_type} 完成（{len(text)} 字）")
     return text
 
@@ -341,8 +341,9 @@ def generate_event_report(event_desc: str, chip_ctx: Optional[dict] = None) -> O
     Returns:
         事件快評文字，失敗回傳 None
     """
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("⚠️ [ai_report_engine] ANTHROPIC_API_KEY 未設定")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("⚠️ [ai_report_engine] GEMINI_API_KEY 未設定")
         return None
 
     if chip_ctx is None:
@@ -364,15 +365,15 @@ def generate_event_report(event_desc: str, chip_ctx: Optional[dict] = None) -> O
         "請分析此事件對台指期的短期影響方向（100字以內）："
     )
 
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=200,
-        system=_EVENT_SYSTEM,
-        messages=[{"role": "user", "content": user_prompt}],
+    full_prompt = f"{_EVENT_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=full_prompt,
     )
 
-    text = message.content[0].text.strip()
+    text = response.text.strip()
     print(f"✅ [ai_report_engine] INTRADAY_EVENT 快評完成（{len(text)} 字）")
     return text
 
@@ -402,7 +403,8 @@ def generate_stock_commentary(stock_item: dict, chip_ctx: Optional[dict] = None)
     Returns:
         2-3 行白話解讀，失敗回傳 None
     """
-    if not os.getenv("ANTHROPIC_API_KEY"):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
         return None
 
     stock_id = stock_item.get("id") or stock_item.get("stock_id", "N/A")
@@ -423,15 +425,15 @@ def generate_stock_commentary(stock_item: dict, chip_ctx: Optional[dict] = None)
         "請用2-3行白話說明此股目前技術位置和籌碼狀況："
     )
 
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=150,
-        system=_STOCK_COMMENTARY_SYSTEM,
-        messages=[{"role": "user", "content": user_prompt}],
+    full_prompt = f"{_STOCK_COMMENTARY_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=full_prompt,
     )
 
-    text = message.content[0].text.strip()
+    text = response.text.strip()
     print(f"✅ [ai_report_engine] 個股 {stock_id} 快評完成（{len(text)} 字）")
     return text
 

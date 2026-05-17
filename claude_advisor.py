@@ -6,13 +6,12 @@ import time
 from datetime import datetime
 from typing import Optional
 
-import anthropic
+from google import genai
 
 from error_handler import safe_execute
 from chip_data_engine import build_chip_context
 
-CLAUDE_MODEL = "claude-sonnet-4-6"
-MAX_TOKENS = 500
+GEMINI_MODEL = "gemini-2.0-flash"
 CONFIDENCE_THRESHOLD = 3
 COOLDOWN_SECONDS = 600  # 10 分鐘，同一事件同一方向不重複發指令
 
@@ -182,8 +181,9 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     Returns:
         指令文字；信心分 < 3 時回傳觀察提示；冷卻中或失敗回傳 None
     """
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        print("⚠️ [claude_advisor] ANTHROPIC_API_KEY 未設定")
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("⚠️ [claude_advisor] GEMINI_API_KEY 未設定")
         return None
 
     if not alert_context or not alert_context.get("event"):
@@ -209,15 +209,15 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         "請根據以上資訊，產生 ATOS 結構化指令。"
     )
 
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model=CLAUDE_MODEL,
-        max_tokens=MAX_TOKENS,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": user_prompt}],
+    full_prompt = f"{_SYSTEM}\n\n{user_prompt}"
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=full_prompt,
     )
 
-    text = message.content[0].text.strip()
+    text = response.text.strip()
     confidence = _extract_confidence(text)
     direction = _extract_direction(text)
 
