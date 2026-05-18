@@ -1,6 +1,7 @@
 # ai_report_engine.py
 
 import os
+import time
 from datetime import datetime
 from typing import Optional
 
@@ -10,6 +11,24 @@ from error_handler import safe_execute
 from chip_data_engine import build_chip_context
 
 GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_RETRY_DELAY = 30  # 429 重試等待秒數
+
+
+def _call_gemini_with_retry(client, prompt: str) -> Optional[str]:
+    """Call Gemini with one retry on 429; return None silently if retry also fails."""
+    try:
+        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+        return response.text.strip()
+    except Exception as e:
+        if "429" in str(e) or "ResourceExhausted" in type(e).__name__:
+            print(f"⏳ [ai_report_engine] Gemini 429，{GEMINI_RETRY_DELAY}秒後重試")
+            time.sleep(GEMINI_RETRY_DELAY)
+            try:
+                response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+                return response.text.strip()
+            except Exception:
+                return None  # 重試仍失敗，靜默跳過
+        raise
 
 REPORT_TYPES = {"PREOPEN_FUTURES", "PREOPEN_STOCKS", "EVENING_FUTURES", "EVENING_STOCKS"}
 
@@ -304,12 +323,9 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
     full_prompt = f"{_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=full_prompt,
-    )
-
-    text = response.text.strip()
+    text = _call_gemini_with_retry(client, full_prompt)
+    if text is None:
+        return None
     print(f"✅ [ai_report_engine] {report_type} 完成（{len(text)} 字）")
     return text
 
@@ -368,12 +384,9 @@ def generate_event_report(event_desc: str, chip_ctx: Optional[dict] = None) -> O
     full_prompt = f"{_EVENT_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=full_prompt,
-    )
-
-    text = response.text.strip()
+    text = _call_gemini_with_retry(client, full_prompt)
+    if text is None:
+        return None
     print(f"✅ [ai_report_engine] INTRADAY_EVENT 快評完成（{len(text)} 字）")
     return text
 
@@ -428,12 +441,9 @@ def generate_stock_commentary(stock_item: dict, chip_ctx: Optional[dict] = None)
     full_prompt = f"{_STOCK_COMMENTARY_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=full_prompt,
-    )
-
-    text = response.text.strip()
+    text = _call_gemini_with_retry(client, full_prompt)
+    if text is None:
+        return None
     print(f"✅ [ai_report_engine] 個股 {stock_id} 快評完成（{len(text)} 字）")
     return text
 
@@ -485,8 +495,9 @@ def generate_preopen_guidance(chip_ctx: Optional[dict], bias_label: str) -> Opti
     full_prompt = f"{_PREOPEN_GUIDANCE_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=full_prompt)
-    text = response.text.strip()
+    text = _call_gemini_with_retry(client, full_prompt)
+    if text is None:
+        return None
 
     parts = text.split("---", 1)
     today = parts[0].strip() if parts else ""
@@ -551,8 +562,9 @@ def generate_evening_guidance(
     full_prompt = f"{_EVENING_GUIDANCE_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=full_prompt)
-    text = response.text.strip()
+    text = _call_gemini_with_retry(client, full_prompt)
+    if text is None:
+        return None
     print(f"✅ [ai_report_engine] 晚盤解讀完成（{len(text)} 字）")
     return text
 
@@ -598,8 +610,9 @@ def generate_chip_market_commentary(chip_ctx: Optional[dict] = None) -> Optional
     full_prompt = f"{_CHIP_MARKET_COMMENTARY_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(model=GEMINI_MODEL, contents=full_prompt)
-    text = response.text.strip()
+    text = _call_gemini_with_retry(client, full_prompt)
+    if text is None:
+        return None
     print(f"✅ [ai_report_engine] 市場快評完成（{len(text)} 字）")
     return text
 

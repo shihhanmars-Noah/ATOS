@@ -478,10 +478,14 @@ def _pos_label(pct) -> str:
     if pct is None:
         return "N/A"
     pct = float(pct)
-    if pct < 35:
+    if pct < 30:
         return "偏下方"
-    if pct <= 65:
+    if pct < 45:
+        return "中段偏低"
+    if pct <= 55:
         return "中段"
+    if pct <= 70:
+        return "中段偏高"
     return "偏上方"
 
 
@@ -579,6 +583,7 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     # 今天怎麼做
     lines.append("今天怎麼做")
     lines.append(today_guidance if today_guidance else bias.get("summary", "等待開盤確認方向"))
+    lines.append(f"開盤第一步：觀察開盤價位置，若開盤在中軸 {_fp(mid_range)} 下方，等第一根5分K收盤確認再決定方向，不搶第一根。")
     lines.append("")
 
     # 關鍵價位

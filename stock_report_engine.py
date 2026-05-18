@@ -178,10 +178,14 @@ def _price_position_label(pct) -> str:
     if pct is None:
         return "N/A"
     pct = float(pct)
-    if pct < 35:
+    if pct < 30:
         return "偏下方"
-    if pct <= 65:
+    if pct < 45:
+        return "中段偏低"
+    if pct <= 55:
         return "中段"
+    if pct <= 70:
+        return "中段偏高"
     return "偏上方"
 
 
@@ -649,7 +653,7 @@ def classify_stock(scores: dict, tech: dict, market: dict):
         if tech.get("upper_shadow_ratio", 0) >= 0.5 and tech.get("volume_ratio", 0) >= 2:
             return "C", "爆量長上影，疑似上方賣壓"
         if distance_to_ma5 is not None and distance_to_ma5 > 8:
-            return "B", "漲幅偏離 5MA 過遠，只觀察不追"
+            return "C", "距5MA過遠，剔除"
         if total >= 80:
             return "B", f"台指期籌碼偏空（{sentiment_score}分），降級觀察"
         if total >= 60:
@@ -660,9 +664,9 @@ def classify_stock(scores: dict, tech: dict, market: dict):
     if tech.get("upper_shadow_ratio", 0) >= 0.5 and tech.get("volume_ratio", 0) >= 2:
         return "C", "爆量長上影，疑似上方賣壓"
 
-    # 距離 5MA 太遠，禁止追高
+    # 距離 5MA 太遠，直接剔除，不進 B 級
     if distance_to_ma5 is not None and distance_to_ma5 > 8:
-        return "B", "漲幅偏離 5MA 過遠，只觀察不追"
+        return "C", "距5MA過遠，剔除"
 
     if total >= 80:
         return "A", "A級：籌碼與技術同步，優先觀察"
@@ -883,6 +887,33 @@ def build_stock_watchlist(
 # Message Formatting
 # --------------------------------------------------
 
+def _stock_position_desc(item: dict) -> str:
+    """A 級個股白話位置描述。"""
+    tech = item.get("tech", {}) or {}
+    close = tech.get("close", "N/A")
+    ma5 = tech.get("ma5", "N/A")
+    dist = tech.get("distance_to_ma5")
+    vol_ratio = tech.get("volume_ratio")
+
+    dist_str = f"{dist}%" if dist is not None else "N/A"
+
+    if vol_ratio is None:
+        vol_desc = "量能資料不足"
+    elif vol_ratio > 2.5:
+        vol_desc = "明顯放量"
+    elif vol_ratio > 1.5:
+        vol_desc = "溫和放量"
+    elif vol_ratio < 0.8:
+        vol_desc = "量縮"
+    else:
+        vol_desc = "量能正常"
+
+    return (
+        f"{close} 站在5MA {ma5} 上方 {dist_str}，{vol_desc}，"
+        "注意大盤偏空環境下跌破5MA為出場訊號"
+    )
+
+
 def format_stock_item(item: dict, index: int):
     """
     格式化單一個股。
@@ -895,7 +926,7 @@ def format_stock_item(item: dict, index: int):
 
     cache_mark = "｜CACHE" if item.get("is_cache") else ""
 
-    return (
+    base = (
         f"{index}. {item['id']}｜總分 {scores['total_score']}｜{item['grade_reason']}{cache_mark}\n"
         f"   籌碼：投信淨買 {chip['trust_net_buy']}｜外資淨買 {chip['foreign_net_buy']}｜投信連買 {chip['consecutive_trust_buy_days']} 天\n"
         f"   技術：收盤 {tech['close']}｜5MA {tech['ma5']}｜10MA {tech['ma10']}｜20MA {tech['ma20']}\n"
@@ -904,6 +935,9 @@ def format_stock_item(item: dict, index: int):
         f"   失效：{plan['invalid']}\n"
         f"   指令：{plan['command']}"
     )
+    if item.get("grade") == "A":
+        base += f"\n   白話：{_stock_position_desc(item)}"
+    return base
 
 
 def build_legacy_stock_section(result: dict):
@@ -971,6 +1005,10 @@ def send_stock_picks_report(
     except Exception:
         chip_ctx = {}
 
+    source_dates = chip_ctx.get("source_dates", {}) or {}
+    chip_source_date = source_dates.get("futures") or source_dates.get("spot") or "N/A"
+    oi_source_date = source_dates.get("option_oi") or "N/A"
+
     # 大盤判斷
     market = get_market_bias_from_state()
     market_label = market.get("label", "N/A")
@@ -1019,6 +1057,7 @@ def send_stock_picks_report(
 
     # 標頭
     lines.append(f"📈 個股觀察 {date_str} {time_str}")
+    lines.append(f"籌碼資料：{chip_source_date}｜OI資料：{oi_source_date}")
     lines.append(
         f"大盤：{market_label}｜台指情緒：{bias_label}({score_str})"
         f"｜Fear&Greed：{fear_greed} {fear_greed_emotion}"
@@ -1042,6 +1081,7 @@ def send_stock_picks_report(
                 f"{stock_id}｜{close}｜5MA {ma5}"
                 f"｜投信連買{consecutive}日｜量比{vol_ratio}"
             )
+            lines.append(_stock_position_desc(item))
             commentary = _get_stock_ai_commentary(item)
             if commentary:
                 lines.append(f"AI點評：{commentary}")
