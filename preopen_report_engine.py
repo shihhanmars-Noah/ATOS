@@ -167,10 +167,12 @@ def build_opening_scenarios(
 
     scenario_b = (
         f"劇本 B｜跌破 Put wall {pw}\n"
-        "觸發：5分K收盤確認站下\n"
+        "觸發①：5分K收盤確認站下 + 當根量 > 前5K均量 × 1.2\n"
+        "觸發②：或回抽中軸 ±50 點，量 < 前3K均量 × 0.7 且收黑K\n"
+        "外資確認：外資淨空方向維持（今日未明顯減空）\n"
         "判斷：大戶選擇權防線失守，加速下跌\n"
         f"目標：{put_target1} → {put_target2}\n"
-        f"失效：收回 {pw} 上方"
+        f"失效：收回 {pw} 上方；或前K低於 {pw}、當K收回的假跌破型態"
     )
 
     scenario_c = (

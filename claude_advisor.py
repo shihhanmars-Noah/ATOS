@@ -53,9 +53,9 @@ _SYSTEM = """你是 ATOS 盤中即時指令引擎。
    做空：信心分 < 3 → 同上
 7. 輸出純文字，不用任何 Markdown 符號
 8. 進場條件前提（依方向不同）：
-   做多：價格突破 Call wall 且5分K收盤確認，外資當日淨增多單 > 3,000 口（方向轉變確認）
-   做空：價格跌破 Put wall 且5分K收盤確認，或反彈至中軸附近量縮5分K確認轉弱，外資淨空方向維持
-   觀望：價格在 Put wall ～ Call wall 之間無明確訊號，或外資兩面建倉，或結算日前3天
+   做多：（三條件同時成立）①價格突破 Call wall 且5分K收盤確認；②當根量 > 前5K均量 × 1.2（量能確認）；③外資當日淨增多單 > 2,000 口且近3日趨勢由空轉多
+   做空：（條件一）價格跌破 Put wall 且5分K收盤確認，且當根量 > 前5K均量 × 1.2；（條件二）或回抽中軸 ±50 點，當根量 < 前3K均量 × 0.7 且收黑K（量縮轉弱）
+   觀望：價格在 Put wall ～ Call wall 之間無明確訊號，或外資兩面建倉，或結算日前3天；若出現 Put wall 假跌破（前K低於 Put wall，當K收回上方），立即取消空單
 
 輸出格式（固定七行）：
 【指令】做多 / 做空 / 觀察
@@ -130,6 +130,16 @@ def _build_alert_text(ctx: dict) -> str:
         lines.append(f"前K高點：{_p(ctx.get('prev_candle_high'))}")
     if ctx.get("prev_candle_low"):
         lines.append(f"前K低點：{_p(ctx.get('prev_candle_low'))}")
+    if ctx.get("prev_candle_close"):
+        lines.append(f"前K收盤：{_p(ctx.get('prev_candle_close'))}")
+    if ctx.get("current_open"):
+        lines.append(f"當K開盤：{_p(ctx.get('current_open'))}")
+    if ctx.get("current_volume") is not None:
+        lines.append(f"當根成交量：{int(ctx.get('current_volume')):,}")
+    if ctx.get("vol_5bar_avg") is not None:
+        lines.append(f"前5K均量：{int(ctx.get('vol_5bar_avg')):,}")
+    if ctx.get("vol_3bar_avg") is not None:
+        lines.append(f"前3K均量：{int(ctx.get('vol_3bar_avg')):,}")
     return "\n".join(lines)
 
 
@@ -172,6 +182,56 @@ def _extract_direction(text: str) -> str:
 
 
 # --------------------------------------------------
+# 輔助條件判斷函式
+# --------------------------------------------------
+
+def _check_volume_confirmed(ctx: dict) -> bool:
+    """當根成交量 > 前5根K棒平均量的 1.2倍"""
+    vol = ctx.get("current_volume")
+    avg = ctx.get("vol_5bar_avg")
+    if vol is None or avg is None or float(avg) == 0:
+        return False
+    return float(vol) > float(avg) * 1.2
+
+
+def _check_mid_range_short_condition(ctx: dict) -> bool:
+    """中軸附近量縮轉弱：價格在 mid_range ±50 點內，量 < 前3K均量 × 0.7，且收黑K"""
+    mid = ctx.get("mid_range") or ctx.get("flip")
+    price = ctx.get("price")
+    vol = ctx.get("current_volume")
+    avg3 = ctx.get("vol_3bar_avg")
+    open_price = ctx.get("current_open")
+    if not all([mid, price, vol, avg3, open_price]):
+        return False
+    in_zone = abs(float(price) - float(mid)) <= 50
+    vol_shrink = float(vol) < float(avg3) * 0.7
+    bearish_k = float(price) < float(open_price)
+    return in_zone and vol_shrink and bearish_k
+
+
+def _check_foreign_turning_bull(chip_ctx: dict) -> bool:
+    """外資方向轉多：當日淨增多單 > 2000 口，且近3日趨勢轉多 (chg_3d > 0)"""
+    chg_1d = chip_ctx.get("foreign_net_chg_1d") or 0
+    chg_3d = chip_ctx.get("foreign_net_chg_3d") or 0
+    return float(chg_1d) > 2000 and float(chg_3d) > 0
+
+
+def _check_put_wall_false_breakout(ctx: dict) -> Optional[str]:
+    """Put wall 假跌破：前K收在 Put wall 下方，當K收回上方 → 護盤反彈警告"""
+    put_wall = ctx.get("put_wall")
+    prev_close = ctx.get("prev_candle_close")
+    price = ctx.get("price")
+    if not all([put_wall, prev_close, price]):
+        return None
+    if float(prev_close) < float(put_wall) < float(price):
+        return (
+            f"⚠️ Put wall 假跌破護盤：前K收 {_p(prev_close)} < Put wall {_p(put_wall)}，"
+            f"當K已收回 {_p(price)}，空方力道不足，建議暫停空單"
+        )
+    return None
+
+
+# --------------------------------------------------
 # 主函式
 # --------------------------------------------------
 
@@ -202,8 +262,25 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     event = str(alert_context.get("event", "")).upper()
 
+    # Put wall 假跌破：直接回傳警告，不進入 AI 流程
+    false_breakout_warning = _check_put_wall_false_breakout(alert_context)
+    if false_breakout_warning:
+        print(f"⚠️ [claude_advisor] Put wall 假跌破偵測，略過 AI 指令")
+        return false_breakout_warning
+
     if chip_ctx is None:
         chip_ctx = build_chip_context()
+
+    # 輔助條件預計算
+    vol_confirmed = _check_volume_confirmed(alert_context)
+    mid_range_short = _check_mid_range_short_condition(alert_context)
+    foreign_turning_bull = _check_foreign_turning_bull(chip_ctx) if chip_ctx else False
+
+    conditions_text = (
+        f"量能確認（當根 > 前5K均量×1.2）：{'是' if vol_confirmed else '否'}\n"
+        f"中軸量縮轉弱（±50點+量縮+黑K）：{'成立' if mid_range_short else '不成立'}\n"
+        f"外資方向轉多（chg_1d>2000且chg_3d>0）：{'成立' if foreign_turning_bull else '不成立'}"
+    )
 
     now = datetime.now().strftime("%H:%M")
     alert_text = _build_alert_text(alert_context)
@@ -213,6 +290,7 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         f"時間：{now}\n\n"
         f"=== 警報資訊 ===\n{alert_text}\n\n"
         f"=== 籌碼背景 ===\n{chip_text}\n\n"
+        f"=== 條件預判 ===\n{conditions_text}\n\n"
         "請根據以上資訊，產生 ATOS 結構化指令。"
     )
 
