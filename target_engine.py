@@ -30,7 +30,7 @@ def calculate_trade_plan(state: dict) -> dict:
             "stop_loss": round(stop_loss, 1),
             "take_profit_1": round(tp1, 1),
             "take_profit_2": round(tp2, 1),
-            "invalid_condition": "5分K收盤站回 Flip 上方",
+            "invalid_condition": "5分K收盤站回中軸上方",
             "desc": "空方模式：只做反彈放空，不抄底。",
         }
 

@@ -255,7 +255,7 @@ def build_night_context(
         else:
             summary = (
                 f"夜盤收盤與前日收盤差距 {gap_vs_prev_close} 點，"
-                "屬一般區間，日盤仍以 Flip / Pivot 判斷。"
+                "屬一般區間，日盤仍以中軸 / Pivot 判斷。"
             )
 
     return {
@@ -300,7 +300,7 @@ def build_night_context_text(
         f"夜盤時間：{context['night_close_time']}\n"
         f"資料來源：{context['night_close_source']}\n"
         f"相對前日收盤：{gap_text}\n"
-        f"相對 Flip：{context['position_vs_flip']}\n"
+        f"相對中軸：{context['position_vs_flip']}\n"
         f"相對 Pivot：{context['position_vs_pivot']}\n\n"
         f"夜盤結論：{context['summary']}"
     )

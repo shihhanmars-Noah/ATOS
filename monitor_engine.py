@@ -1,5 +1,7 @@
 # monitor_engine.py
 
+import json
+import math
 from datetime import datetime, time
 
 from error_handler import safe_execute
@@ -409,8 +411,8 @@ class AtosSentinel:
         關鍵價位提醒。
 
         事件：
-        - FLIP_RECOVER：站回 Flip
-        - FLIP_BREAK：跌破 Flip
+        - FLIP_RECOVER：站回中軸
+        - FLIP_BREAK：跌破中軸
         - R1_TOUCH：接近 R1
         - S1_TOUCH：接近 S1
         """
@@ -430,7 +432,7 @@ class AtosSentinel:
                 current_close = float(five_min_close)
                 flip_value = float(flip)
 
-                # 站回 Flip
+                # 站回中軸
                 if previous_close < flip_value <= current_close:
                     send_human_alert(
                         self.build_alert_context(
@@ -441,7 +443,7 @@ class AtosSentinel:
                         )
                     )
 
-                # 跌破 Flip
+                # 跌破中軸
                 elif previous_close > flip_value >= current_close:
                     send_human_alert(
                         self.build_alert_context(
@@ -515,14 +517,40 @@ class AtosSentinel:
 
         levels = self.get_levels(snapshot)
 
+        _pivot = levels.get("pivot")
+        _r1 = levels.get("R1")
+        _s1 = levels.get("S1")
+
+        def _is_missing(v):
+            if v is None:
+                return True
+            try:
+                return math.isnan(float(v))
+            except Exception:
+                return False
+
+        if _is_missing(_pivot) or _is_missing(_r1) or _is_missing(_s1):
+            try:
+                with open('chip_cache.json') as _f:
+                    _cc = json.load(_f)
+                _tech = _cc.get('tech_levels', {})
+                if _is_missing(_pivot):
+                    _pivot = _tech.get('pivot')
+                if _is_missing(_r1):
+                    _r1 = _tech.get('r1')
+                if _is_missing(_s1):
+                    _s1 = _tech.get('s1')
+            except Exception:
+                pass
+
         return {
             "event": event,
             "price": price,
             "flip": self.state.get("flip", 0),
 
-            "pivot": levels.get("pivot"),
-            "r1": levels.get("R1"),
-            "s1": levels.get("S1"),
+            "pivot": _pivot,
+            "r1": _r1,
+            "s1": _s1,
 
             "sentiment": self.get_sentiment(snapshot),
             "behavior": (

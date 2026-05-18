@@ -304,7 +304,7 @@ def build_long_trap_message(context: dict) -> str:
         "● 有多單先降風險\n"
         "● 等下一根 5分K 確認\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"🛑 防守點：{format_price(stop)}\n"
         f"🎯 觀察區：{format_price(target)}"
     )
@@ -330,7 +330,7 @@ def build_short_trap_message(context: dict) -> str:
         "● 空單先降風險\n"
         "● 等拉回再觀察\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"🛑 防守點：{format_price(stop)}\n"
         f"🎯 觀察區：{format_price(target)}"
     )
@@ -357,7 +357,7 @@ def build_flip_invalid_message(context: dict) -> str:
         "● 不要硬拗\n"
         "● 重新等待方向\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"📍 Pivot：{format_price(pivot)}\n"
         f"📍 R1：{format_price(r1)}\n"
         f"📍 S1：{format_price(s1)}"
@@ -419,7 +419,7 @@ def build_sweep_message(context: dict) -> str:
         "盤中判斷：\n"
         f"{action}\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"📍 Pivot：{format_price(pivot)}\n"
         f"📍 R1：{format_price(r1)}\n"
         f"📍 S1：{format_price(s1)}"
@@ -437,16 +437,16 @@ def build_flip_break_message(context: dict) -> str:
     s1 = get_context_value(context, "s1", "S1")
 
     return (
-        "🔴 跌破 Flip 警報\n"
+        "🔴 跌破中軸警報\n"
         "------------------\n\n"
         "價格跌破今日多空分界。\n"
         "短線偏空，但不代表可以急跌後追空。\n\n"
         "盤中判斷：\n"
-        "● 等反彈測試 Flip\n"
+        "● 等反彈測試中軸\n"
         "● 反彈不過才觀察空方延續\n"
-        "● 重新站回 Flip 則空方劇本取消\n\n"
+        "● 重新站回中軸則空方劇本取消\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"📍 Pivot：{format_price(pivot)}\n"
         f"📍 S1：{format_price(s1)}"
     )
@@ -463,16 +463,16 @@ def build_flip_recover_message(context: dict) -> str:
     r1 = get_context_value(context, "r1", "R1")
 
     return (
-        "🟢 站回 Flip 警報\n"
+        "🟢 站回中軸警報\n"
         "------------------\n\n"
         "價格站回今日多空分界。\n"
         "短線轉強觀察，但不代表可以直接追高。\n\n"
         "盤中判斷：\n"
-        "● 等回測 Flip 不破\n"
+        "● 等回測中軸不破\n"
         "● 回測不破才觀察多方延續\n"
-        "● 收回 Flip 下方則多方劇本取消\n\n"
+        "● 收回中軸下方則多方劇本取消\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"📍 Pivot：{format_price(pivot)}\n"
         f"📍 R1：{format_price(r1)}"
     )
@@ -498,7 +498,7 @@ def build_r1_touch_message(context: dict) -> str:
         "● 突破後回測不破才看續強\n\n"
         f"📍 現價：{format_price(price)}\n"
         f"📍 R1：{format_price(r1)}\n"
-        f"📍 Flip：{format_price(flip)}"
+        f"📍 中軸：{format_price(flip)}"
     )
 
 
@@ -522,7 +522,7 @@ def build_s1_touch_message(context: dict) -> str:
         "● 反彈不過才看續弱\n\n"
         f"📍 現價：{format_price(price)}\n"
         f"📍 S1：{format_price(s1)}\n"
-        f"📍 Flip：{format_price(flip)}"
+        f"📍 中軸：{format_price(flip)}"
     )
 
 
@@ -539,14 +539,14 @@ def build_long_confirm_v3_message(context: dict) -> str:
     return (
         "🟢 V3 多方確認訊號\n"
         "------------------\n\n"
-        "價格站回 Flip 後出現延續確認。\n"
+        "價格站回中軸後出現延續確認。\n"
         "此訊號目前只列為 A- 觀察，不代表自動進場。\n\n"
         "盤中判斷：\n"
         "● 僅允許微台小倉觀察\n"
         "● 不可追價放大部位\n"
         "● 停損以 30 點為主\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"📍 Pivot：{format_price(pivot)}\n"
         f"📍 R1：{format_price(r1)}"
     )
@@ -565,14 +565,14 @@ def build_short_retest_fail_v3_message(context: dict) -> str:
     return (
         "🔴 V3 空方回測失敗訊號\n"
         "------------------\n\n"
-        "價格跌破 Flip 後反彈無法收回。\n"
+        "價格跌破中軸後反彈無法收回。\n"
         "此訊號目前只列為 A- 觀察，不代表自動進場。\n\n"
         "盤中判斷：\n"
         "● 僅允許微台小倉觀察\n"
         "● 不可急跌追空\n"
         "● 停損以 30 點為主\n\n"
         f"📍 現價：{format_price(price)}\n"
-        f"📍 Flip：{format_price(flip)}\n"
+        f"📍 中軸：{format_price(flip)}\n"
         f"📍 Pivot：{format_price(pivot)}\n"
         f"📍 S1：{format_price(s1)}"
     )

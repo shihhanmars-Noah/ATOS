@@ -356,6 +356,24 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
         .replace("{chip_text}", chip_text)
     )
 
+    # 外資大幅回補/加碼時，在 EVENING_FUTURES 特別強調
+    if report_type == "EVENING_FUTURES":
+        chg_1d = chip_ctx.get("foreign_net_chg_1d") or 0
+        try:
+            chg_1d = int(chg_1d)
+            if chg_1d > 2000:
+                user_prompt += (
+                    f"\n\n重要：今日外資回補空單 {chg_1d:+,} 口，"
+                    "這是重大籌碼變化，請在解讀中特別強調其對後市的影響"
+                )
+            elif chg_1d < -2000:
+                user_prompt += (
+                    f"\n\n重要：今日外資加碼空單 {chg_1d:+,} 口，"
+                    "請在解讀中特別強調空方壓力加重的含義"
+                )
+        except Exception:
+            pass
+
     full_prompt = f"{_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)

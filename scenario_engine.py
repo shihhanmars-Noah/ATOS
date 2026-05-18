@@ -22,13 +22,13 @@ def classify_intraday_scenario(
     判斷目前價格符合早盤哪一個劇本。
 
     劇本 A：
-    站上 Flip → 偏多，但等回測
+    站上中軸 → 偏多，但等回測
 
     劇本 B：
-    跌破 Flip → 偏空，但等反彈
+    跌破中軸 → 偏空，但等反彈
 
     劇本 C：
-    卡在 Pivot / Flip 中間 → 不做
+    卡在 Pivot / 中軸 中間 → 不做
 
     R1 / S1：
     額外標註壓力 / 支撐測試
@@ -78,17 +78,17 @@ def classify_intraday_scenario(
     if price > flip:
         return {
             "scenario": "A",
-            "title": "🟢 劇本 A｜站上 Flip",
+            "title": "🟢 劇本 A｜站上中軸",
             "action": "偏多觀察，但等回測",
-            "summary": f"價格目前站在 Flip {format_price(flip)} 上方，符合早盤劇本 A。不要直接追高，等回測不破。",
+            "summary": f"價格目前站在中軸 {format_price(flip)} 上方，符合早盤劇本 A。不要直接追高，等回測不破。",
         }
 
     if price < flip:
         return {
             "scenario": "B",
-            "title": "🔴 劇本 B｜跌破 Flip",
+            "title": "🔴 劇本 B｜跌破中軸",
             "action": "偏空觀察，但等反彈",
-            "summary": f"價格目前跌破 Flip {format_price(flip)}，符合早盤劇本 B。不要急跌追空，等反彈不過。",
+            "summary": f"價格目前跌破中軸 {format_price(flip)}，符合早盤劇本 B。不要急跌追空，等反彈不過。",
         }
 
     if lower <= price <= upper:

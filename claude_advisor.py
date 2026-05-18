@@ -1,5 +1,7 @@
 # claude_advisor.py
 
+import json
+import math
 import os
 import re
 import time
@@ -21,8 +23,8 @@ GEMINI_RETRY_DELAY = 5  # 429 重試等待秒數
 _EVENT_LABELS = {
     "LONG_TRAP":              "多方陷阱（假突破）",
     "SHORT_TRAP":             "空方陷阱（軋空）",
-    "FLIP_BREAK":             "跌破中軸 Flip",
-    "FLIP_RECOVER":           "站回中軸 Flip",
+    "FLIP_BREAK":             "跌破中軸",
+    "FLIP_RECOVER":           "站回中軸",
     "FLIP_INVALID":           "中軸方向失效",
     "BEARISH_SWEEP":          "上方掃單",
     "BULLISH_SWEEP":          "下方掃單",
@@ -112,7 +114,7 @@ def _build_alert_text(ctx: dict) -> str:
     lines = [
         f"警報事件：{label}（{event}）",
         f"當前價格：{_p(ctx.get('price'))}",
-        f"中軸 Flip/mid_range：{_p(flip_val)}",
+        f"中軸/mid_range：{_p(flip_val)}",
         f"Pivot：{_p(ctx.get('pivot'))}",
         f"R1：{_p(ctx.get('r1'))} / S1：{_p(ctx.get('s1'))}",
         f"法人情緒：{ctx.get('sentiment', 'N/A')}",
@@ -292,6 +294,27 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     if chip_ctx is None:
         chip_ctx = build_chip_context()
+
+    # 關鍵價位補救：若 state 傳來的 pivot/r1/s1 是 None 或 nan，從 chip_cache 補回
+    def _is_missing(v):
+        if v is None:
+            return True
+        try:
+            return math.isnan(float(v))
+        except Exception:
+            return False
+
+    if any(_is_missing(alert_context.get(k)) for k in ("pivot", "r1", "s1", "mid_range")):
+        try:
+            with open('chip_cache.json') as _f:
+                _cc = json.load(_f)
+            _tech = _cc.get('tech_levels', {})
+            alert_context = dict(alert_context)
+            for _key, _cache_key in (('pivot', 'pivot'), ('r1', 'r1'), ('s1', 's1'), ('mid_range', 'mid_range')):
+                if _is_missing(alert_context.get(_key)):
+                    alert_context[_key] = _tech.get(_cache_key)
+        except Exception:
+            pass
 
     # 結算日資訊（後續多處使用）
     days_to_settlement = _get_days_to_settlement()

@@ -66,7 +66,7 @@ def check_invalidation(
                 "message": (
                     f"💥 多方結構失效\n"
                     f"5分K收盤：{five_min_close}\n"
-                    f"跌破 Flip：{flip_level}"
+                    f"跌破中軸：{flip_level}"
                 )
             }
 
@@ -82,7 +82,7 @@ def check_invalidation(
                 "message": (
                     f"💥 空方結構失效\n"
                     f"5分K收盤：{five_min_close}\n"
-                    f"站回 Flip：{flip_level}"
+                    f"站回中軸：{flip_level}"
                 )
             }
 

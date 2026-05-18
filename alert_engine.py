@@ -63,7 +63,7 @@ def build_trap_alert(data: dict) -> str:
     else:
         msg += "🎯 誘空失敗：大戶利用散戶停損單進行軋空拉抬。\n"
     
-    msg += f"\n現價：`{data['price']}` | Flip：`{data['flip']}`"
+    msg += f"\n現價：`{data['price']}` | 中軸：`{data['flip']}`"
     msg += f"\n散戶比：`{data['retail_ratio']}%` | 掃單位：`{data['sweep_level']}`"
     msg += f"\n\n👉 **核心指令**：不要對抗大戶！已有反向單應立即撤退，等待 5分K 確認慣性後換手。"
     return msg
@@ -72,8 +72,8 @@ def build_flip_invalid_alert(data: dict) -> str:
     """狀態警報：Flip 失效 (物理層損毀)"""
     header = build_header(data['event_mode'])
     msg = f"🛡️ **風控預警：物理協議失效**\n{header}\n---\n"
-    msg += f"5分K 確認{'跌破' if '多方' in data['regime'] else '站回'} Flip 分界點。\n"
-    msg += f"\n收盤價：`{data['price']}` | Flip：`{data['flip']}`"
+    msg += f"5分K 確認{'跌破' if '多方' in data['regime'] else '站回'} 中軸分界點。\n"
+    msg += f"\n收盤價：`{data['price']}` | 中軸：`{data['flip']}`"
     msg += f"\n\n👉 **核心指令**：原慣性已變，多/空方協議終止。**全面轉為防守**，重新標定重心。"
     return msg
 

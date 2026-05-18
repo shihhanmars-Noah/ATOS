@@ -69,7 +69,7 @@ def is_in_trade_window(context: dict) -> bool:
 def is_neutral_zone(context: dict) -> bool:
     """
     中性區：
-    價格位於 Flip 與 Pivot 之間，或同時接近 Flip / Pivot。
+    價格位於中軸與 Pivot 之間，或同時接近中軸 / Pivot。
     """
 
     price = safe_float(context.get("price"))
@@ -85,7 +85,7 @@ def is_neutral_zone(context: dict) -> bool:
     if lower <= price <= upper:
         return True
 
-    # 同時靠近 Flip / Pivot，視為洗盤區
+    # 同時靠近中軸 / Pivot，視為洗盤區
     if abs(price - flip) <= 30 and abs(price - pivot) <= 30:
         return True
 
@@ -132,7 +132,7 @@ def get_event_grade(event: str, context: dict) -> dict:
             "suggested_action": "NO_TRADE",
             "stop_points": DEFAULT_STOP_POINTS,
             "target_points": DEFAULT_TARGET_POINTS,
-            "reasons": ["價格位於 Flip / Pivot 中性區，禁止交易"],
+            "reasons": ["價格位於中軸 / Pivot 中性區，禁止交易"],
         }
 
     if not is_in_trade_window(context):
@@ -153,16 +153,16 @@ def get_event_grade(event: str, context: dict) -> dict:
         grade = GRADE_B
         action = "WATCH_ONLY"
         reasons.extend([
-            "回測顯示跌破 Flip 直接追空期望值不佳",
+            "回測顯示跌破中軸直接追空期望值不佳",
             "此事件只代表結構轉弱，不等於可空",
-            "等待反彈不過 Flip 或第二訊號確認",
+            "等待反彈不過中軸或第二訊號確認",
         ])
 
     elif event == "FLIP_RECOVER":
         grade = GRADE_B
         action = "WATCH_ONLY"
         reasons.extend([
-            "站回 Flip 代表多方結構改善",
+            "站回中軸代表多方結構改善",
             "但單一站回訊號尚未具備穩定優勢",
             "需等待 5 分 K 延續或回測不破",
         ])

@@ -1,5 +1,6 @@
 # evening_report_engine.py
 
+import json
 from datetime import datetime, date
 
 from persistent_state import load_state
@@ -344,6 +345,20 @@ def get_option_oi_context(state: dict) -> dict:
         ],
     )
 
+    # 優先從 chip_cache.json 讀取 call_wall / put_wall，確保晚盤數字與盤前一致
+    try:
+        with open('chip_cache.json') as f:
+            _chip_cache = json.load(f)
+        _oi = _chip_cache.get('option_oi', {})
+        _cw = _oi.get('call_wall_strike')
+        _pw = _oi.get('put_wall_strike')
+        if _cw is not None:
+            max_call_oi = _cw
+        if _pw is not None:
+            max_put_oi = _pw
+    except Exception:
+        pass
+
     ready = False
 
     if oi_ready_flag is True:
@@ -356,6 +371,10 @@ def get_option_oi_context(state: dict) -> dict:
     if is_valid_value(max_call_oi) and is_valid_value(max_put_oi):
         if oi_date is None or is_today(oi_date):
             ready = True
+
+    # chip_cache 有值時直接視為 ready（它是今日籌碼的最新來源）
+    if is_valid_value(max_call_oi) and is_valid_value(max_put_oi):
+        ready = True
 
     return {
         "ready": ready,
@@ -704,10 +723,10 @@ def classify_day_result(day_ctx: dict) -> str:
         return "收盤站上 R1，日盤多方明顯主控"
 
     if price < flip:
-        return "收盤低於 Flip，日盤偏空"
+        return "收盤低於中軸，日盤偏空"
 
     if price > flip:
-        return "收盤高於 Flip，日盤偏多"
+        return "收盤高於中軸，日盤偏多"
 
     if low < pivot < high:
         return "價格圍繞 Pivot 震盪，日盤偏區間盤"

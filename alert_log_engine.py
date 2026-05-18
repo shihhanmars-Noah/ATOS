@@ -278,7 +278,7 @@ def build_alert_log_text(max_items: int = 8) -> str:
             f"{idx}. {alert.get('time')}｜"
             f"{alert.get('event')}｜"
             f"價位 {alert.get('price')}｜"
-            f"Flip {alert.get('flip')}"
+            f"中軸 {alert.get('flip')}"
         )
 
     event_text = ", ".join(

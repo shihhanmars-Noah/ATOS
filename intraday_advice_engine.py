@@ -87,7 +87,7 @@ def build_intraday_ai_advice(
         return {
             "title": "⚪ 關鍵價不足",
             "action": "不進場",
-            "summary": "Flip / Pivot / R1 / S1 尚未完整建立，盤中判斷不成立。",
+            "summary": "中軸 / Pivot / R1 / S1 尚未完整建立，盤中判斷不成立。",
             "do_now": [
                 "等待關鍵價位重新建立",
                 "不要只看現價進場",
@@ -139,7 +139,7 @@ def build_intraday_ai_advice(
             "action": "不追空，等待收回確認",
             "summary": "價格可能出現下方掃單，現在不適合追 Put 或追空。",
             "do_now": [
-                "觀察是否重新站回支撐或 Flip",
+                "觀察是否重新站回支撐或中軸",
                 "如果 5分K 收回關鍵價上方，才觀察反打",
                 "沒有明確轉強前，不提前猜多",
             ],
@@ -157,7 +157,7 @@ def build_intraday_ai_advice(
             "summary": "目前狀態偏向多方假突破，追多風險提高。",
             "do_now": [
                 "不要追 Call",
-                "觀察是否跌回 Flip / Pivot 下方",
+                "觀察是否跌回中軸 / Pivot 下方",
                 "若反彈無法重新站回關鍵價，可觀察 Put",
             ],
             "option": (
@@ -174,7 +174,7 @@ def build_intraday_ai_advice(
             "summary": "目前狀態偏向空方假跌破，追空風險提高。",
             "do_now": [
                 "不要追 Put",
-                "觀察是否重新站回 Flip / Pivot",
+                "觀察是否重新站回中軸 / Pivot",
                 "若回測不破，可觀察 Call",
             ],
             "option": (
@@ -233,7 +233,7 @@ def build_intraday_ai_advice(
     if price > flip + 20:
         if foreign_bearish:
             return {
-                "title": "🟡 站上 Flip，但籌碼偏空",
+                "title": "🟡 站上中軸，但籌碼偏空",
                 "action": "等回測，不追多",
                 "summary": "價格站上 Flip，但外資期貨偏空，這種位置容易出現拉高洗盤。",
                 "do_now": [
@@ -249,13 +249,13 @@ def build_intraday_ai_advice(
             }
 
         return {
-            "title": "🟢 站上 Flip",
+            "title": "🟢 站上中軸",
             "action": "偏多觀察，等回測確認",
             "summary": "價格站上多空分界，短線偏多，但仍不建議直接追高。",
             "do_now": [
                 f"等待回測 {format_price(flip)} 不破",
                 f"上方先看 {format_price(r1)} 壓力",
-                "如果 5分K 收回 Flip 下方，取消多方劇本",
+                "如果 5分K 收回中軸下方，取消多方劇本",
             ],
             "option": (
                 "Call：回測不破後才觀察。\n"
@@ -271,29 +271,29 @@ def build_intraday_ai_advice(
     if price < flip - 20:
         if foreign_bullish:
             return {
-                "title": "🟡 跌破 Flip，但籌碼偏多",
+                "title": "🟡 跌破中軸，但籌碼偏多",
                 "action": "等反彈確認，不追空",
-                "summary": "價格跌破 Flip，但外資期貨偏多，急跌後追空容易被反彈洗掉。",
+                "summary": "價格跌破中軸，但外資期貨偏多，急跌後追空容易被反彈洗掉。",
                 "do_now": [
                     f"等待反彈測試 {format_price(flip)}",
                     "如果反彈不過，再觀察空方延續",
-                    "如果重新站回 Flip，取消空方劇本",
+                    "如果重新站回中軸，取消空方劇本",
                 ],
                 "option": (
                     "Put：只觀察反彈不過後的機會。\n"
-                    "Call：暫不追，等重新站回 Flip 再觀察。"
+                    "Call：暫不追，等重新站回中軸再觀察。"
                 ),
                 "final": "現在不是追空點，是等待反彈確認點。",
             }
 
         return {
-            "title": "🔴 跌破 Flip",
+            "title": "🔴 跌破中軸",
             "action": "偏空觀察，等反彈不過",
             "summary": "價格跌破多空分界，短線偏空，但仍不建議急跌後直接追空。",
             "do_now": [
                 f"等待反彈測試 {format_price(flip)}",
                 f"下方先看 {format_price(pivot)} / {format_price(s1)}",
-                "如果 5分K 重新站回 Flip，取消空方劇本",
+                "如果 5分K 重新站回中軸，取消空方劇本",
             ],
             "option": (
                 "Put：反彈不過後才觀察。\n"
@@ -313,7 +313,7 @@ def build_intraday_ai_advice(
         return {
             "title": "🟡 中性洗盤區",
             "action": "不進場",
-            "summary": "價格位於 Flip / Pivot 中間，方向優勢不足，容易來回洗盤。",
+            "summary": "價格位於中軸 / Pivot 中間，方向優勢不足，容易來回洗盤。",
             "do_now": [
                 f"等待突破 {format_price(upper)}",
                 f"或跌破 {format_price(lower)}",
@@ -336,7 +336,7 @@ def build_intraday_ai_advice(
         "summary": "目前價格沒有觸發明確劇本，等待下一個關鍵價位。",
         "do_now": [
             "不要急著進場",
-            "等待靠近 Flip / Pivot / R1 / S1",
+            "等待靠近中軸 / Pivot / R1 / S1",
             "等 5分K 確認後再判斷",
         ],
         "option": (
