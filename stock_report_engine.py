@@ -1064,7 +1064,15 @@ def send_stock_picks_report(
     )
     lines.append("")
 
-    # A 級
+    # A 級 — 批次取 AI 點評（一次呼叫）
+    batch_commentaries: dict = {}
+    if a_items:
+        try:
+            from ai_report_engine import generate_stock_commentaries_batch
+            batch_commentaries = generate_stock_commentaries_batch(a_items, chip_ctx) or {}
+        except Exception:
+            pass
+
     lines.append("🟢 A級優先觀察")
     if not a_items:
         lines.append("今日無A級標的")
@@ -1082,7 +1090,7 @@ def send_stock_picks_report(
                 f"｜投信連買{consecutive}日｜量比{vol_ratio}"
             )
             lines.append(_stock_position_desc(item))
-            commentary = _get_stock_ai_commentary(item)
+            commentary = batch_commentaries.get(str(stock_id), "")
             if commentary:
                 lines.append(f"AI點評：{commentary}")
     lines.append("")

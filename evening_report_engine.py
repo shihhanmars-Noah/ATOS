@@ -1116,6 +1116,15 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     lines.append("AI解讀：")
     lines.append(ai_text if ai_text else "（AI 分析暫不可用）")
 
+    # API 使用統計
+    try:
+        from ai_report_engine import get_api_stats
+        stats = get_api_stats()
+        lines.append("")
+        lines.append(f"今日 AI API：呼叫 {stats['calls']} 次｜使用 {stats['total_tokens']} tokens")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 

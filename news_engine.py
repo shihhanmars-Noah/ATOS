@@ -195,15 +195,42 @@ def _build_alert_message(item: dict, commentary: Optional[str]) -> str:
 
 
 # --------------------------------------------------
+# 批次評估新聞重要性
+# --------------------------------------------------
+
+def batch_evaluate_news(news_list: list) -> list:
+    """
+    一次呼叫 Gemini 評估所有新聞重要性，回傳 importance >= 4 的項目（附 importance 欄位）。
+    """
+    if not news_list:
+        return []
+
+    try:
+        from ai_report_engine import batch_score_news
+        scores = batch_score_news(news_list) or [0] * len(news_list)
+    except Exception as e:
+        print(f"⚠️ [news_engine] batch_score_news 失敗：{e}")
+        return []
+
+    important = []
+    for i, news in enumerate(news_list):
+        score = scores[i] if i < len(scores) else 0
+        if score >= 4:
+            important.append({**news, "importance": score})
+
+    return important
+
+
+# --------------------------------------------------
 # 主函式
 # --------------------------------------------------
 
 def poll_news(chip_ctx: Optional[dict] = None) -> int:
     """
-    輪詢所有新聞來源，對重大事件發送 Telegram 警報。
-
-    Args:
-        chip_ctx: build_chip_context() 輸出；None 則在有匹配時才載入
+    輪詢所有新聞來源：
+    1. 收集這輪所有新聞（去重）
+    2. 一次批次呼叫 Gemini 評估重要性
+    3. 只對重要性 >= 4 的新聞各呼叫一次 _get_commentary()
 
     Returns:
         本次發送的警報數
@@ -215,23 +242,26 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
     if not all_items:
         return 0
 
-    # 過濾出重大事件 + 去重
+    # 去重（排除近 30 分鐘已發過的標題）
     candidates = []
     for item in all_items:
         title = item.get("title", "")
         if not title:
             continue
-        if not _is_major_event(title, item.get("content", "")):
+        if not _can_send(_news_hash(title)):
             continue
-        h = _news_hash(title)
-        if not _can_send(h):
-            continue
-        candidates.append((item, h))
+        candidates.append(item)
 
     if not candidates:
         return 0
 
-    # 有匹配才載入 chip_ctx 和 AI
+    # 批次評估重要性（一次 AI 呼叫）
+    important_items = batch_evaluate_news(candidates)
+
+    if not important_items:
+        return 0
+
+    # 有重要新聞才載入 chip_ctx
     if chip_ctx is None:
         try:
             from chip_data_engine import build_chip_context
@@ -240,10 +270,12 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
             chip_ctx = {}
 
     sent = 0
-    for item, h in candidates:
+    for item in important_items:
         title = item.get("title", "")
-        print(f"🔴 [news_engine] 關鍵字命中，發送警報：{title[:50]}")
-        commentary = _get_commentary(item, chip_ctx)
+        h = _news_hash(title)
+        importance = item.get("importance", 4)
+        print(f"🔴 [news_engine] 重要性 {importance}/5，發送警報：{title[:50]}")
+        commentary = _get_commentary(item, chip_ctx or {})
         msg = _build_alert_message(item, commentary)
         if send_to_telegram(msg):
             _mark_sent(h)

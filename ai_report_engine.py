@@ -14,11 +14,23 @@ from chip_data_engine import build_chip_context
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_RETRY_DELAY = 5  # 429 重試等待秒數
 
+_SYSTEM_BASE = """你是台指期和台股的專業分析師。
+分析風格：客觀、精準、直接，不說廢話。
+輸出語言：繁體中文。
+策略框架：以 Put wall/Call wall 為核心觸發點，外資籌碼為方向判斷。"""
+
+_api_stats: dict = {"calls": 0, "total_tokens": 0}
+
+
+def get_api_stats() -> dict:
+    return dict(_api_stats)
+
 
 def _call_gemini_with_retry(client, prompt: str, max_output_tokens: Optional[int] = None) -> Optional[str]:
     """Call Gemini with up to 2 retries on 429; return None silently if all retries fail.
     thinking_budget=0 disables Gemini 2.5 thinking mode so tokens go to output."""
     config = types.GenerateContentConfig(
+        system_instruction=_SYSTEM_BASE,
         max_output_tokens=max_output_tokens,
         thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
@@ -28,6 +40,9 @@ def _call_gemini_with_retry(client, prompt: str, max_output_tokens: Optional[int
             response = client.models.generate_content(
                 model=GEMINI_MODEL, contents=prompt, config=config
             )
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                _api_stats["calls"] += 1
+                _api_stats["total_tokens"] += getattr(response.usage_metadata, "total_token_count", 0) or 0
             return response.text.strip()
         except Exception as e:
             if "429" in str(e) or "ResourceExhausted" in type(e).__name__:
@@ -626,6 +641,108 @@ def generate_chip_market_commentary(chip_ctx: Optional[dict] = None) -> Optional
         return None
     print(f"✅ [ai_report_engine] 市場快評完成（{len(text)} 字）")
     return text
+
+
+# --------------------------------------------------
+# 批次個股點評（A 級一次呼叫）
+# --------------------------------------------------
+
+@safe_execute
+def generate_stock_commentaries_batch(stocks: list, chip_ctx: Optional[dict] = None) -> dict:
+    """一次呼叫 Gemini 產生所有 A 級個股白話點評，回傳 {stock_id: comment} dict。"""
+    if not stocks:
+        return {}
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return {}
+
+    ctx = chip_ctx or {}
+    sentiment_bias = ctx.get("sentiment_bias", "N/A")
+    try:
+        sentiment_score = int(ctx.get("sentiment_score", 0) or 0)
+        score_str = f"{sentiment_score:+d}"
+    except Exception:
+        score_str = "N/A"
+    foreign_net = ctx.get("foreign_net", 0) or 0
+
+    stock_lines = []
+    for s in stocks:
+        tech = s.get("tech", {}) or {}
+        chip = s.get("chip", {}) or {}
+        stock_lines.append(
+            f"{s.get('id', 'N/A')}：收{tech.get('close', 'N/A')} "
+            f"5MA{tech.get('ma5', 'N/A')} "
+            f"距MA{tech.get('distance_to_ma5', 'N/A')}% "
+            f"量比{tech.get('volume_ratio', 'N/A')} "
+            f"投信連買{chip.get('consecutive_trust_buy_days', 'N/A')}日"
+        )
+
+    prompt = (
+        f"大盤情緒：{sentiment_bias}（{score_str}分）\n"
+        f"外資期貨：{foreign_net:+,}口\n\n"
+        f"以下每檔個股各給一行白話點評（格式：股號：點評內容）：\n"
+        + "\n".join(stock_lines)
+        + "\n\n要求：每檔一行，說明技術位置和主要風險，不超過30字。"
+    )
+
+    client = genai.Client(api_key=api_key)
+    text = _call_gemini_with_retry(client, prompt, max_output_tokens=max(200, 80 * len(stocks)))
+    if not text:
+        return {}
+
+    expected_ids = {str(s.get("id", "")) for s in stocks}
+    commentaries: dict = {}
+    for line in text.strip().split("\n"):
+        if "：" in line:
+            sid, comment = line.split("：", 1)
+            sid = sid.strip()
+            if sid in expected_ids:
+                commentaries[sid] = comment.strip()
+
+    print(f"✅ [ai_report_engine] 批次個股點評完成（{len(commentaries)}/{len(stocks)} 檔）")
+    return commentaries
+
+
+# --------------------------------------------------
+# 批次新聞重要性評分（一次呼叫）
+# --------------------------------------------------
+
+@safe_execute
+def batch_score_news(news_list: list) -> list:
+    """一次呼叫對多則新聞評分 1-5（台股台指期重要性），回傳與輸入同長度的分數列表。"""
+    if not news_list:
+        return []
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return [0] * len(news_list)
+
+    items = [f"{i + 1}. {n.get('title', '')}" for i, n in enumerate(news_list)]
+    prompt = (
+        "以下新聞對台股台指期的重要性評分（1=不重要，5=極重要），只回傳分數，用逗號分隔：\n"
+        + "\n".join(items)
+        + "\n\n例如：1,4,2,3,1"
+    )
+
+    client = genai.Client(api_key=api_key)
+    text = _call_gemini_with_retry(client, prompt, max_output_tokens=max(20, len(news_list) * 3))
+    if not text:
+        return [0] * len(news_list)
+
+    import re
+    scores = []
+    for x in re.split(r"[,\n]", text):
+        x = x.strip()
+        if x.isdigit() and 1 <= int(x) <= 5:
+            scores.append(int(x))
+        elif x.isdigit():
+            scores.append(0)
+
+    while len(scores) < len(news_list):
+        scores.append(0)
+
+    return scores[: len(news_list)]
 
 
 # --------------------------------------------------
