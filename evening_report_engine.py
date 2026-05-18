@@ -1121,7 +1121,27 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     # 夜盤操作指示
     lines.append("夜盤操作指示")
     lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")
-    lines.append(f"做空條件：跌破 Put wall {_fp(put_wall)} 或反彈到中軸 {_fp(flip)} 未過確認")
+
+    # 做空條件依收盤位置動態調整
+    try:
+        _price_f = float(price)
+        _flip_f = float(flip)
+        if _price_f >= _flip_f:
+            # 收盤站在中軸上方 → 空方需先跌回中軸下方才有意義
+            short_cond = (
+                f"強訊號：跌破 Put wall {_fp(put_wall)} 且量能確認；"
+                f"次訊號：收盤跌回中軸 {_fp(flip)} 下方且無法站回"
+            )
+        else:
+            # 收盤已在中軸下方 → 反彈到中軸未過是進場點
+            short_cond = (
+                f"強訊號：跌破 Put wall {_fp(put_wall)} 且量能確認；"
+                f"次訊號：反彈到中軸 {_fp(flip)} 附近未過確認"
+            )
+    except Exception:
+        short_cond = f"跌破 Put wall {_fp(put_wall)} 量能確認 或 中軸 {_fp(flip)} 轉壓"
+
+    lines.append(f"做空條件：{short_cond}")
     lines.append(f"觀望條件：在 {_fp(put_wall)}～{_fp(call_wall)} 區間內無明確訊號")
     lines.append("")
 

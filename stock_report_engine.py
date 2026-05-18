@@ -1105,8 +1105,20 @@ def send_stock_picks_report(
             tech = item.get("tech", {}) or {}
             close = tech.get("close", "N/A")
             dist = tech.get("distance_to_ma5")
-            dist_str = f"{dist}%" if dist is not None else "N/A"
-            lines.append(f"{stock_id}｜{close}｜距5MA {dist_str}")
+            dist_str = f"{dist:+.2f}%" if dist is not None else "N/A"
+            position_word = "站在5MA上方" if tech.get("above_ma5") else "低於5MA下方"
+            _vr = tech.get("volume_ratio")
+            if _vr is None:
+                vol_desc = "量能資料不足"
+            elif _vr > 2.5:
+                vol_desc = "明顯放量"
+            elif _vr > 1.5:
+                vol_desc = "溫和放量"
+            elif _vr < 0.8:
+                vol_desc = "量縮"
+            else:
+                vol_desc = "量能正常"
+            lines.append(f"{stock_id}｜{close}｜距5MA {dist_str}，{position_word}，{vol_desc}")
     lines.append("")
 
     # 市場狀態
@@ -1121,6 +1133,19 @@ def send_stock_picks_report(
     pos_pct_str = f"{price_position_pct:.1f}" if price_position_pct is not None else "N/A"
     lines.append(f"現價位置：區間{pos_pct_str}%（{pos_label}）")
     lines.append(f"Max Pain：{max_pain}（{pain_label}）")
+    if max_pain is not None and pivot is not None:
+        try:
+            if float(max_pain) < float(pivot):
+                lines.append(f"⚠️ Max Pain {max_pain} 低於現價，大戶希望往下結算，個股多方需謹慎")
+        except Exception:
+            pass
+    if spot_5d and spot_val:
+        try:
+            _avg_5d = abs(float(spot_5d)) / 5
+            if _avg_5d > 0 and float(spot_val) < 0 and abs(float(spot_val)) > 2 * _avg_5d:
+                lines.append(f"⚠️ 外資現貨今日大幅賣超 {spot_val:+.1f}億，較近期明顯放大，需特別注意")
+        except Exception:
+            pass
     lines.append(f"情緒總分：{score_str}｜{bias_label}")
 
     # AI 市場解讀
