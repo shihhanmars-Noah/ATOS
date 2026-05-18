@@ -649,6 +649,36 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
                 lines.append(f"⚠️ 散戶貪婪({fg_val})+外資偏空({s_score:+d}分）：歷史上這個組合往往是短期高點特徵，做多需極度謹慎")
     except Exception:
         pass
+    try:
+        from risk_adjustment import apply_big_player_adjustments
+        from settlement_engine import get_days_to_settlement as _get_days
+        try:
+            _days = _get_days()
+        except Exception:
+            _days = 99
+        _risk_adj = apply_big_player_adjustments(
+            current_price=float(chip_ctx.get("prev_close") or close_price or 0),
+            foreign_net=chip_ctx.get("foreign_net", 0),
+            foreign_net_chg_1d=chip_ctx.get("foreign_net_chg_1d", 0),
+            foreign_cost_estimate=chip_ctx.get("foreign_cost_estimate"),
+            top5_net=chip_ctx.get("lt_top5_net") or 0,
+            top5_net_chg=chip_ctx.get("lt_top5_net_chg") or 0,
+            put_wall=float(put_wall) if put_wall else 0.0,
+            call_wall=float(call_wall) if call_wall else 0.0,
+            days_to_settlement=_days,
+            fear_greed=int(fear_greed) if fear_greed not in (None, "N/A") else 0,
+            sentiment_score=int(sentiment_score) if sentiment_score is not None else 0,
+            signal_time=datetime.now(),
+            signal_type="NEUTRAL",
+            volume_confirmed=True,
+        )
+        _existing = {str(w) for w in warnings}
+        for _w in _risk_adj.get("warnings", []):
+            if str(_w) not in _existing:
+                lines.append(str(_w))
+        lines.append(f"大戶動向：{_risk_adj['big_player_interpretation']}")
+    except Exception:
+        pass
     lines.append("")
 
     # 前日資料

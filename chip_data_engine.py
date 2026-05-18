@@ -752,6 +752,9 @@ def fetch_large_traders() -> Optional[dict]:
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date"]).sort_values("date")
 
+    # 保留完整歷史（供計算 top5_net_chg）
+    full_df = df.copy()
+
     # 取最新一日
     latest_date = df["date"].max()
     df = df[df["date"] == latest_date]
@@ -808,6 +811,36 @@ def fetch_large_traders() -> Optional[dict]:
     top5_net  = top5_buy - top5_sell
     top10_net = top10_buy - top10_sell
 
+    # 計算 top5_net 日變化（今日 vs 前一交易日）
+    top5_net_chg = 0
+    all_dates_sorted = sorted(full_df["date"].unique())
+    if len(all_dates_sorted) >= 2:
+        prev_date = all_dates_sorted[-2]
+        prev_df = full_df[full_df["date"] == prev_date]
+        prev_row = None
+        if "contract_type" in prev_df.columns:
+            all_mask_p = prev_df["contract_type"].astype(str).str.contains(
+                "全部|所有|all|total", case=False, na=False
+            )
+            if all_mask_p.any():
+                prev_row = prev_df[all_mask_p].iloc[0]
+            else:
+                near_mask_p = prev_df["contract_type"].astype(str).str.contains(
+                    "近月|near", case=False, na=False
+                )
+                if near_mask_p.any():
+                    prev_row = prev_df[near_mask_p].iloc[0]
+        if prev_row is None and not prev_df.empty:
+            if "market_open_interest" in prev_df.columns:
+                idx_p = prev_df["market_open_interest"].apply(_safe_int).idxmax()
+                prev_row = prev_df.loc[idx_p]
+            else:
+                prev_row = prev_df.iloc[0]
+        if prev_row is not None:
+            prev_top5_buy = _get_val(prev_row, ["buy_top5_trader_open_interest", "buy_top5", "top5_buy"])
+            prev_top5_sell = _get_val(prev_row, ["sell_top5_trader_open_interest", "sell_top5", "top5_sell"])
+            top5_net_chg = top5_net - (prev_top5_buy - prev_top5_sell)
+
     top5_long_pct  = round(top5_buy  / market_oi * 100, 1) if market_oi > 0 else 0
     top5_short_pct = round(top5_sell / market_oi * 100, 1) if market_oi > 0 else 0
 
@@ -816,6 +849,7 @@ def fetch_large_traders() -> Optional[dict]:
         "top5_buy_oi": top5_buy,
         "top5_sell_oi": top5_sell,
         "top5_net": top5_net,
+        "top5_net_chg": top5_net_chg,
         "top10_buy_oi": top10_buy,
         "top10_sell_oi": top10_sell,
         "top10_net": top10_net,
@@ -1109,7 +1143,7 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
     if large_traders is None:
         large_traders = {
             "lt_source_date": None,
-            "top5_buy_oi": 0, "top5_sell_oi": 0, "top5_net": 0,
+            "top5_buy_oi": 0, "top5_sell_oi": 0, "top5_net": 0, "top5_net_chg": 0,
             "top10_buy_oi": 0, "top10_sell_oi": 0, "top10_net": 0,
             "market_oi": 0, "top5_long_pct": 0, "top5_short_pct": 0,
         }
@@ -1273,6 +1307,7 @@ def build_chip_context() -> dict:
 
         # 大額交易人（Backer+）
         "lt_top5_net": cache.get("large_traders", {}).get("top5_net"),
+        "lt_top5_net_chg": cache.get("large_traders", {}).get("top5_net_chg", 0),
         "lt_top5_long_pct": cache.get("large_traders", {}).get("top5_long_pct"),
         "lt_top5_short_pct": cache.get("large_traders", {}).get("top5_short_pct"),
         "lt_market_oi": cache.get("large_traders", {}).get("market_oi"),

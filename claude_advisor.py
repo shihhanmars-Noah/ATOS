@@ -11,6 +11,7 @@ from google.genai import types
 
 from error_handler import safe_execute
 from chip_data_engine import build_chip_context
+from risk_adjustment import apply_big_player_adjustments
 
 GEMINI_MODEL = "gemini-2.5-flash"
 CONFIDENCE_THRESHOLD = 3
@@ -369,55 +370,31 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     direction = _extract_direction(text)
 
     # --------------------------------------------------
-    # 信心分後處理調整
+    # 信心分後處理調整（via risk_adjustment）
     # --------------------------------------------------
-    confidence_adj = 0
-    extra_notes: list[str] = []
+    _signal_type = "LONG" if direction == "做多" else ("SHORT" if direction == "做空" else "NEUTRAL")
+    _call_wall = chip_ctx.get("call_wall") if chip_ctx else None
 
-    # 1. 時段懲罰
-    session_penalty = _get_session_penalty(now_dt)
-    if session_penalty != 0:
-        confidence_adj += session_penalty
-        extra_notes.append(f"時段懲罰（低流動性）：{session_penalty:+d}")
+    risk_adj = apply_big_player_adjustments(
+        current_price=float(price) if price else 0.0,
+        foreign_net=chip_ctx.get("foreign_net", 0) if chip_ctx else 0,
+        foreign_net_chg_1d=chip_ctx.get("foreign_net_chg_1d", 0) if chip_ctx else 0,
+        foreign_cost_estimate=chip_ctx.get("foreign_cost_estimate") if chip_ctx else None,
+        top5_net=chip_ctx.get("lt_top5_net") or 0 if chip_ctx else 0,
+        top5_net_chg=chip_ctx.get("lt_top5_net_chg") or 0 if chip_ctx else 0,
+        put_wall=float(put_wall) if put_wall else 0.0,
+        call_wall=float(_call_wall) if _call_wall else 0.0,
+        days_to_settlement=days_to_settlement,
+        fear_greed=chip_ctx.get("fear_greed_index") or 0 if chip_ctx else 0,
+        sentiment_score=chip_ctx.get("sentiment_score") or 0 if chip_ctx else 0,
+        signal_time=now_dt,
+        signal_type=_signal_type,
+        volume_confirmed=vol_confirmed,
+    )
 
-    # 2. 外資成本警示（空方信心 -1）
-    foreign_cost = chip_ctx.get("foreign_cost_estimate") if chip_ctx else None
-    if foreign_cost and price:
-        try:
-            cost_val = float(str(foreign_cost).replace(",", ""))
-            if float(price) < cost_val:
-                extra_notes.append(
-                    f"⚠️ 外資空單已獲利（建倉成本估算 {_p(foreign_cost)}，現價 {_p(price)}），注意軋空風險"
-                )
-                if direction == "做空":
-                    confidence_adj -= 1
-                    extra_notes.append("空方信心分 -1（外資已獲利，軋空風險高）")
-        except Exception:
-            pass
-
-    # 3. 結算前 3-7 天跌破 Put wall → 空方信心 -1
-    if 3 < days_to_settlement <= 7 and direction == "做空":
-        if put_wall and price:
-            try:
-                if float(price) < float(put_wall):
-                    confidence_adj -= 1
-                    extra_notes.append(
-                        f"⚠️ 結算前{days_to_settlement}天，假突破機率偏高，空方信心分 -1"
-                    )
-            except Exception:
-                pass
-
-    # 4. 軋空風險（大額交易人淨多 + 外資回補，空方信心 -1）
-    if chip_ctx:
-        lt_top5_net = chip_ctx.get("lt_top5_net", 0) or 0
-        foreign_net_chg = chip_ctx.get("foreign_net_chg_1d", 0) or 0
-        if lt_top5_net > 0 and float(foreign_net_chg) > 1000:
-            extra_notes.append(
-                f"⚠️ 軋空風險：大額交易人淨多({int(lt_top5_net):+,}口) + 外資回補({int(foreign_net_chg):+,}口)"
-            )
-            if direction == "做空":
-                confidence_adj -= 1
-                extra_notes.append("空方信心分 -1（軋空風險升高）")
+    confidence_adj = risk_adj["confidence_adjustment"]
+    extra_notes: list[str] = risk_adj["warnings"]
+    big_player_note = risk_adj["big_player_interpretation"]
 
     adjusted_confidence = confidence + confidence_adj
 
@@ -440,6 +417,8 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     # 附加後處理備註到輸出文字
     if extra_notes:
         text += "\n" + "\n".join(extra_notes)
+    if big_player_note:
+        text += f"\n【大戶動向】{big_player_note}"
 
     print(f"✅ [claude_advisor] {event} 指令完成（信心分：{adjusted_confidence}/5，方向：{direction}）")
     return text
