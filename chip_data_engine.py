@@ -1007,6 +1007,20 @@ def calculate_sentiment_score(
 
     bias_label = _score_to_bias(total)
 
+    # 散戶貪婪 + 籌碼偏空警示
+    try:
+        import json as _json
+        with open("chip_cache.json", "r", encoding="utf-8") as _f:
+            _cache = _json.load(_f)
+        fg_index = int(_cache.get("fear_greed", {}).get("fear_greed", 0) or 0)
+    except Exception:
+        fg_index = 0
+
+    if fg_index > 60 and total < -2:
+        warnings.append(
+            f"⚠️ 散戶貪婪指數({fg_index}) + 籌碼偏空({total}分）：短期高點特徵，做多極度謹慎"
+        )
+
     return {
         "s1_futures_direction": s1,
         "s2_action_quality": s2,

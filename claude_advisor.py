@@ -233,6 +233,25 @@ def _check_put_wall_false_breakout(ctx: dict) -> Optional[str]:
     return None
 
 
+def _get_session_penalty(now: datetime) -> int:
+    """低流動性時段信心分懲罰（-1）"""
+    t = now.hour * 60 + now.minute
+    if 11 * 60 + 30 <= t <= 13 * 60:  # 午盤低流動性
+        return -1
+    if 15 * 60 <= t <= 16 * 60:        # 夜盤開盤初期
+        return -1
+    return 0
+
+
+def _get_days_to_settlement() -> int:
+    """取得距下一個結算日的天數，失敗時回傳 99。"""
+    try:
+        from settlement_engine import get_days_to_settlement
+        return get_days_to_settlement()
+    except Exception:
+        return 99
+
+
 # --------------------------------------------------
 # 主函式
 # --------------------------------------------------
@@ -273,6 +292,25 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     if chip_ctx is None:
         chip_ctx = build_chip_context()
 
+    # 結算日資訊（後續多處使用）
+    days_to_settlement = _get_days_to_settlement()
+    price = alert_context.get("price")
+    put_wall = chip_ctx.get("put_wall") if chip_ctx else None
+
+    # Pre-check：結算前3天跌破 Put wall → 大戶護盤機率高，直接回傳多方機會提示
+    if put_wall and price:
+        try:
+            if float(price) < float(put_wall) and days_to_settlement <= 3:
+                pw = _p(put_wall)
+                print(f"⚠️ [claude_advisor] 結算前{days_to_settlement}天跌破Put wall，回傳護盤提示")
+                return (
+                    f"⚠️ 結算前{days_to_settlement}天跌破Put wall {pw}，"
+                    f"大戶護盤機率高，注意反彈做多機會，"
+                    f"目標 {_p(float(put_wall) + 200)}，停損 {_p(float(put_wall) - 100)}"
+                )
+        except Exception:
+            pass
+
     # 輔助條件預計算
     vol_confirmed = _check_volume_confirmed(alert_context)
     mid_range_short = _check_mid_range_short_condition(alert_context)
@@ -284,7 +322,8 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         f"外資方向轉多（chg_1d>2000且chg_3d>0）：{'成立' if foreign_turning_bull else '不成立'}"
     )
 
-    now = datetime.now().strftime("%H:%M")
+    now_dt = datetime.now()
+    now = now_dt.strftime("%H:%M")
     alert_text = _build_alert_text(alert_context)
     chip_text = _build_chip_summary(chip_ctx) if chip_ctx else "籌碼資料不可用"
 
@@ -325,15 +364,70 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
                 raise
     if text is None:
         return None
+
     confidence = _extract_confidence(text)
     direction = _extract_direction(text)
 
+    # --------------------------------------------------
+    # 信心分後處理調整
+    # --------------------------------------------------
+    confidence_adj = 0
+    extra_notes: list[str] = []
+
+    # 1. 時段懲罰
+    session_penalty = _get_session_penalty(now_dt)
+    if session_penalty != 0:
+        confidence_adj += session_penalty
+        extra_notes.append(f"時段懲罰（低流動性）：{session_penalty:+d}")
+
+    # 2. 外資成本警示（空方信心 -1）
+    foreign_cost = chip_ctx.get("foreign_cost_estimate") if chip_ctx else None
+    if foreign_cost and price:
+        try:
+            cost_val = float(str(foreign_cost).replace(",", ""))
+            if float(price) < cost_val:
+                extra_notes.append(
+                    f"⚠️ 外資空單已獲利（建倉成本估算 {_p(foreign_cost)}，現價 {_p(price)}），注意軋空風險"
+                )
+                if direction == "做空":
+                    confidence_adj -= 1
+                    extra_notes.append("空方信心分 -1（外資已獲利，軋空風險高）")
+        except Exception:
+            pass
+
+    # 3. 結算前 3-7 天跌破 Put wall → 空方信心 -1
+    if 3 < days_to_settlement <= 7 and direction == "做空":
+        if put_wall and price:
+            try:
+                if float(price) < float(put_wall):
+                    confidence_adj -= 1
+                    extra_notes.append(
+                        f"⚠️ 結算前{days_to_settlement}天，假突破機率偏高，空方信心分 -1"
+                    )
+            except Exception:
+                pass
+
+    # 4. 軋空風險（大額交易人淨多 + 外資回補，空方信心 -1）
+    if chip_ctx:
+        lt_top5_net = chip_ctx.get("lt_top5_net", 0) or 0
+        foreign_net_chg = chip_ctx.get("foreign_net_chg_1d", 0) or 0
+        if lt_top5_net > 0 and float(foreign_net_chg) > 1000:
+            extra_notes.append(
+                f"⚠️ 軋空風險：大額交易人淨多({int(lt_top5_net):+,}口) + 外資回補({int(foreign_net_chg):+,}口)"
+            )
+            if direction == "做空":
+                confidence_adj -= 1
+                extra_notes.append("空方信心分 -1（軋空風險升高）")
+
+    adjusted_confidence = confidence + confidence_adj
+
     # 信心分門檻：做多 >= 4，做空 >= 3
     min_confidence = 4 if direction == "做多" else CONFIDENCE_THRESHOLD
-    if confidence < min_confidence:
+    if adjusted_confidence < min_confidence:
         label = _EVENT_LABELS.get(event, event)
-        print(f"⚪ [claude_advisor] {event} 信心分 {confidence}/5（{direction}門檻{min_confidence}），發觀察提示")
-        return f"觀察中，條件未成熟（{label}，信心分 {confidence}/5）"
+        adj_note = f"（原{confidence}，調整{confidence_adj:+d}）" if confidence_adj != 0 else ""
+        print(f"⚪ [claude_advisor] {event} 調整後信心分 {adjusted_confidence}/5{adj_note}，發觀察提示")
+        return f"觀察中，條件未成熟（{label}，信心分 {adjusted_confidence}/5{adj_note}）"
 
     # 有方向指令才做冷卻檢查
     if direction in ("做多", "做空"):
@@ -343,7 +437,11 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
             return None
         _set_cooldown(event, direction)
 
-    print(f"✅ [claude_advisor] {event} 指令完成（信心分：{confidence}/5，方向：{direction}）")
+    # 附加後處理備註到輸出文字
+    if extra_notes:
+        text += "\n" + "\n".join(extra_notes)
+
+    print(f"✅ [claude_advisor] {event} 指令完成（信心分：{adjusted_confidence}/5，方向：{direction}）")
     return text
 
 

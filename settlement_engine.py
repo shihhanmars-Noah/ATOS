@@ -87,6 +87,31 @@ def is_settlement_day(target_date: str | None = None) -> bool:
     return get_settlement_type(target_date) is not None
 
 
+def get_days_to_settlement() -> int:
+    """
+    計算距下一個結算日的天數。
+
+    Returns:
+        距下一個結算日的天數（整數，當天算0）；找不到結算日時回傳 99
+    """
+    today = date.today()
+    cache = load_settlement_cache()
+
+    all_dates = []
+    for d_str in cache.get("monthly_settlement", []) + cache.get("weekly_settlement", []):
+        try:
+            d = date.fromisoformat(d_str)
+            if d >= today:
+                all_dates.append(d)
+        except Exception:
+            pass
+
+    if not all_dates:
+        return 99
+
+    return (min(all_dates) - today).days
+
+
 def update_settlement_cache(fetch_func) -> bool:
     """
     更新結算日快取。

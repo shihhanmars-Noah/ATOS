@@ -168,6 +168,16 @@ def _format_chip_text(ctx: dict) -> str:
         for w in warnings:
             lines.append(f"  {w}")
 
+    # 散戶貪婪 + 籌碼偏空警示（runtime check）
+    try:
+        fg = float(ctx.get("fear_greed_index") or 0)
+        ss = int(ctx.get("sentiment_score") or 0)
+        if fg > 60 and ss <= -3:
+            if not any("散戶貪婪" in str(w) for w in warnings):
+                lines.append(f"警示：⚠️ 散戶貪婪({int(fg)})+外資偏空({ss:+d}分）：歷史上這個組合往往是短期高點特徵，做多需極度謹慎")
+    except Exception:
+        pass
+
     return "\n".join(lines)
 
 

@@ -641,6 +641,14 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     lines.append(f"情緒評分：{score_str} {sentiment_bias}｜Fear&Greed：{fear_greed} {fear_greed_emo}")
     for w in warnings:
         lines.append(str(w))
+    try:
+        fg_val = int(fear_greed) if fear_greed not in (None, "N/A") else 0
+        s_score = int(sentiment_score) if sentiment_score is not None else 0
+        if fg_val > 60 and s_score <= -3:
+            if not any("散戶貪婪" in str(w) for w in warnings):
+                lines.append(f"⚠️ 散戶貪婪({fg_val})+外資偏空({s_score:+d}分）：歷史上這個組合往往是短期高點特徵，做多需極度謹慎")
+    except Exception:
+        pass
     lines.append("")
 
     # 前日資料
