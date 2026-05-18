@@ -7,13 +7,15 @@ from datetime import datetime
 from typing import Optional
 
 from google import genai
+from google.genai import types
 
 from error_handler import safe_execute
 from chip_data_engine import build_chip_context
 
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 CONFIDENCE_THRESHOLD = 3
 COOLDOWN_SECONDS = 600  # 10 分鐘，同一事件同一方向不重複發指令
+GEMINI_RETRY_DELAY = 5  # 429 重試等待秒數
 
 _EVENT_LABELS = {
     "LONG_TRAP":              "多方陷阱（假突破）",
@@ -297,12 +299,32 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     full_prompt = f"{_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=full_prompt,
+    _cfg = types.GenerateContentConfig(
+        max_output_tokens=600,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
-
-    text = response.text.strip()
+    text = None
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=full_prompt,
+                config=_cfg,
+            )
+            text = response.text.strip()
+            break
+        except Exception as e:
+            if "429" in str(e) or "ResourceExhausted" in type(e).__name__:
+                if attempt < 2:
+                    print(f"⏳ [claude_advisor] Gemini 429，{GEMINI_RETRY_DELAY}秒後重試（第{attempt + 1}次）")
+                    time.sleep(GEMINI_RETRY_DELAY)
+                else:
+                    print("⏳ [claude_advisor] Gemini 429，重試2次仍失敗，略過")
+                    return None
+            else:
+                raise
+    if text is None:
+        return None
     confidence = _extract_confidence(text)
     direction = _extract_direction(text)
 
