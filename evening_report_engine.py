@@ -763,9 +763,9 @@ def evaluate_preopen_plan(preopen_ctx: dict, day_ctx: dict, chip_ctx: dict, oi_c
     return "\n".join(lines)
 
 
-def build_level_review(day_ctx: dict) -> str:
+def build_level_review(day_ctx: dict, call_wall=None, put_wall=None) -> str:
     """
-    檢討 R1 / Flip / Pivot / S1 是否有效。
+    檢討 Call wall / Put wall / 中軸是否有效。
     """
 
     price = day_ctx.get("price")
@@ -773,8 +773,6 @@ def build_level_review(day_ctx: dict) -> str:
     low = day_ctx.get("today_low")
     flip = day_ctx.get("flip")
     pivot = day_ctx.get("pivot")
-    r1 = day_ctx.get("r1")
-    s1 = day_ctx.get("s1")
 
     try:
         price = float(price)
@@ -782,46 +780,53 @@ def build_level_review(day_ctx: dict) -> str:
         low = float(low)
         flip = float(flip)
         pivot = float(pivot)
-        r1 = float(r1)
-        s1 = float(s1)
     except Exception:
         return "價位驗證資料不足。"
 
     lines = []
-
     lines.append("價位驗證：")
 
-    if high >= r1:
-        if price < r1:
-            lines.append(f"● R1 {format_price(r1)}：盤中觸及 / 突破後未能收穩，壓力有效。")
-        else:
-            lines.append(f"● R1 {format_price(r1)}：收盤站上，壓力失效，轉為多方延伸觀察。")
-    else:
-        lines.append(f"● R1 {format_price(r1)}：日盤未觸及。")
+    if call_wall is not None:
+        try:
+            cw = float(call_wall)
+            if high >= cw:
+                if price >= cw:
+                    lines.append(f"● Call wall {format_price(cw)}：突破且收盤守住，空頭防線失守。")
+                else:
+                    lines.append(f"● Call wall {format_price(cw)}：盤中觸及後未守住，壓力仍有效。")
+            else:
+                lines.append(f"● Call wall {format_price(cw)}：日盤未觸及，壓力區間完整。")
+        except Exception:
+            pass
 
-    if low <= s1:
-        if price > s1:
-            lines.append(f"● S1 {format_price(s1)}：盤中跌破 / 測試後收回，支撐有反應。")
-        else:
-            lines.append(f"● S1 {format_price(s1)}：收盤跌破，支撐失效。")
-    else:
-        lines.append(f"● S1 {format_price(s1)}：日盤未觸及。")
+    if put_wall is not None:
+        try:
+            pw = float(put_wall)
+            if low <= pw:
+                if price <= pw:
+                    lines.append(f"● Put wall {format_price(pw)}：跌破且收盤未收回，多頭防線失守。")
+                else:
+                    lines.append(f"● Put wall {format_price(pw)}：盤中跌破後收回，支撐有效。")
+            else:
+                lines.append(f"● Put wall {format_price(pw)}：日盤未跌破，支撐區間完整。")
+        except Exception:
+            pass
 
     if low <= flip <= high:
         if price < flip:
-            lines.append(f"● 中軸 {format_price(flip)}：盤中穿越後收低於中軸，空方較有控制權。")
+            lines.append(f"● 中軸 {format_price(flip)}：穿越後收低，區間內偏空。")
         else:
-            lines.append(f"● 中軸 {format_price(flip)}：盤中穿越後收高於中軸，多方較有控制權。")
+            lines.append(f"● 中軸 {format_price(flip)}：穿越後收高，區間內偏多。")
     else:
         if price < flip:
-            lines.append(f"● 中軸 {format_price(flip)}：全日未有效站上，偏空。")
+            lines.append(f"● 中軸 {format_price(flip)}：全日未站上，偏空。")
         else:
-            lines.append(f"● 中軸 {format_price(flip)}：全日守穩上方，偏多。")
+            lines.append(f"● 中軸 {format_price(flip)}：全日守穩，偏多。")
 
     if low <= pivot <= high:
-        lines.append(f"● Pivot {format_price(pivot)}：位於日內波動區間，屬今日重心驗證價。")
+        lines.append(f"● Pivot {format_price(pivot)}：落入日內波動區間，今日重心驗證價。")
     else:
-        lines.append(f"● Pivot {format_price(pivot)}：未落入今日主要波動區間，參考性降低。")
+        lines.append(f"● Pivot {format_price(pivot)}：未落入主要波動區間，參考性降低。")
 
     return "\n".join(lines)
 
@@ -863,77 +868,89 @@ def build_alert_review(summary: dict) -> str:
     return "\n".join(lines)
 
 
-def build_evening_conclusion(summary: dict, state: dict, readiness: dict) -> str:
+def build_evening_conclusion(
+    summary: dict,
+    state: dict,
+    readiness: dict,
+    call_wall=None,
+    put_wall=None,
+) -> str:
     """
-    根據今日警報、價位、籌碼與盤前劇本產生晚盤結論。
+    根據今日警報、Put wall / Call wall 狀態產生晚盤結論。
     """
 
     day_ctx = readiness["day"]
     chip_ctx = readiness["chip"]
 
     day_result = classify_day_result(day_ctx)
-
     chip_text = chip_ctx.get("sentiment") or ""
+
+    price = day_ctx.get("price")
+    flip = day_ctx.get("flip")
+    today_low = day_ctx.get("today_low")
+    today_high = day_ctx.get("today_high")
+
+    cw_str = format_price(call_wall) if call_wall else "Call wall"
+    pw_str = format_price(put_wall) if put_wall else "Put wall"
+
+    # Put wall 跌破且未收回 → 最佳空方機會
+    try:
+        if put_wall and float(today_low) <= float(put_wall) and float(price) <= float(put_wall):
+            return (
+                f"日盤結果：{day_result}。\n"
+                f"Put wall {pw_str} 跌破且收盤未收回，大戶多頭防線失守。"
+                f"夜盤以反彈不過 {pw_str} 為空方延續訊號，不追空，等確認。"
+            )
+    except Exception:
+        pass
+
+    # Call wall 突破且守住 → 多方延伸
+    try:
+        if call_wall and float(today_high) >= float(call_wall) and float(price) >= float(call_wall):
+            return (
+                f"日盤結果：{day_result}。\n"
+                f"Call wall {cw_str} 突破且守住，大戶空頭防線失守。"
+                f"夜盤偏多觀察，但不追高，等回測 {cw_str} 不破再加倉。"
+            )
+    except Exception:
+        pass
+
     if int(summary.get("total", 0) or 0) == 0:
         return (
             f"日盤結果：{day_result}。\n"
-            "今日 08:45–13:45 日盤時段未觸發主要 ATOS 警報，"
-            "代表盤中沒有出現系統定義的 Flip、Trap、Sweep 或 R/S 關鍵事件。"
-            "晚盤仍以 Flip / Pivot 作為主控判斷，不因無警報而主動追單。"
-        )
-    if summary.get("has_flip_invalid"):
-        return (
-            f"日盤結果：{day_result}。\n"
-            "今天出現 Flip 失效訊號，代表原本日內方向曾經被破壞。"
-            "晚盤不適合沿用早盤單一劇本，應重新以 Flip / Pivot 判斷。"
-        )
-
-    if "強空" in str(chip_text) and float(day_ctx.get("price")) < float(day_ctx.get("flip")):
-        return (
-            f"日盤結果：{day_result}。\n"
-            "籌碼背景偏空，且收盤低於 Flip，晚盤以反彈不過後偏空觀察為主。"
-            "但若夜盤重新站回 Flip，不追空，需改為中性觀察。"
+            f"未觸發主要警報，價格在 {pw_str}～{cw_str} 區間內震盪。"
+            f"夜盤以中軸 {format_price(flip)} 作為區間內參考，無明確訊號不做方向單。"
         )
 
     if summary.get("has_long_trap"):
         return (
             f"日盤結果：{day_result}。\n"
-            "今天出現多方陷阱，晚盤若再拉高，不宜直接追多，"
-            "需觀察是否再次假突破。"
+            f"出現多方陷阱，Call wall {cw_str} 附近有假突破風險。"
+            "夜盤若再拉高，等5分K確認守住再評估，不追第一波。"
         )
 
     if summary.get("has_short_trap"):
         return (
             f"日盤結果：{day_result}。\n"
-            "今天出現空方陷阱，晚盤若再急跌，不宜直接追空，"
-            "需觀察是否再次收回關鍵價。"
+            f"出現空方陷阱，Put wall {pw_str} 附近有假跌破風險。"
+            "夜盤若再急跌，等5分K確認收低再評估，不追空。"
         )
 
-    if summary.get("has_sweep"):
-        return (
-            f"日盤結果：{day_result}。\n"
-            "今天有掃單訊號，表示關鍵價附近有清洗停損單的行為。"
-            "晚盤若接近同一區域，要等 5分K 收盤確認，不追第一波。"
-        )
-
-    if summary.get("has_flip_break") and not summary.get("has_flip_recover"):
-        return (
-            f"日盤結果：{day_result}。\n"
-            "今天盤中曾跌破 Flip，且沒有明確站回。"
-            "晚盤偏空觀察，但不追低，等反彈不過再看空方延續。"
-        )
-
-    if summary.get("has_flip_recover") and not summary.get("has_flip_break"):
-        return (
-            f"日盤結果：{day_result}。\n"
-            "今天盤中曾站回 Flip，且沒有明確再跌破。"
-            "晚盤偏多觀察，但不追高，等回測不破再看多方延續。"
-        )
+    if "強空" in str(chip_text):
+        try:
+            if float(price) < float(flip):
+                return (
+                    f"日盤結果：{day_result}。\n"
+                    f"籌碼偏空且收盤低於中軸，夜盤以反彈不過中軸 {format_price(flip)} 為空方機會。"
+                    f"關鍵觀察：Put wall {pw_str} 是否跌破，跌破才是加速訊號。"
+                )
+        except Exception:
+            pass
 
     return (
         f"日盤結果：{day_result}。\n"
-        "今天盤中有多個關鍵事件，代表市場節奏偏震盪。"
-        "晚盤不適合預設單邊，應以 Flip / Pivot 作為第一判斷。"
+        f"價格在 {pw_str}～{cw_str} 區間內，無明確方向訊號。"
+        f"夜盤中軸 {format_price(flip)} 為區間參考，突破 {cw_str} 或跌破 {pw_str} 才做方向。"
     )
 
 
@@ -1051,10 +1068,26 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     lines.append("")
 
     # 複盤驗證
+    def _call_wall_status():
+        try:
+            if float(today_high) >= float(call_wall):
+                return "突破且守住" if float(price) >= float(call_wall) else "盤中觸及未守住"
+            return "未觸及"
+        except Exception:
+            return "N/A"
+
+    def _put_wall_status():
+        try:
+            if float(today_low) <= float(put_wall):
+                return "跌破未收回" if float(price) <= float(put_wall) else "跌破後收回"
+            return "未跌破"
+        except Exception:
+            return "N/A"
+
     lines.append("複盤驗證")
+    lines.append(f"● Call wall {_fp(call_wall)}：{_call_wall_status()}")
+    lines.append(f"● Put wall {_fp(put_wall)}：{_put_wall_status()}")
     lines.append(f"● 中軸 {_fp(flip)}：{_flip_status()}")
-    lines.append(f"● R1 {_fp(r1)}：{_r1_status()}")
-    lines.append(f"● S1 {_fp(s1)}：{_s1_status()}")
     lines.append(f"● 籌碼：{chip_one_line}")
     lines.append("")
 
@@ -1068,11 +1101,9 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
 
     # 夜盤操作指示
     lines.append("夜盤操作指示")
-    lines.append(f"中軸：{_fp(flip)}｜Pivot：{_fp(pivot)}｜S1：{_fp(s1)}")
-    lines.append("")
-    lines.append(f"做多條件：重新站回 {_fp(flip)} 且5分K收盤確認")
-    lines.append(f"做空條件：反彈至 {_fp(flip)} 未過，等下一根確認")
-    lines.append(f"觀望條件：卡在 {_fp(pivot)}～{_fp(flip)} 之間不做")
+    lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")
+    lines.append(f"做空條件：跌破 Put wall {_fp(put_wall)} 或反彈到中軸 {_fp(flip)} 未過確認")
+    lines.append(f"觀望條件：在 {_fp(put_wall)}～{_fp(call_wall)} 區間內無明確訊號")
     lines.append("")
 
     # 選擇權

@@ -137,39 +137,48 @@ def build_preopen_bias(
 
 
 def build_opening_scenarios(
+    call_wall,
+    put_wall,
     mid_range: float,
     pivot: float,
-    r1: float,
-    s1: float,
 ) -> dict:
-    """建立開盤三劇本，以中軸(mid_range)取代舊 Flip。"""
+    """建立開盤三劇本，以 Call wall / Put wall 為核心觸發點。"""
 
+    cw = format_price(call_wall)
+    pw = format_price(put_wall)
     mid_text = format_price(mid_range)
     pivot_text = format_price(pivot)
-    r1_text = format_price(r1)
-    s1_text = format_price(s1)
+
+    try:
+        call_target = format_price(float(call_wall) + 500) if call_wall else "N/A"
+        put_target1 = format_price(float(put_wall) - 500) if put_wall else "N/A"
+        put_target2 = format_price(float(put_wall) - 1000) if put_wall else "N/A"
+        call_sell = format_price(float(call_wall) - 500) if call_wall else "N/A"
+    except Exception:
+        call_target = put_target1 = put_target2 = call_sell = "N/A"
 
     scenario_a = (
-        f"劇本 A｜開盤站上中軸 {mid_text}\n"
-        "判斷：偏多，但不追高\n"
-        f"做法：等回測 {mid_text} 不破再看多\n"
-        f"目標：{r1_text}\n"
-        f"失效：5分K 收回 {mid_text} 下方"
+        f"劇本 A｜突破 Call wall {cw}\n"
+        "觸發：5分K收盤確認站上\n"
+        "判斷：大戶空頭防線失守，可能軋空\n"
+        f"目標：{call_target}，無明顯壓力延伸\n"
+        f"失效：跌回 {cw} 下方"
     )
 
     scenario_b = (
-        f"劇本 B｜開盤跌破中軸 {mid_text}\n"
-        "判斷：偏空\n"
-        f"做法：等反彈不過 {mid_text} 再看空\n"
-        f"目標：{pivot_text} → {s1_text}\n"
-        f"失效：5分K 重新站回 {mid_text}"
+        f"劇本 B｜跌破 Put wall {pw}\n"
+        "觸發：5分K收盤確認站下\n"
+        "判斷：大戶選擇權防線失守，加速下跌\n"
+        f"目標：{put_target1} → {put_target2}\n"
+        f"失效：收回 {pw} 上方"
     )
 
     scenario_c = (
-        f"劇本 C｜開盤卡在 {pivot_text}～{mid_text}\n"
-        "判斷：中性洗盤區\n"
-        "做法：不進場\n"
-        f"等待：突破 {mid_text} 或跌破 {pivot_text}"
+        f"劇本 C｜區間震盪 {pw}～{cw}\n"
+        "判斷：大戶收割時間價值，不做方向單\n"
+        f"中軸 {mid_text}：偏多站上方，偏空站下方\n"
+        f"選擇權策略：賣出 Call {call_sell} 收時間價值\n"
+        f"等待：突破 {cw} 或跌破 {pw}"
     )
 
     return {"A": scenario_a, "B": scenario_b, "C": scenario_c}
@@ -304,11 +313,14 @@ def build_preopen_payload() -> dict:
         sentiment_score=effective_score,
     )
 
+    chip_call_wall = chip_ctx.get("call_wall") if chip_ctx else None
+    chip_put_wall = chip_ctx.get("put_wall") if chip_ctx else None
+
     scenarios = build_opening_scenarios(
+        call_wall=chip_call_wall,
+        put_wall=chip_put_wall,
         mid_range=mid_range,
         pivot=pivot,
-        r1=r1,
-        s1=s1,
     )
 
     night_context_text = build_night_context_text(
@@ -582,15 +594,28 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # 今天怎麼做
     lines.append("今天怎麼做")
-    lines.append(today_guidance if today_guidance else bias.get("summary", "等待開盤確認方向"))
+    if today_guidance:
+        lines.append(today_guidance)
+    else:
+        lines.append(f"今天關鍵問題只有一個：{_fp(put_wall)} 守不守得住？")
+        lines.append(f"外資極端空單 {fn:+,}口壓制，反彈到中軸 {_fp(mid_range)} 量縮是空方機會。")
+        lines.append(f"跌破 {_fp(put_wall)} 才是今年最好的空方機會，不破就繼續震盪等待。")
     lines.append(f"開盤第一步：觀察開盤價位置，若開盤在中軸 {_fp(mid_range)} 下方，等第一根5分K收盤確認再決定方向，不搶第一根。")
     lines.append("")
 
     # 關鍵價位
     lines.append("關鍵價位")
-    lines.append(f"做多要過：{_fp(mid_range)}（中軸）→ 目標 {_fp(r1)}")
-    lines.append(f"做空要破：{_fp(mid_range)} → 目標 {_fp(pivot)} → {_fp(s1)}")
-    lines.append(f"不做區間：{_fp(pivot)} ～ {_fp(mid_range)}")
+    lines.append(f"Call wall：{_fp(call_wall)}（突破才追多）")
+    lines.append(f"中軸：{_fp(mid_range)}（區間內參考）")
+    lines.append(f"Pivot：{_fp(pivot)}")
+    lines.append(f"Put wall：{_fp(put_wall)}（跌破才追空）")
+    lines.append("")
+
+    # 時段操作指引
+    lines.append("時段操作指引")
+    lines.append("08:45-09:30：觀察開盤缺口，不追第一根")
+    lines.append(f"09:30-11:30：主力時段，反彈到中軸 {_fp(mid_range)} 量縮是空方進場點")
+    lines.append("13:00-13:45：注意外資尾盤方向，觀察是否大量加倉")
     lines.append("")
 
     # 選擇權
@@ -636,8 +661,8 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     # 今日禁止
     lines.append("今日禁止")
     lines.append("✗ 開盤第一根追單")
-    lines.append(f"✗ 卡在 {_fp(pivot)}～{_fp(mid_range)} 硬猜")
-    lines.append("✗ 外資偏空就直接追空，等5分K確認")
+    lines.append(f"✗ 卡在 {_fp(put_wall)}～{_fp(call_wall)} 區間硬猜方向")
+    lines.append(f"✗ 不等 Put wall {_fp(put_wall)} 跌破確認就追空")
 
     return "\n".join(lines)
 

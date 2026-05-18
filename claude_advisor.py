@@ -37,7 +37,7 @@ _SYSTEM = """你是 ATOS 盤中即時指令引擎。
 規則：
 1. 輸出嚴格使用下列格式，每行一個欄位，不增不減
 2. 所有點位數字只能來自輸入提供的關鍵價位，不得自行發明
-3. 【目標】必須引用輸入中已存在的價位（R1、S1、Call牆、Put牆、Pivot）
+3. 【目標】必須引用輸入中已存在的價位（Call牆、Put牆、Call牆+500、Put牆-500、Pivot）
 4. 【停損】動態決定，優先順序如下：
    a. 首選：前K棒的反方向極值（做多用「前K低點」，做空用「前K高點」）
    b. 無前K資料時：用「當前價格 ± ATR × 1.5」計算，ATR 取輸入中的 ATR 值
@@ -48,8 +48,14 @@ _SYSTEM = """你是 ATOS 盤中即時指令引擎。
    3 = 事件有籌碼支撐，但條件不完整
    4 = 事件 + 籌碼 + 技術三者共振
    5 = 完全共振，多重確認
-6. 信心分 < 3：【指令】填「觀察」，【進場條件】填「暫不進場」，【目標】和【停損】填「N/A」
+6. 信心分門檻（做多標準較嚴）：
+   做多：信心分 < 4 → 【指令】填「觀察」，【進場條件】填「暫不進場」，【目標】和【停損】填「N/A」
+   做空：信心分 < 3 → 同上
 7. 輸出純文字，不用任何 Markdown 符號
+8. 進場條件前提（依方向不同）：
+   做多：價格突破 Call wall 且5分K收盤確認，外資當日淨增多單 > 3,000 口（方向轉變確認）
+   做空：價格跌破 Put wall 且5分K收盤確認，或反彈至中軸附近量縮5分K確認轉弱，外資淨空方向維持
+   觀望：價格在 Put wall ～ Call wall 之間無明確訊號，或外資兩面建倉，或結算日前3天
 
 輸出格式（固定七行）：
 【指令】做多 / 做空 / 觀察
@@ -222,10 +228,11 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     confidence = _extract_confidence(text)
     direction = _extract_direction(text)
 
-    # 信心分不足：回傳簡短觀察提示，不發操作指令
-    if confidence < CONFIDENCE_THRESHOLD:
+    # 信心分門檻：做多 >= 4，做空 >= 3
+    min_confidence = 4 if direction == "做多" else CONFIDENCE_THRESHOLD
+    if confidence < min_confidence:
         label = _EVENT_LABELS.get(event, event)
-        print(f"⚪ [claude_advisor] {event} 信心分 {confidence}/5，發觀察提示")
+        print(f"⚪ [claude_advisor] {event} 信心分 {confidence}/5（{direction}門檻{min_confidence}），發觀察提示")
         return f"觀察中，條件未成熟（{label}，信心分 {confidence}/5）"
 
     # 有方向指令才做冷卻檢查

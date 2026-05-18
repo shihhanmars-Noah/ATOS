@@ -115,23 +115,47 @@ Claude API 金鑰不在 .env，由 Claude Code 環境自動注入（`ANTHROPIC_A
 
 ## 策略核心邏輯（已確認）
 
-### 大戶上下限框架（取代舊 Flip 中軸）
+### 三層策略框架（Put wall / Call wall 為核心觸發點）
 
 ```
-層A【月度結算區間】
-  上限 = option_oi.call_wall_strike（42500）
-  下限 = option_oi.put_wall_strike（40000）
-  → 大戶不願讓市場離開的區間
+層A【月度大戶框架 — 核心觸發點】
+  Call wall = option_oi.call_wall_strike（42500）大戶空頭防線
+  Put wall  = option_oi.put_wall_strike（40000） 大戶多頭防線
+
+  觸發條件：
+  → 突破 Call wall（5分K收盤確認）：空頭防線失守，可能軋空
+      目標：Call wall + 500，失效：跌回 Call wall 下方
+      多方信心分門檻：>= 4
+  → 跌破 Put wall（5分K收盤確認）：多頭防線失守，加速下跌
+      目標：Put wall - 500 → Put wall - 1000，失效：收回 Put wall 上方
+      空方信心分門檻：>= 3（空方背景下標準放寬）
+  → 在 Put wall ～ Call wall 之間：大戶收割時間價值，不做方向單
 
 層B【外資成本估算】
   粗估成本 = tech_levels.ma5（近5日均收）
   → 外資空單在這位置以下開始獲利了結
 
-層C【日內技術結構】
-  上壓 = tech_levels.prev_high（41223）
-  下支 = tech_levels.prev_low（40448）
-  重心 = tech_levels.mid_range（40835）
-  Pivot/R1/S1 保留為日內操作參考
+層C【日內技術參考】
+  中軸 mid_range = (prev_high + prev_low) / 2
+  → 在 Put wall ～ Call wall 區間內：站上中軸偏多，站下中軸偏空
+  → 反彈至中軸附近量縮未過，空方進場機會
+  Pivot / R1 / S1 保留為日內次要參考
+```
+
+### 盤前三劇本邏輯
+
+```
+劇本A（突破上限）：突破 Call wall → 目標 Call wall+500
+劇本B（跌破下限）：跌破 Put wall → 目標 Put wall-500 → Put wall-1000
+劇本C（區間震盪）：Put wall～Call wall 之間，中軸為區間內參考中點
+```
+
+### 時段操作指引
+
+```
+08:45-09:30：觀察開盤缺口，不追第一根
+09:30-11:30：主力時段，反彈到中軸量縮是空方進場點
+13:00-13:45：注意外資尾盤方向，觀察是否大量加倉
 ```
 
 ### SentimentScore（-10 到 +10）
@@ -159,7 +183,8 @@ Claude API 金鑰不在 .env，由 Claude Code 環境自動注入（`ANTHROPIC_A
 【注意】接近結算，建議縮半倉
 ```
 
-信心分 < 3 不發指令，只發觀察提示。
+信心分門檻：做多 < 4 / 做空 < 3 → 不發指令，只發觀察提示。
+觀望條件：在 Put wall ～ Call wall 區間無明確訊號、外資兩面建倉、結算日前3天。
 
 ---
 
