@@ -450,6 +450,18 @@ class AtosCommander:
         if count:
             print(f"📰 [news_engine] 本輪發送 {count} 則重大事件警報")
 
+    @safe_execute
+    def send_weekly_performance_report(self):
+        """
+        週度績效報告（每週日 20:00）。
+        計算近7天訊號勝率、期望值、訊號類型分析，附 AI 修正建議。
+        """
+        try:
+            from performance_engine import send_weekly_performance_report as _send_perf
+            _send_perf()
+        except Exception as e:
+            print(f"⚠️ [commander] 週度績效報告失敗：{e}")
+
     # --------------------------------------------------
     # Evening Report — Data-Ready Polling
     # --------------------------------------------------
@@ -553,6 +565,36 @@ class AtosCommander:
         """
 
         self.sentinel.monitor_loop()
+        self.check_pending_tracks()
+
+    @safe_execute
+    def check_pending_tracks(self):
+        """
+        追蹤所有到期的 trade_logger 訊號（30m / 60m / close）。
+        由 run_monitor_once 每輪呼叫，有待追蹤時才做。
+        """
+        try:
+            from trade_logger import get_pending_tracks, track_outcome
+        except Exception:
+            return
+
+        pending = get_pending_tracks()
+        if not pending:
+            return
+
+        current_price = self.state.get("price")
+        if not current_price:
+            return
+
+        for item in pending:
+            try:
+                track_outcome(
+                    trade_id=item["id"],
+                    current_price=float(current_price),
+                    track_point=item["track_point"],
+                )
+            except Exception as e:
+                print(f"⚠️ [commander] track_outcome 失敗：{e}")
 
     # --------------------------------------------------
     # Schedule
@@ -602,6 +644,9 @@ class AtosCommander:
 
         # 重大新聞輪詢（每 5 分鐘）
         schedule.every(5).minutes.do(self.poll_news)
+
+        # 週度績效報告（每週日 20:00）
+        schedule.every().sunday.at("20:00").do(self.send_weekly_performance_report)
 
         print("✅ ATOS schedule setup completed")
 

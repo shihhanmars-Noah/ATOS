@@ -460,6 +460,50 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     if big_player_note:
         text += f"\n【大戶動向】{big_player_note}"
 
+    # --------------------------------------------------
+    # 記錄指令到 trade_logger（只記錄有方向的指令）
+    # --------------------------------------------------
+    if direction in ("做多", "做空"):
+        try:
+            from trade_logger import log_signal
+
+            # 解析 AI 輸出的目標/停損數字
+            def _parse_price_field(pattern: str, fallback: float) -> float:
+                m = re.search(pattern, text)
+                if m:
+                    try:
+                        return float(re.sub(r"[,，]", "", m.group(1).strip()))
+                    except Exception:
+                        pass
+                return fallback
+
+            sl_parsed  = _parse_price_field(r"【停損】\s*([\d,，.]+)", 0.0)
+            t1_parsed  = _parse_price_field(r"【目標】\s*([\d,，.]+)", 0.0)
+            # 第二目標：格式「目標1 → 目標2」或「目標1（...）目標2」
+            t2_match = re.search(r"【目標】.*?[\d,，.]+\s*[→→]\s*([\d,，.]+)", text)
+            t2_parsed = float(re.sub(r"[,，]", "", t2_match.group(1))) if t2_match else t1_parsed
+
+            direction_en = "LONG" if direction == "做多" else "SHORT"
+
+            trade_id = log_signal(
+                direction=direction_en,
+                entry_condition=re.search(r"【進場條件】\s*(.+)", text).group(1).strip()
+                    if re.search(r"【進場條件】\s*(.+)", text) else "",
+                entry_price_zone=float(price) if price else 0.0,
+                stop_loss=sl_parsed,
+                target_1=t1_parsed,
+                target_2=t2_parsed,
+                confidence=adjusted_confidence,
+                signal_type=_signal_type,
+                chip_ctx=chip_ctx or {},
+                days_to_settlement=days_to_settlement,
+            )
+            # 把 trade_id 回寫到輸出文字，方便對應查詢（不干擾指令本身）
+            text += f"\n（訊號ID：{trade_id}）"
+
+        except Exception as _le:
+            print(f"⚠️ [claude_advisor] trade_logger 記錄失敗：{_le}")
+
     print(f"✅ [claude_advisor] {event} 指令完成（信心分：{adjusted_confidence}/5，方向：{direction}）")
     return text
 
