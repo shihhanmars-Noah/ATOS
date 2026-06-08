@@ -1166,6 +1166,59 @@ def get_latest_close_from_history(df_5min: pd.DataFrame) -> float | None:
 
 
 # --------------------------------------------------
+# Price & Contract Validation
+# --------------------------------------------------
+
+def validate_price_data(calculated_close: float, state: dict) -> bool:
+    """
+    驗證計算出的收盤價與即時快照價格是否合理。
+    若誤差超過 300 點，視為數據污染。
+    """
+    snapshot_price = state.get("price")
+    if not snapshot_price:
+        return True  # 無快照無法驗證，放行
+    try:
+        diff = abs(float(calculated_close) - float(snapshot_price))
+        if diff > 300:
+            print(
+                f"🚨 數據污染警報：日K收盤 {calculated_close} vs "
+                f"即時快照 {snapshot_price}，差距 {diff:.0f} 點，"
+                f"停止使用此資料"
+            )
+            return False
+        return True
+    except Exception:
+        return True
+
+
+def validate_contract_month(contract_date: str) -> bool:
+    """
+    驗證合約月份是否為當前近月合約。
+    contract_date 格式：YYYYMM（例如 202606）
+    """
+    try:
+        now = datetime.now()
+        current_ym = int(now.strftime("%Y%m"))
+        contract_ym = int(str(contract_date)[:6])
+
+        diff_months = contract_ym - current_ym
+
+        if diff_months < 0:
+            print(f"🚨 合約月份過期：{contract_date}，當前 {current_ym}")
+            return False
+        elif diff_months > 1:
+            print(
+                f"⚠️ 合約月份過遠：{contract_date}，當前 {current_ym}，"
+                f"差 {diff_months} 個月"
+            )
+            return False
+        return True
+    except Exception as e:
+        print(f"⚠️ 合約月份驗證失敗：{e}")
+        return True  # 驗證失敗時放行，不中斷主流程
+
+
+# --------------------------------------------------
 # Active Contract Selection
 # --------------------------------------------------
 
@@ -1799,6 +1852,11 @@ def get_dynamic_resistance_support(
             print("⚠️ get_dynamic_resistance_support：get_active_contract 回傳空值")
             return {"R1": 0, "S1": 0, "pivot": None, "source_date": "N/A"}
 
+        # 合約月份驗證（當月或下月才合法）
+        if not validate_contract_month(contract_date):
+            print(f"🚨 get_dynamic_resistance_support：合約月份異常 {contract_date}，回傳 None")
+            return None
+
         row = latest_df[latest_df["contract_date"] == contract_date].iloc[0]
 
         high   = float(row["max"])
@@ -1815,6 +1873,16 @@ def get_dynamic_resistance_support(
             days_to_settlement = get_days_to_settlement()
         except Exception:
             days_to_settlement = 99
+
+        # 即時價格交叉驗證（與 atos_state 快照比對）
+        try:
+            from persistent_state import load_state as _load_state
+            _state = _load_state()
+        except Exception:
+            _state = {}
+        if not validate_price_data(close, _state):
+            print(f"🚨 get_dynamic_resistance_support：價格污染 close={close}，回傳 None")
+            return None
 
         result = {
             "R1":                round(r1, 1),

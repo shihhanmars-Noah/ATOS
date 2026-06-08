@@ -654,10 +654,65 @@ class AtosCommander:
     # Start
     # --------------------------------------------------
 
+    def startup_validation(self) -> bool:
+        """
+        啟動時驗證關鍵資料是否合理。
+        期貨日K收盤 vs 即時快照差距 > 300 點 → 發 Telegram 警報並拒絕啟動。
+        """
+        try:
+            from data_engine import get_dynamic_resistance_support
+            levels = get_dynamic_resistance_support(futures_id="TX")
+
+            if levels is None:
+                msg = "🚨 ATOS 啟動警報\n無法取得期貨日K資料（可能資料污染），請確認合約月份後重啟"
+                print(msg)
+                try:
+                    from messenger import send_to_telegram
+                    send_to_telegram(msg)
+                except Exception:
+                    pass
+                return False
+
+            close    = levels.get("close", 0)
+            snapshot = self.state.get("price", 0)
+
+            if snapshot and close and abs(float(close) - float(snapshot)) > 300:
+                diff = abs(float(close) - float(snapshot))
+                msg = (
+                    f"🚨 ATOS 啟動警報\n"
+                    f"期貨日K收盤 {int(round(float(close)))} vs 即時快照 {int(round(float(snapshot)))}\n"
+                    f"差距 {diff:.0f} 點\n"
+                    f"資料可能污染，請確認合約月份後重啟"
+                )
+                print(msg)
+                try:
+                    from messenger import send_to_telegram
+                    send_to_telegram(msg)
+                except Exception:
+                    pass
+                return False
+
+            print(
+                f"✅ 啟動驗證通過：日K收盤 {close}，"
+                f"快照 {snapshot if snapshot else '(無快照)'}，"
+                f"合約 {levels.get('contract_date', 'N/A')}，"
+                f"{levels.get('days_to_settlement', '?')} 天後結算"
+            )
+            return True
+
+        except Exception as e:
+            print(f"⚠️ startup_validation 執行失敗（非致命）：{e}")
+            return True  # 驗證本身失敗不阻斷啟動
+
     def start(self):
         """
         啟動 ATOS Commander。
         """
+
+        # 啟動驗證：日K價格 vs 快照交叉比對
+        if not self.startup_validation():
+            print("🚨 啟動驗證失敗，系統暫停，請手動確認資料後重啟")
+            return
 
         # 資料回補檢查
         if check_and_backfill is not None:
