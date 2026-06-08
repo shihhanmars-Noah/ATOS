@@ -1063,11 +1063,19 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     spot_dir = "買超" if float(spot_val) > 0 else "賣超"
 
     # 前期籌碼（回補還是加碼）
+    # chg_arrow：箭頭格式，用於「今天發生了什麼」（單括號，清晰顯示軌跡）
+    # chg_str  ：逗號格式，用於「籌碼驗證」（套在外層括號內，避免嵌套）
     try:
         prev_net = fn - int(fn_1d)
-        chg_str = f"回補 +{abs(fn_1d):,}口，前值 {prev_net:+,}" if fn_1d > 0 else f"加碼 -{abs(fn_1d):,}口，前值 {prev_net:+,}"
+        if fn_1d > 0:
+            chg_arrow = f"回補 +{abs(fn_1d):,}口（{prev_net:+,} → {fn:+,}）"
+            chg_str   = f"回補 +{abs(fn_1d):,}口，前值 {prev_net:+,}"
+        else:
+            chg_arrow = f"加碼 -{abs(fn_1d):,}口（{prev_net:+,} → {fn:+,}）"
+            chg_str   = f"加碼 -{abs(fn_1d):,}口，前值 {prev_net:+,}"
     except Exception:
-        chg_str = f"變動 {fn_1d:+,}口"
+        chg_arrow = f"變動 {fn_1d:+,}口"
+        chg_str   = chg_arrow
 
     # 假突破判斷
     try:
@@ -1152,7 +1160,7 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     lines.append(call_wall_status)
     lines.append(put_wall_status)
     lines.append(pivot_status)
-    lines.append(f"籌碼變化：外資期貨今日{chg_str}")
+    lines.append(f"籌碼變化：外資期貨今日{chg_arrow}")
     lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億")
     lines.append("")
 
