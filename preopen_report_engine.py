@@ -350,7 +350,7 @@ def build_preopen_payload() -> dict:
     )
 
     night_context_text = build_night_context_text(
-        flip=mid_range,
+        flip=active_pivot,   # 改用 active_pivot（取代 mid_range）
         pivot=pivot,
         previous_futures_close=close_price,
     )

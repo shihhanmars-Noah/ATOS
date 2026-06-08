@@ -217,11 +217,11 @@ def build_night_context(
     if flip:
         try:
             if night_close > float(flip):
-                position_vs_flip = "夜盤收在 Flip 上方，日盤偏多方防守"
+                position_vs_flip = "夜盤收在中軸上方，日盤偏多方防守"
             elif night_close < float(flip):
-                position_vs_flip = "夜盤收在 Flip 下方，日盤偏空方防守"
+                position_vs_flip = "夜盤收在中軸下方，日盤偏空方防守"
             else:
-                position_vs_flip = "夜盤收在 Flip 附近，日盤容易洗盤"
+                position_vs_flip = "夜盤收在中軸附近，日盤容易洗盤"
         except Exception:
             pass
 
