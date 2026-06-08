@@ -974,6 +974,75 @@ def build_evening_conclusion(
 
 
 # --------------------------------------------------
+# AI Fallback（AI 無回應時的靜態摘要）
+# --------------------------------------------------
+
+def _build_ai_fallback(
+    call_wall_status: str = "",
+    put_wall_status: str = "",
+    pivot_status: str = "",
+    chip_ctx: dict | None = None,
+    today_high=None,
+    today_low=None,
+    price=None,
+) -> str:
+    """
+    Gemini 503/無回應時，依結構數據自動組出夜盤摘要。
+    不做預測，只陳述已知結構與關鍵注意點。
+    """
+    ctx = chip_ctx or {}
+    fn = ctx.get("foreign_net", 0) or 0
+    fn_1d = ctx.get("foreign_net_chg_1d", 0) or 0
+    spot_val = ctx.get("spot_foreign_net_buy_bn") or 0
+    call_wall = ctx.get("call_wall")
+    put_wall  = ctx.get("put_wall")
+    cp_ratio  = ctx.get("call_put_ratio")
+
+    parts = []
+
+    # 假突破訊號
+    if call_wall_status and "假突破" in call_wall_status:
+        parts.append(f"Call wall {_fp(call_wall)} 今日出現假突破，上方賣壓仍重")
+
+    # 現貨外資異動
+    try:
+        spot_f = float(spot_val)
+        if spot_f < -200:
+            parts.append(f"現貨外資大賣 {abs(spot_f):.1f} 億，機構資金持續撤離")
+        elif spot_f < 0:
+            parts.append(f"現貨外資賣超 {abs(spot_f):.1f} 億")
+    except Exception:
+        pass
+
+    # 期貨籌碼
+    try:
+        if fn_1d > 0:
+            parts.append(f"期貨外資今日小幅回補 {abs(int(fn_1d)):,} 口，淨部位仍空")
+        elif fn_1d < 0:
+            parts.append(f"期貨外資今日加碼空單 {abs(int(fn_1d)):,} 口")
+    except Exception:
+        pass
+
+    # Pivot 位置
+    if pivot_status and "站上" in pivot_status:
+        parts.append("收盤雖守 Pivot，結構矛盾未解，夜盤需觀察方向確認")
+    elif pivot_status and "跌破" in pivot_status:
+        parts.append("收盤跌破 Pivot，空方佔優，夜盤反彈需謹慎")
+
+    # C/P Ratio
+    try:
+        if cp_ratio and float(cp_ratio) < 0.5:
+            parts.append(f"C/P Ratio {float(cp_ratio):.2f} 低於 0.5，留意潛在軋空震盪")
+    except Exception:
+        pass
+
+    if not parts:
+        return "今日結構數據不足，建議夜盤觀望為主，等日盤開盤確認方向。"
+
+    return "（AI 服務暫時中斷，以下為系統自動摘要）\n" + "；".join(parts) + "。夜盤以觀察為主。"
+
+
+# --------------------------------------------------
 # Report Builder
 # --------------------------------------------------
 
@@ -1195,7 +1264,19 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
 
     # ━━ AI 夜盤解讀 ━━
     lines.append("━━ AI 夜盤解讀 ━━")
-    lines.append(ai_text if ai_text else "（AI 分析暫不可用）")
+    if ai_text:
+        lines.append(ai_text)
+    else:
+        # Fallback：AI 無回應時，依結構數據自動組出摘要
+        lines.append(_build_ai_fallback(
+            call_wall_status=call_wall_status,
+            put_wall_status=put_wall_status,
+            pivot_status=pivot_status,
+            chip_ctx=chip_ctx,
+            today_high=today_high,
+            today_low=today_low,
+            price=price,
+        ))
 
     # API 使用統計
     try:

@@ -52,12 +52,17 @@ def _call_gemini_with_retry(client, prompt: str, max_output_tokens: Optional[int
                 _api_stats["total_tokens"] += getattr(response.usage_metadata, "total_token_count", 0) or 0
             return response.text.strip()
         except Exception as e:
-            if "429" in str(e) or "ResourceExhausted" in type(e).__name__:
+            err_str = str(e)
+            is_429 = "429" in err_str or "ResourceExhausted" in type(e).__name__
+            is_503 = "503" in err_str or "UNAVAILABLE" in err_str
+            if is_429 or is_503:
+                wait = 30 if is_503 else GEMINI_RETRY_DELAY
+                code = "503" if is_503 else "429"
                 if attempt < 2:
-                    print(f"⏳ [ai_report_engine] Gemini 429，{GEMINI_RETRY_DELAY}秒後重試（第{attempt + 1}次）")
-                    time.sleep(GEMINI_RETRY_DELAY)
+                    print(f"⏳ [ai_report_engine] Gemini {code}，{wait}秒後重試（第{attempt + 1}次）")
+                    time.sleep(wait)
                 else:
-                    print("⏳ [ai_report_engine] Gemini 429，重試2次仍失敗，靜默跳過")
+                    print(f"⏳ [ai_report_engine] Gemini {code}，重試2次仍失敗，靜默跳過")
                     return None
             else:
                 raise
