@@ -621,6 +621,17 @@ class AtosCommander:
             except Exception as e:
                 print(f"⚠️ data_backfill failed: {e}")
 
+        # tick cache 啟動清理（移除 3 天前的資料）
+        try:
+            from data_engine import load_txf_tick_cache, clean_txf_tick_cache, save_txf_tick_cache
+            rows = load_txf_tick_cache()
+            cleaned = clean_txf_tick_cache(rows)
+            if len(cleaned) < len(rows):
+                save_txf_tick_cache(cleaned)
+                print(f"🧹 tick cache 清理：{len(rows)} → {len(cleaned)} 筆")
+        except Exception as e:
+            print(f"⚠️ tick cache 清理失敗：{e}")
+
         self.send_startup_message()
         self.setup_schedule()
 

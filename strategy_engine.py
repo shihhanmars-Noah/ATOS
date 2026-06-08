@@ -3,7 +3,6 @@
 import pandas as pd
 
 from error_handler import safe_execute
-from atos_logic import analyze_atos_state
 
 
 @safe_execute
@@ -79,8 +78,6 @@ def calculate_atos_regime(
     dynamic_buffer = max(50, 0.5 * atr)
     diff = price - flip
 
-    base_state = analyze_atos_state(price, flip)
-
     # -----------------------------------
     # Regime 判定
     # -----------------------------------
@@ -114,7 +111,7 @@ def calculate_atos_regime(
 
     return {
         "regime": regime,
-        "state": base_state["state"],
+        "state": regime,   # 與 regime 一致，移除 atos_logic 依賴
         "action": action,
         "forbidden": forbidden,
         "no_trade": kill_switch is None,

@@ -682,5 +682,86 @@
     "volume": 1,
     "total_volume": 19342,
     "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:09:56",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43820.0,
+    "volume": 1,
+    "total_volume": 19356,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:10:26",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43810.0,
+    "volume": 1,
+    "total_volume": 19398,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:10:55",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43814.0,
+    "volume": 2,
+    "total_volume": 19404,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:11:23",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43804.0,
+    "volume": 1,
+    "total_volume": 19414,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:11:53",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43814.0,
+    "volume": 1,
+    "total_volume": 19415,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:12:28",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43827.0,
+    "volume": 1,
+    "total_volume": 19424,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:12:48",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43832.0,
+    "volume": 1,
+    "total_volume": 19431,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:13:16",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43832.0,
+    "volume": 1,
+    "total_volume": 19435,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:13:56",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43821.0,
+    "volume": 3,
+    "total_volume": 19446,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
   }
 ]
