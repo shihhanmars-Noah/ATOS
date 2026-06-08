@@ -44,11 +44,12 @@ YAHOO_RSS_URLS = [
     "https://finance.yahoo.com/rss/topstories",
 ]
 
-NEWS_COOLDOWN          = 1800   # 秒，同一則新聞 30 分鐘內不重複發送
-NEWS_FRESH_WINDOW      = 30     # 分鐘，只處理最近 N 分鐘內的新聞（防啟動炸版）
-MAX_ALERTS_PER_POLL    = 2      # 每輪 Level 1/2 最多發 N 則
-COLLECTION_WINDOW_MINUTES = 5   # Level 3 收集窗口（分鐘）
-COOLDOWN_HOURS         = 24     # Level 3 同關鍵字冷卻（小時）
+NEWS_COOLDOWN             = 1800  # 秒，同一則新聞 30 分鐘內不重複發送（持久化）
+NEWS_FRESH_WINDOW         = 30    # 分鐘，啟動時防炸版用（_is_fresh 沿用）
+MAX_NEWS_AGE_MINUTES      = 60    # 分鐘，每輪輪詢時超過此時效的新聞視為舊聞
+MAX_ALERTS_PER_POLL       = 2     # 每輪 Level 1/2 最多發 N 則
+COLLECTION_WINDOW_MINUTES = 5     # Level 3 收集窗口（分鐘）
+COOLDOWN_HOURS            = 24    # Level 3 同關鍵字冷卻（小時）
 
 # --------------------------------------------------
 # 三級優先狀態（記憶體）
@@ -63,7 +64,8 @@ _normal_queue:     list = []   # Level 1 待發隊列
 # 去重狀態（持久化 + 記憶體雙層）
 # --------------------------------------------------
 
-_last_sent: dict[str, float] = {}
+_last_sent:      dict[str, float] = {}
+_sent_news_ids:  set              = set()   # session 內快速去重（fingerprint）
 
 
 def _news_hash(title: str) -> str:
@@ -123,6 +125,63 @@ def _is_fresh(pub_time_str: str) -> bool:
         except Exception:
             continue
     return True
+
+
+def _is_news_fresh(news: dict) -> bool:
+    """
+    判斷新聞是否在 MAX_NEWS_AGE_MINUTES（60分鐘）以內。
+    嘗試 date / pub_time / publish_time / time 多個欄位。
+    無法解析時間 → 視為舊聞（保守過濾，避免不知年代的新聞發出）。
+    """
+    time_str = (
+        news.get("date") or
+        news.get("pub_time") or
+        news.get("publish_time") or
+        news.get("time") or
+        ""
+    )
+
+    if not time_str:
+        print(f"⏸️ [news_engine] 無時間戳，略過：{news.get('title', '')[:40]}")
+        return False
+
+    for fmt in (
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%a, %d %b %Y %H:%M:%S %z",
+        "%a, %d %b %Y %H:%M:%S +0000",
+    ):
+        try:
+            news_dt = datetime.strptime(str(time_str)[:25], fmt[:25])
+            news_dt = news_dt.replace(tzinfo=None)
+            elapsed_min = (datetime.now() - news_dt).total_seconds() / 60
+            if elapsed_min > MAX_NEWS_AGE_MINUTES:
+                print(
+                    f"⏸️ [news_engine] 舊聞略過（{elapsed_min:.0f}分鐘前）："
+                    f"{news.get('title', '')[:40]}"
+                )
+                return False
+            return True
+        except Exception:
+            continue
+
+    # 所有格式解析失敗
+    print(f"⏸️ [news_engine] 時間格式無法解析，略過：{news.get('title', '')[:40]}")
+    return False
+
+
+def _get_news_fingerprint(news: dict) -> str:
+    """產生新聞唯一識別碼（標題 + 日期前10碼 的 MD5 前12碼）。"""
+    title = news.get("title", "")
+    date  = str(
+        news.get("date") or
+        news.get("pub_time") or
+        news.get("publish_time") or
+        ""
+    )[:10]
+    return hashlib.md5(f"{title}{date}".encode("utf-8")).hexdigest()[:12]
 
 
 # --------------------------------------------------
@@ -359,16 +418,31 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
     if not all_items:
         return 0
 
-    # 過濾：只留新鮮且未發過的
+    # 過濾：時效 + fingerprint 去重 + 持久化冷卻
     candidates = []
     for item in all_items:
         title = item.get("title", "")
         if not title:
             continue
-        if not _is_fresh(item.get("pub_time", "")):
+
+        # 1. 啟動防炸版：只看 NEWS_FRESH_WINDOW 分鐘內的新聞
+        if not _is_fresh(item.get("pub_time", "") or item.get("date", "")):
             continue
+
+        # 2. 時效過濾：超過 MAX_NEWS_AGE_MINUTES 的新聞不發警報
+        if not _is_news_fresh(item):
+            continue
+
+        # 3. session 內 fingerprint 去重（快速；跨重啟由 _can_send 負責）
+        fp = _get_news_fingerprint(item)
+        if fp in _sent_news_ids:
+            print(f"⏸️ [news_engine] 已發送過，略過：{title[:40]}")
+            continue
+
+        # 4. 持久化冷卻（30分鐘內不重複）
         if not _can_send(_news_hash(title)):
             continue
+
         candidates.append(item)
 
     if not candidates:
@@ -446,12 +520,14 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
 
         title = item.get("title", "")
         h = _news_hash(title)
+        fp = _get_news_fingerprint(item)
         importance = item.get("importance", 4)
         print(f"🔴 [news_engine] 重要性 {importance}/5，發送警報：{title[:50]}")
         commentary = _get_commentary(item, chip_ctx or {})
         msg = _build_alert_message(item, commentary)
         if send_to_telegram(msg):
             _mark_sent(h)
+            _sent_news_ids.add(fp)   # session 內 fingerprint 標記已發
             sent += 1
             print(f"✅ [news_engine] 警報已發送：{title[:50]}")
 
