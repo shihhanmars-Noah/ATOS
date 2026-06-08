@@ -978,11 +978,11 @@ def build_evening_conclusion(
 # --------------------------------------------------
 
 def _fp(v) -> str:
+    """台指期價位格式化：強制整數，無小數點。"""
     if v is None:
         return "N/A"
     try:
-        f = float(v)
-        return str(int(f)) if f == int(f) else str(round(f, 1))
+        return str(int(round(float(v))))
     except Exception:
         return "N/A"
 
@@ -1065,7 +1065,7 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     # 前期籌碼（回補還是加碼）
     try:
         prev_net = fn - int(fn_1d)
-        chg_str = f"回補 {abs(fn_1d):,}口（{prev_net:+,} → {fn:+,}）" if fn_1d > 0 else f"加碼 {abs(fn_1d):,}口（{prev_net:+,} → {fn:+,}）"
+        chg_str = f"回補 +{abs(fn_1d):,}口，前值 {prev_net:+,}" if fn_1d > 0 else f"加碼 -{abs(fn_1d):,}口，前值 {prev_net:+,}"
     except Exception:
         chg_str = f"變動 {fn_1d:+,}口"
 
@@ -1181,7 +1181,7 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
 
     # ━━ 籌碼驗證 ━━
     lines.append("━━ 籌碼驗證 ━━")
-    lines.append(f"外資期貨：{fn:+,}口（今日{chg_str}）")
+    lines.append(f"外資期貨：{fn:+,}口（今日{chg_str}）")  # chg_str 已無嵌套括號
     lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億")
     lines.append("")
 
