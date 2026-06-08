@@ -25,18 +25,24 @@ from messenger import send_to_telegram
 
 WATCH_STOCKS = ["2330", "2317", "2454", "2412", "2882"]
 
-# Level 3：重大總經/地緣/市場結構事件 → 合併窗口發送 + 24小時冷卻
+# Level 3：重大總經/地緣/市場結構事件 → 5分鐘時間窗口合併發送
 LEVEL3_KEYWORDS = [
-    'Fed', '聯準會', 'CPI', 'PCE', '非農', '降息', '升息',
+    # 中文
+    '聯準會', 'CPI', 'PCE', '非農', '降息', '升息',
     '利率決議', '戰爭', '台海', '制裁', '熔斷', '崩盤',
-    '緊急', '停牌', '暫停交易', 'FOMC', '台灣海峽',
+    '緊急', '停牌', '暫停交易', '台灣海峽', '伊朗', '以色列', '地緣',
+    # 英文
+    'Fed', 'Federal Reserve', 'FOMC', 'rate cut', 'rate hike',
+    'interest rate', 'nonfarm', 'Iran', 'Israel', 'sanctions',
+    'circuit breaker', 'trading halt', 'Taiwan', 'war', 'missile',
+    'chip ban', 'Trump', 'tariff',
 ]
 
 # Level 2：重要但非緊急 → 優先隊列，下輪優先發
 LEVEL2_KEYWORDS = [
     '外資', '法人', '台積電', '晶片', '關稅', '匯率',
     '三大法人', '期貨', '選擇權', '大跌', '暴跌',
-    'TSMC', 'semiconductor', 'tariff',
+    'TSMC', 'semiconductor',
 ]
 
 # Yahoo Finance RSS 來源
@@ -55,8 +61,8 @@ COOLDOWN_HOURS            = 24    # Level 3 同關鍵字冷卻（小時）
 # 三級優先狀態（記憶體）
 # --------------------------------------------------
 
-_event_collection: dict = {}   # key=關鍵字, value={'news': [], 'window_start': datetime}
-_event_cooldown:   dict = {}   # key=關鍵字, value=last_sent datetime
+_event_collection: dict = {}   # key=window_key（5分鐘時間槽）, value={'news': [], 'window_start': datetime}
+_sent_window_keys: set  = set()  # 已發送的窗口 key（session 內去重，每窗口只發一次）
 _priority_queue:   list = []   # Level 2 待發隊列
 _normal_queue:     list = []   # Level 1 待發隊列
 
@@ -184,6 +190,18 @@ def _get_news_fingerprint(news: dict) -> str:
     return hashlib.md5(f"{title}{date}".encode("utf-8")).hexdigest()[:12]
 
 
+def _get_window_key(dt: datetime = None) -> str:
+    """
+    取當前時間所在的 5 分鐘時間槽，作為 Level 3 收集窗口的 key。
+    例如 22:53 → '20260608_2250'，22:57 → '20260608_2255'。
+    同一個 5 分鐘內的所有 Level 3 新聞進同一個窗口。
+    """
+    if dt is None:
+        dt = datetime.now()
+    floored_minute = (dt.minute // 5) * 5
+    return dt.strftime(f"%Y%m%d_%H{floored_minute:02d}")
+
+
 # --------------------------------------------------
 # 三級分類工具
 # --------------------------------------------------
@@ -293,38 +311,47 @@ def _fetch_yahoo_rss() -> list[dict]:
 # Level 3 合併發送
 # --------------------------------------------------
 
-def _send_merged_event(keyword: str, news_list: list) -> None:
-    """收集窗口結束後，合併多則 Level 3 新聞為一則重大事件警報。"""
-    count = len(news_list)
+def _send_merged_event(window_key: str, news_list: list) -> None:
+    """
+    收集窗口結束後，合併該窗口內所有 Level 3 新聞為一則重大事件警報。
+    同一窗口只發一次（由 _sent_window_keys 去重）。
+    """
+    count  = len(news_list)
     titles = '\n'.join([f"- {n['title']}" for n in news_list[:10]])
 
     prompt = (
-        f"以下是關於「{keyword}」的 {count} 則新聞報導，請：\n"
-        f"1. 合併成一則重點摘要（不超過3行）\n"
-        f"2. 說明對台指期的即時影響\n"
-        f"3. 給出一個具體的操作注意事項\n\n"
+        f"以下是本輪偵測到的 {count} 則重大新聞，請：\n"
+        f"1. 判斷是否屬於同一事件或相關聯事件\n"
+        f"2. 合併成一則重點摘要（不超過3行）\n"
+        f"3. 說明對台指期的即時影響（多/空/中性）\n"
+        f"4. 給出一個具體操作注意事項\n\n"
         f"新聞標題：\n{titles}\n\n"
-        f"格式：\n【摘要】...\n【台指影響】...\n【操作注意】..."
+        f"格式：\n"
+        f"【事件判斷】同一事件/相關事件/無關聯\n"
+        f"【摘要】...\n"
+        f"【台指影響】多/空/中性，原因...\n"
+        f"【操作注意】..."
     )
 
-    commentary = _get_commentary_with_retry(prompt, max_tokens=300)
+    commentary = _get_commentary_with_retry(prompt, max_tokens=350)
 
     if not commentary:
         commentary = (
-            f"【摘要】偵測到 {count} 則{keyword}相關重大新聞\n"
-            f"【台指影響】請注意市場波動\n"
-            f"【操作注意】暫停追單，等待方向確認"
+            f"【事件判斷】偵測到 {count} 則重大新聞\n"
+            f"【摘要】本輪出現多則重大市場事件，請留意相關風險\n"
+            f"【台指影響】中性，等待方向確認\n"
+            f"【操作注意】暫停追單，等待5分K方向確認後再進場"
         )
 
+    now_str = datetime.now().strftime("%H:%M")
     msg = (
-        f"🚨 重大事件警報（來自 {count} 則新聞）\n"
-        f"關鍵字：{keyword}\n"
-        f"時間：{datetime.now().strftime('%H:%M')}\n\n"
+        f"🚨 重大事件警報（{count} 則新聞合併）\n"
+        f"時間：{now_str}\n\n"
         f"{commentary}"
     )
 
     send_to_telegram(msg)
-    print(f"✅ [news_engine] 重大事件合併發送：{keyword}（{count}則）")
+    print(f"✅ [news_engine] 重大事件合併發送：窗口 {window_key}（{count}則）")
 
 
 def _get_commentary_with_retry(prompt: str, max_tokens: int = 300) -> Optional[str]:
@@ -458,33 +485,33 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
         level = _get_news_level(title)
 
         if level == 3:
-            keyword = _get_triggered_keyword(title)
-            now = datetime.now()
+            now        = datetime.now()
+            window_key = _get_window_key(now)
+            keyword    = _get_triggered_keyword(title)
 
-            # 24 小時冷卻檢查
-            if keyword in _event_cooldown:
-                elapsed_h = (now - _event_cooldown[keyword]).total_seconds() / 3600
-                if elapsed_h < COOLDOWN_HOURS:
-                    # 例外：含「更新/修正/異動/最新」字樣時重新觸發
-                    if not any(w in title for w in ['更新', '修正', '異動', '最新']):
-                        print(f"⏸️ [news_engine] {keyword} 24小時冷卻中，略過")
-                        continue
+            # 本窗口已發送過 → 略過（同一 5 分鐘時間槽只發一則合併摘要）
+            if window_key in _sent_window_keys:
+                print(f"⏸️ [news_engine] 窗口 {window_key} 已發送，略過：{title[:40]}")
+                continue
 
-            # 加入收集窗口
-            if keyword not in _event_collection:
-                _event_collection[keyword] = {
-                    'news': [],
+            # 加入時間槽收集窗口
+            if window_key not in _event_collection:
+                _event_collection[window_key] = {
+                    'news':         [],
                     'window_start': now,
                 }
-            _event_collection[keyword]['news'].append(news)
-            print(f"📥 [news_engine] Level3 收集：{keyword}（已有 {len(_event_collection[keyword]['news'])} 則）")
+            _event_collection[window_key]['news'].append(news)
+            print(
+                f"📥 [news_engine] Level3 收集 [{keyword}] → 窗口 {window_key}"
+                f"（已有 {len(_event_collection[window_key]['news'])} 則）"
+            )
 
-            # 窗口已滿 → 立即合併發送
-            window_age = (now - _event_collection[keyword]['window_start']).total_seconds() / 60
+            # 窗口已滿（超過 5 分鐘）→ 立即合併發送
+            window_age = (now - _event_collection[window_key]['window_start']).total_seconds() / 60
             if window_age >= COLLECTION_WINDOW_MINUTES:
-                _send_merged_event(keyword, _event_collection[keyword]['news'])
-                _event_cooldown[keyword] = now
-                del _event_collection[keyword]
+                _send_merged_event(window_key, _event_collection[window_key]['news'])
+                _sent_window_keys.add(window_key)
+                del _event_collection[window_key]
 
         elif level == 2:
             _priority_queue.append(news)
@@ -535,14 +562,17 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
 
 
 def _flush_expired_level3_windows() -> None:
-    """掃描並發送所有已過收集窗口的 Level 3 事件。"""
+    """掃描並發送所有已過 5 分鐘收集窗口的 Level 3 事件。"""
     now = datetime.now()
-    for keyword in list(_event_collection.keys()):
-        window_age = (now - _event_collection[keyword]['window_start']).total_seconds() / 60
+    for wk in list(_event_collection.keys()):
+        if wk in _sent_window_keys:
+            del _event_collection[wk]
+            continue
+        window_age = (now - _event_collection[wk]['window_start']).total_seconds() / 60
         if window_age >= COLLECTION_WINDOW_MINUTES:
-            _send_merged_event(keyword, _event_collection[keyword]['news'])
-            _event_cooldown[keyword] = now
-            del _event_collection[keyword]
+            _send_merged_event(wk, _event_collection[wk]['news'])
+            _sent_window_keys.add(wk)
+            del _event_collection[wk]
 
 
 def _get_commentary(item: dict, chip_ctx: dict) -> Optional[str]:
