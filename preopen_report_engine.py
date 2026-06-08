@@ -663,11 +663,49 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
         cw_stop = pw_stop = pw_t1 = pw_t2 = cw_stop_short = cw_t1 = "N/A"
 
     ref_price = close_price  # 盤前以前日收盤為現價參考
-    closer = _closer_wall(ref_price, call_wall, put_wall) if ref_price else "N/A"
     pos_pct_str = f"{price_position_pct:.1f}" if price_position_pct is not None else "N/A"
     score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
     spot_dir = _spot_dir(spot_val)
     pain_dir = _pain_direction(max_pain, ref_price)
+
+    # 現價與 Call wall / Put wall 位置關係
+    try:
+        price_f = float(ref_price) if ref_price else 0
+        cw_f2   = float(call_wall) if call_wall else 0
+        pw_f2   = float(put_wall)  if put_wall  else 0
+    except Exception:
+        price_f = cw_f2 = pw_f2 = 0
+
+    if price_f > cw_f2 > 0:
+        price_position = "above_call"
+        position_label = f"已站上 Call wall {_fp(cw_f2)} 上方（+{int(price_f - cw_f2)}點）"
+        scenario_wait = (
+            f"等一（空方）：現價跌破 Call wall {_fp(cw_f2)} 且5分K確認 → 假突破確認，空方機會\n"
+            f"等二（多方）：現價回測 Call wall {_fp(cw_f2)} 附近守穩不破 → 多方延續\n"
+            f"等三（觀望）：外資極端空單未大幅回補前，站上 Call wall 後不主動追多"
+        )
+    elif pw_f2 > 0 and price_f < pw_f2:
+        price_position = "below_put"
+        position_label = f"已跌破 Put wall {_fp(pw_f2)} 下方（-{int(pw_f2 - price_f)}點）"
+        scenario_wait = (
+            f"等一（多方）：現價站回 Put wall {_fp(pw_f2)} 上方且5分K確認 → 假跌破，反彈機會\n"
+            f"等二（空方）：反彈到 Put wall {_fp(pw_f2)} 附近量縮不過 → 空方延續\n"
+            f"等三（觀望）：跌破後加速下行超過50點，放棄追空等反彈再看"
+        )
+    else:
+        price_position = "in_range"
+        pct = (price_f - pw_f2) / (cw_f2 - pw_f2) * 100 if cw_f2 > pw_f2 else 0
+        if pct > 65:
+            position_label = f"位於框架 {pct:.1f}%（偏上方，接近 Call wall）"
+        elif pct < 35:
+            position_label = f"位於框架 {pct:.1f}%（偏下方，接近 Put wall）"
+        else:
+            position_label = f"位於框架 {pct:.1f}%（區間中段）"
+        scenario_wait = (
+            f"等一（空方）：反彈到 Call wall {_fp(call_wall)} 附近量縮 → 空方機會\n"
+            f"等二（空方）：跌破 Put wall {_fp(put_wall)} 且量能確認 → 追空加速\n"
+            f"等三（多方）：突破 Call wall {_fp(call_wall)} 且量能確認 → 追多（機率低，需外資同步回補）"
+        )
 
     incentive = _incentive_one_liner(sentiment_score, call_wall, put_wall, fn)
     scenario = _scenario_one_liner(sentiment_score, price_position_pct, call_wall, put_wall)
@@ -697,7 +735,7 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     lines.append("━━ 今天的結構 ━━")
     lines.append(f"外資 {fn_level} {fn:+,}口，現貨{spot_dir} {abs(spot_val):.1f}億")
     lines.append(f"大戶框架：Put wall {_fp(put_wall)} ~ Call wall {_fp(call_wall)}（寬度{width}點）")
-    lines.append(f"現價 {_fp(ref_price)}，位於框架 {pos_pct_str}%（接近{closer}）")
+    lines.append(f"現價 {_fp(ref_price)}，{position_label}")
     lines.append(f"Max Pain {_fp(max_pain)}，大戶希望{pain_dir}結算")
     lines.append(f"→ {incentive}")
     lines.append("")
@@ -709,9 +747,7 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # ━━ 今天等什麼 ━━
     lines.append("━━ 今天等什麼 ━━")
-    lines.append(f"等一（空方）：反彈到 Call wall {_fp(call_wall)} 附近量縮 → 空方機會")
-    lines.append(f"等二（空方）：跌破 Put wall {_fp(put_wall)} 且量能確認 → 追空加速")
-    lines.append(f"等三（多方）：突破 Call wall {_fp(call_wall)} 且量能確認 → 追多（機率低，需外資同步回補）")
+    lines.append(scenario_wait)
     lines.append("")
 
     # ━━ 進場怎麼做 ━━
