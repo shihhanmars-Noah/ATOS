@@ -22,11 +22,7 @@ def safe_float(value, default=None):
         return default
 
 
-def format_price(value):
-    try:
-        return round(float(value), 1)
-    except Exception:
-        return "N/A"
+from utils import format_price  # noqa: F401
 
 
 def is_realtime_context(context: dict) -> bool:

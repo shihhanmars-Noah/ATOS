@@ -182,5 +182,28 @@
     "latest_k_time": "2026-05-15 20:25:00",
     "data_delay_minutes": 5.2,
     "message_preview": "🟠 下方掃單警報\n------------------\n\n市場快速掃過下方關鍵位置。\n可能正在清洗多單停損，也可能是假跌破。\n\n盤中判斷：\n● 不要追第一波急跌\n● 等 5分K 收盤\n● 確認是否重新收回支撐\n\n📍 現價：40642.0\n📍 Flip：41012.0\n📍 Pivot：N/A\n📍 R1：41065.9\n📍 S1：40958.1\n\n====================\n\n📘 早盤劇本對應\n目前劇本：⚪ 劇本無法判斷\n建議動作：等待\n\n說明：\n價格或關鍵價不足，無法對應早盤劇本。\n\n====================\n\n🛡️ ATOS Strategy Filter\n------------------\n模式：DEFENSE\n訊號等級：C\n允許進場：否\n建議動作：NO_TRADE\n狀態：禁止交易\n\n判斷原因：\n● 不在 Defense Mode 允許觀察時段 09:00–13:30\n\n風控設定：\n● 預設停損：30 點\n● 觀察停利：80 點\n\n最終指令：\n> 禁止交易\n\n====================\n\n🤖 AI 即時建議\n狀態：⚪ 關鍵價不足\n現在動作"
+  },
+  {
+    "datetime": "2026-05-18 15:15:15",
+    "date": "2026-05-18",
+    "time": "15:15:15",
+    "event": "FLIP_RECOVER",
+    "price": 40838.0,
+    "flip": 40835.5,
+    "pivot": null,
+    "r1": NaN,
+    "s1": NaN,
+    "sentiment": "偏空",
+    "behavior": "NO_TRAP",
+    "trap": null,
+    "sweep": null,
+    "is_realtime": true,
+    "stop": "無",
+    "target": "無",
+    "tick_source": "FINMIND_FUTURES_SNAPSHOT",
+    "tick_time": "15:14:47",
+    "latest_k_time": "2026-05-18 15:10:00",
+    "data_delay_minutes": 5.2,
+    "message_preview": "🟢 站回 Flip 警報\n------------------\n\n價格站回今日多空分界。\n短線轉強觀察，但不代表可以直接追高。\n\n盤中判斷：\n● 等回測 Flip 不破\n● 回測不破才觀察多方延續\n● 收回 Flip 下方則多方劇本取消\n\n📍 現價：40838.0\n📍 Flip：40835.5\n📍 Pivot：N/A\n📍 R1：nan\n\n====================\n\n📘 早盤劇本對應\n目前劇本：⚪ 劇本無法判斷\n建議動作：等待\n\n說明：\n價格或關鍵價不足，無法對應早盤劇本。\n\n====================\n\n🛡️ ATOS Strategy Filter\n------------------\n模式：DEFENSE\n訊號等級：C\n允許進場：否\n建議動作：NO_TRADE\n狀態：禁止交易\n\n判斷原因：\n● 不在 Defense Mode 允許觀察時段 09:00–13:30\n\n風控設定：\n● 預設停損：30 點\n● 觀察停利：80 點\n\n最終指令：\n> 禁止交易\n\n====================\n\n🤖 AI 即時建議\n狀態：⚪ 關鍵價不足\n現在動作：不進"
   }
 ]

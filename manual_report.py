@@ -1,3 +1,0 @@
-from report_scheduler import send_night_report_when_ready
-
-send_night_report_when_ready()

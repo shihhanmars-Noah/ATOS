@@ -1,5951 +1,686 @@
 [
   {
-    "datetime": "2026-05-15 10:39:28",
+    "datetime": "2026-06-08 16:47:53",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41649.0,
+    "futures_id": "TXFR1",
+    "price": 43615.0,
     "volume": 1,
-    "total_volume": 44297,
+    "total_volume": 13678,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 10:43:58",
+    "datetime": "2026-06-08 16:48:28",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41774.0,
+    "futures_id": "TXFR1",
+    "price": 43603.0,
+    "volume": 1,
+    "total_volume": 13802,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:48:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43660.0,
     "volume": 2,
-    "total_volume": 45212,
+    "total_volume": 13873,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 10:50:28",
+    "datetime": "2026-06-08 16:49:28",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41773.0,
+    "futures_id": "TXFR1",
+    "price": 43715.0,
+    "volume": 9,
+    "total_volume": 13995,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:49:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43704.0,
     "volume": 1,
-    "total_volume": 47155,
+    "total_volume": 14070,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 10:50:58",
+    "datetime": "2026-06-08 16:50:29",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41743.0,
+    "futures_id": "TXFR1",
+    "price": 43697.0,
+    "volume": 1,
+    "total_volume": 14090,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:50:59",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43680.0,
+    "volume": 1,
+    "total_volume": 14125,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:51:27",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43676.0,
+    "volume": 1,
+    "total_volume": 14156,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:51:59",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43674.0,
+    "volume": 1,
+    "total_volume": 14175,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:52:28",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43668.0,
+    "volume": 1,
+    "total_volume": 14234,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 16:52:57",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43646.0,
+    "volume": 1,
+    "total_volume": 14246,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:20:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43714.0,
     "volume": 2,
-    "total_volume": 47198,
+    "total_volume": 15765,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 10:51:29",
+    "datetime": "2026-06-08 17:21:29",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41760.0,
+    "futures_id": "TXFR1",
+    "price": 43725.0,
     "volume": 1,
-    "total_volume": 47269,
+    "total_volume": 15813,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 10:51:59",
+    "datetime": "2026-06-08 17:21:52",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41802.0,
-    "volume": 1,
-    "total_volume": 47697,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 10:52:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41779.0,
-    "volume": 1,
-    "total_volume": 47800,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 10:52:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41767.0,
-    "volume": 8,
-    "total_volume": 47888,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 10:53:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41766.0,
-    "volume": 1,
-    "total_volume": 47971,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 10:54:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41786.0,
-    "volume": 1,
-    "total_volume": 48062,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:28:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41485.0,
-    "volume": 1,
-    "total_volume": 67257,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:29:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41506.0,
-    "volume": 1,
-    "total_volume": 67375,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:29:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41466.0,
-    "volume": 1,
-    "total_volume": 67429,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:30:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41450.0,
+    "futures_id": "TXFR1",
+    "price": 43727.0,
     "volume": 2,
-    "total_volume": 67566,
+    "total_volume": 15830,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:30:59",
+    "datetime": "2026-06-08 17:22:23",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41470.0,
-    "volume": 1,
-    "total_volume": 67675,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:31:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41454.0,
-    "volume": 1,
-    "total_volume": 67780,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:31:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41444.0,
-    "volume": 1,
-    "total_volume": 67828,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:32:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41408.0,
-    "volume": 1,
-    "total_volume": 68063,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:32:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41438.0,
-    "volume": 1,
-    "total_volume": 68220,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:33:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41455.0,
-    "volume": 2,
-    "total_volume": 68362,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:33:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41468.0,
-    "volume": 1,
-    "total_volume": 68591,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:34:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41476.0,
-    "volume": 1,
-    "total_volume": 68684,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:34:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41520.0,
-    "volume": 1,
-    "total_volume": 68861,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:35:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41520.0,
-    "volume": 1,
-    "total_volume": 69104,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:35:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41491.0,
-    "volume": 1,
-    "total_volume": 69169,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:36:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41494.0,
-    "volume": 1,
-    "total_volume": 69239,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:36:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41448.0,
-    "volume": 1,
-    "total_volume": 69325,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:37:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41446.0,
-    "volume": 1,
-    "total_volume": 69400,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:37:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41461.0,
-    "volume": 1,
-    "total_volume": 69436,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:38:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41463.0,
-    "volume": 1,
-    "total_volume": 69478,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:38:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41458.0,
-    "volume": 1,
-    "total_volume": 69509,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:39:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41473.0,
-    "volume": 1,
-    "total_volume": 69586,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:39:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41479.0,
-    "volume": 1,
-    "total_volume": 69691,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:40:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41487.0,
-    "volume": 1,
-    "total_volume": 69740,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:40:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41488.0,
-    "volume": 1,
-    "total_volume": 69776,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:41:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41521.0,
-    "volume": 1,
-    "total_volume": 69944,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:41:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41467.0,
-    "volume": 1,
-    "total_volume": 70030,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:42:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41465.0,
-    "volume": 1,
-    "total_volume": 70133,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:42:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41460.0,
-    "volume": 1,
-    "total_volume": 70172,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:43:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41437.0,
-    "volume": 1,
-    "total_volume": 70270,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:43:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41428.0,
-    "volume": 1,
-    "total_volume": 70351,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:44:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41418.0,
-    "volume": 1,
-    "total_volume": 70445,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:44:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41402.0,
-    "volume": 1,
-    "total_volume": 70554,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:45:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41366.0,
+    "futures_id": "TXFR1",
+    "price": 43727.0,
     "volume": 3,
-    "total_volume": 70940,
+    "total_volume": 15862,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:45:58",
+    "datetime": "2026-06-08 17:22:54",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41406.0,
-    "volume": 1,
-    "total_volume": 71058,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:46:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41391.0,
-    "volume": 1,
-    "total_volume": 71140,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:46:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41358.0,
+    "futures_id": "TXFR1",
+    "price": 43728.0,
     "volume": 2,
-    "total_volume": 71281,
+    "total_volume": 15870,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:47:29",
+    "datetime": "2026-06-08 17:23:28",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41322.0,
+    "futures_id": "TXFR1",
+    "price": 43714.0,
     "volume": 1,
-    "total_volume": 71515,
+    "total_volume": 15894,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:47:59",
+    "datetime": "2026-06-08 17:23:55",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41333.0,
+    "futures_id": "TXFR1",
+    "price": 43711.0,
+    "volume": 1,
+    "total_volume": 15901,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:24:26",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43703.0,
+    "volume": 1,
+    "total_volume": 15924,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:24:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43698.0,
+    "volume": 1,
+    "total_volume": 15931,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:25:28",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43692.0,
+    "volume": 2,
+    "total_volume": 15956,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:25:55",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43710.0,
+    "volume": 1,
+    "total_volume": 15968,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:29:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43682.0,
+    "volume": 1,
+    "total_volume": 16090,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:30:22",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43670.0,
+    "volume": 1,
+    "total_volume": 16101,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:30:42",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43689.0,
+    "volume": 1,
+    "total_volume": 16112,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:31:15",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43676.0,
+    "volume": 1,
+    "total_volume": 16114,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:31:56",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43679.0,
+    "volume": 1,
+    "total_volume": 16127,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:32:27",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43654.0,
+    "volume": 1,
+    "total_volume": 16187,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:32:56",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43672.0,
+    "volume": 1,
+    "total_volume": 16202,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:33:29",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43650.0,
+    "volume": 2,
+    "total_volume": 16221,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:33:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43642.0,
+    "volume": 1,
+    "total_volume": 16237,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:34:25",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43629.0,
+    "volume": 1,
+    "total_volume": 16274,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:34:57",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43622.0,
+    "volume": 1,
+    "total_volume": 16300,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:48:29",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43821.0,
+    "volume": 2,
+    "total_volume": 17526,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:48:59",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43872.0,
+    "volume": 2,
+    "total_volume": 17810,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:49:29",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43851.0,
+    "volume": 1,
+    "total_volume": 17922,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:49:42",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43852.0,
+    "volume": 1,
+    "total_volume": 17934,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:50:28",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43843.0,
+    "volume": 1,
+    "total_volume": 18050,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:50:46",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43838.0,
+    "volume": 1,
+    "total_volume": 18084,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:51:24",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43834.0,
+    "volume": 1,
+    "total_volume": 18106,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:51:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43853.0,
+    "volume": 1,
+    "total_volume": 18138,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:52:28",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43871.0,
+    "volume": 1,
+    "total_volume": 18212,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:52:58",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43841.0,
+    "volume": 2,
+    "total_volume": 18243,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:53:26",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43850.0,
+    "volume": 1,
+    "total_volume": 18282,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:53:55",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43847.0,
+    "volume": 1,
+    "total_volume": 18313,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:54:27",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43870.0,
+    "volume": 2,
+    "total_volume": 18344,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:54:51",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43867.0,
     "volume": 3,
-    "total_volume": 71675,
+    "total_volume": 18361,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:48:28",
+    "datetime": "2026-06-08 17:55:28",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41324.0,
-    "volume": 6,
-    "total_volume": 71839,
+    "futures_id": "TXFR1",
+    "price": 43861.0,
+    "volume": 1,
+    "total_volume": 18385,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:48:59",
+    "datetime": "2026-06-08 17:55:51",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41355.0,
+    "futures_id": "TXFR1",
+    "price": 43868.0,
+    "volume": 1,
+    "total_volume": 18397,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 17:56:27",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43847.0,
     "volume": 3,
-    "total_volume": 71958,
+    "total_volume": 18431,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:49:28",
+    "datetime": "2026-06-08 17:56:58",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41334.0,
+    "futures_id": "TXFR1",
+    "price": 43849.0,
     "volume": 1,
-    "total_volume": 72041,
+    "total_volume": 18444,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:49:58",
+    "datetime": "2026-06-08 17:57:28",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41325.0,
-    "volume": 2,
-    "total_volume": 72145,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:50:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41322.0,
+    "futures_id": "TXFR1",
+    "price": 43851.0,
     "volume": 1,
-    "total_volume": 72241,
+    "total_volume": 18458,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 12:50:59",
+    "datetime": "2026-06-08 17:57:59",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41331.0,
-    "volume": 1,
-    "total_volume": 72296,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:51:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41315.0,
-    "volume": 1,
-    "total_volume": 72374,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:51:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41335.0,
-    "volume": 1,
-    "total_volume": 72479,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:52:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41303.0,
-    "volume": 1,
-    "total_volume": 72569,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:52:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41310.0,
-    "volume": 2,
-    "total_volume": 72693,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:53:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41341.0,
-    "volume": 1,
-    "total_volume": 72764,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:53:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41313.0,
-    "volume": 1,
-    "total_volume": 72824,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:54:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41290.0,
-    "volume": 1,
-    "total_volume": 72925,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:54:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41327.0,
-    "volume": 3,
-    "total_volume": 73001,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:55:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41318.0,
-    "volume": 1,
-    "total_volume": 73130,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:55:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41300.0,
-    "volume": 1,
-    "total_volume": 73244,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:56:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41259.0,
-    "volume": 1,
-    "total_volume": 73472,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:56:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41275.0,
-    "volume": 1,
-    "total_volume": 73584,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:57:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41255.0,
-    "volume": 1,
-    "total_volume": 73730,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:57:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41262.0,
-    "volume": 1,
-    "total_volume": 73851,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:58:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41231.0,
-    "volume": 2,
-    "total_volume": 74011,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:58:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41232.0,
-    "volume": 2,
-    "total_volume": 74198,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:59:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41205.0,
-    "volume": 1,
-    "total_volume": 74532,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 12:59:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41213.0,
-    "volume": 1,
-    "total_volume": 74733,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:00:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41180.0,
-    "volume": 1,
-    "total_volume": 75020,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:00:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41156.0,
-    "volume": 1,
-    "total_volume": 75241,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:01:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41136.0,
-    "volume": 1,
-    "total_volume": 75570,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:01:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41189.0,
-    "volume": 1,
-    "total_volume": 75928,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:02:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41169.0,
-    "volume": 1,
-    "total_volume": 76242,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:02:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41184.0,
-    "volume": 1,
-    "total_volume": 76419,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:03:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41150.0,
-    "volume": 1,
-    "total_volume": 76644,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:03:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41140.0,
-    "volume": 1,
-    "total_volume": 76769,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:04:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41123.0,
-    "volume": 1,
-    "total_volume": 76973,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:04:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41175.0,
-    "volume": 1,
-    "total_volume": 77230,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:05:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41145.0,
-    "volume": 1,
-    "total_volume": 77391,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:05:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41174.0,
-    "volume": 2,
-    "total_volume": 77711,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:06:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41139.0,
-    "volume": 1,
-    "total_volume": 77863,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:06:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41126.0,
-    "volume": 2,
-    "total_volume": 78038,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:07:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41095.0,
-    "volume": 1,
-    "total_volume": 78274,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:07:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41144.0,
-    "volume": 1,
-    "total_volume": 78552,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:08:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41125.0,
-    "volume": 2,
-    "total_volume": 78952,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:08:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41143.0,
-    "volume": 2,
-    "total_volume": 79030,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:09:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41167.0,
-    "volume": 1,
-    "total_volume": 79267,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:09:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41177.0,
-    "volume": 1,
-    "total_volume": 79355,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:10:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41181.0,
-    "volume": 1,
-    "total_volume": 79901,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:11:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41174.0,
-    "volume": 1,
-    "total_volume": 80024,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:11:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41172.0,
-    "volume": 1,
-    "total_volume": 80163,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:12:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41145.0,
-    "volume": 1,
-    "total_volume": 80426,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:12:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41158.0,
-    "volume": 1,
-    "total_volume": 80500,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:13:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41147.0,
-    "volume": 1,
-    "total_volume": 80617,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:13:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41167.0,
-    "volume": 1,
-    "total_volume": 80709,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:14:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41166.0,
-    "volume": 1,
-    "total_volume": 80810,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:14:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41179.0,
+    "futures_id": "TXFR1",
+    "price": 43847.0,
     "volume": 4,
-    "total_volume": 80929,
+    "total_volume": 18494,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:15:28",
+    "datetime": "2026-06-08 17:58:24",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41154.0,
+    "futures_id": "TXFR1",
+    "price": 43855.0,
     "volume": 1,
-    "total_volume": 81140,
+    "total_volume": 18518,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:15:57",
+    "datetime": "2026-06-08 17:58:57",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41182.0,
-    "volume": 1,
-    "total_volume": 81364,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:16:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41156.0,
-    "volume": 1,
-    "total_volume": 81516,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:16:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41169.0,
-    "volume": 2,
-    "total_volume": 81643,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:17:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41150.0,
-    "volume": 1,
-    "total_volume": 81744,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:17:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41148.0,
-    "volume": 1,
-    "total_volume": 81869,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:18:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41147.0,
-    "volume": 1,
-    "total_volume": 81939,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:18:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41138.0,
-    "volume": 1,
-    "total_volume": 82036,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:19:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41143.0,
-    "volume": 1,
-    "total_volume": 82092,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:19:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41165.0,
-    "volume": 1,
-    "total_volume": 82231,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:20:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41166.0,
-    "volume": 1,
-    "total_volume": 82378,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:20:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41187.0,
-    "volume": 1,
-    "total_volume": 82478,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:21:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41180.0,
-    "volume": 1,
-    "total_volume": 82620,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:21:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41164.0,
-    "volume": 1,
-    "total_volume": 82759,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:22:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41162.0,
-    "volume": 1,
-    "total_volume": 82844,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:22:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41162.0,
-    "volume": 1,
-    "total_volume": 82920,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:23:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41145.0,
-    "volume": 1,
-    "total_volume": 82992,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:23:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41142.0,
-    "volume": 1,
-    "total_volume": 83059,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:24:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41137.0,
-    "volume": 4,
-    "total_volume": 83125,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:24:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41142.0,
-    "volume": 1,
-    "total_volume": 83211,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:25:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41151.0,
-    "volume": 1,
-    "total_volume": 83336,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:25:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41166.0,
-    "volume": 1,
-    "total_volume": 83455,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:26:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41137.0,
-    "volume": 1,
-    "total_volume": 83761,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:26:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41154.0,
-    "volume": 6,
-    "total_volume": 83949,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:27:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41182.0,
-    "volume": 1,
-    "total_volume": 84226,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:28:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41177.0,
-    "volume": 1,
-    "total_volume": 84381,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:28:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41185.0,
-    "volume": 1,
-    "total_volume": 84472,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:29:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41210.0,
-    "volume": 1,
-    "total_volume": 84759,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:29:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41195.0,
-    "volume": 1,
-    "total_volume": 84862,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:30:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41164.0,
-    "volume": 1,
-    "total_volume": 85227,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:30:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41156.0,
+    "futures_id": "TXFR1",
+    "price": 43854.0,
     "volume": 3,
-    "total_volume": 85475,
+    "total_volume": 18528,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:31:31",
+    "datetime": "2026-06-08 17:59:25",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41110.0,
+    "futures_id": "TXFR1",
+    "price": 43853.0,
     "volume": 1,
-    "total_volume": 85766,
+    "total_volume": 18548,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:31:57",
+    "datetime": "2026-06-08 17:59:57",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41108.0,
+    "futures_id": "TXFR1",
+    "price": 43870.0,
     "volume": 1,
-    "total_volume": 85952,
+    "total_volume": 18558,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:32:28",
+    "datetime": "2026-06-08 18:00:22",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41113.0,
+    "futures_id": "TXFR1",
+    "price": 43846.0,
     "volume": 1,
-    "total_volume": 86429,
+    "total_volume": 18591,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:32:59",
+    "datetime": "2026-06-08 18:00:53",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41123.0,
+    "futures_id": "TXFR1",
+    "price": 43837.0,
     "volume": 1,
-    "total_volume": 86757,
+    "total_volume": 18604,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:33:29",
+    "datetime": "2026-06-08 18:01:27",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41154.0,
+    "futures_id": "TXFR1",
+    "price": 43821.0,
     "volume": 1,
-    "total_volume": 87131,
+    "total_volume": 18650,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:33:58",
+    "datetime": "2026-06-08 18:01:59",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41175.0,
-    "volume": 3,
-    "total_volume": 87661,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:34:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41175.0,
+    "futures_id": "TXFR1",
+    "price": 43798.0,
     "volume": 1,
-    "total_volume": 87947,
+    "total_volume": 18727,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:34:59",
+    "datetime": "2026-06-08 18:02:27",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41111.0,
-    "volume": 1,
-    "total_volume": 88263,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:35:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41107.0,
+    "futures_id": "TXFR1",
+    "price": 43776.0,
     "volume": 2,
-    "total_volume": 88480,
+    "total_volume": 19006,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:35:58",
+    "datetime": "2026-06-08 18:02:58",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41116.0,
+    "futures_id": "TXFR1",
+    "price": 43788.0,
     "volume": 1,
-    "total_volume": 88598,
+    "total_volume": 19067,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 13:36:28",
+    "datetime": "2026-06-08 18:03:29",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41086.0,
-    "volume": 1,
-    "total_volume": 88764,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:36:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41097.0,
+    "futures_id": "TXFR1",
+    "price": 43781.0,
     "volume": 2,
-    "total_volume": 88943,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:37:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41094.0,
-    "volume": 19,
-    "total_volume": 89076,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:37:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41035.0,
-    "volume": 1,
-    "total_volume": 89371,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:38:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41054.0,
-    "volume": 3,
-    "total_volume": 89608,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:38:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41058.0,
-    "volume": 1,
-    "total_volume": 89755,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:39:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41073.0,
-    "volume": 1,
-    "total_volume": 89916,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:39:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41064.0,
-    "volume": 1,
-    "total_volume": 90005,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:40:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41050.0,
-    "volume": 1,
-    "total_volume": 90130,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:40:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41056.0,
-    "volume": 1,
-    "total_volume": 90268,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:41:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41040.0,
-    "volume": 1,
-    "total_volume": 90400,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:41:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41037.0,
-    "volume": 1,
-    "total_volume": 90521,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:42:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41005.0,
-    "volume": 1,
-    "total_volume": 90756,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:42:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40990.0,
-    "volume": 1,
-    "total_volume": 91097,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:43:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41011.0,
-    "volume": 1,
-    "total_volume": 91831,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 13:44:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40992.0,
-    "volume": 1,
-    "total_volume": 92351,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:00:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41174.0,
-    "volume": 2,
-    "total_volume": 454,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:00:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41176.0,
-    "volume": 5,
-    "total_volume": 553,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:01:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41197.0,
-    "volume": 1,
-    "total_volume": 903,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:01:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41171.0,
-    "volume": 1,
-    "total_volume": 1024,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:02:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41179.0,
-    "volume": 1,
-    "total_volume": 1044,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:02:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41171.0,
-    "volume": 1,
-    "total_volume": 1076,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:03:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41174.0,
-    "volume": 1,
-    "total_volume": 1133,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:03:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41150.0,
-    "volume": 1,
-    "total_volume": 1173,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:04:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41116.0,
-    "volume": 1,
-    "total_volume": 1242,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:04:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41128.0,
-    "volume": 2,
-    "total_volume": 1331,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:05:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41156.0,
-    "volume": 1,
-    "total_volume": 1414,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:05:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41172.0,
-    "volume": 1,
-    "total_volume": 1445,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:06:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41158.0,
-    "volume": 2,
-    "total_volume": 1490,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:06:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41145.0,
-    "volume": 1,
-    "total_volume": 1516,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:07:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41165.0,
-    "volume": 1,
-    "total_volume": 1595,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:07:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41152.0,
-    "volume": 1,
-    "total_volume": 1622,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:08:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41145.0,
-    "volume": 2,
-    "total_volume": 1656,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:08:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41142.0,
-    "volume": 4,
-    "total_volume": 1685,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:09:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41151.0,
-    "volume": 1,
-    "total_volume": 1697,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:09:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41155.0,
-    "volume": 1,
-    "total_volume": 1729,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:10:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41174.0,
-    "volume": 2,
-    "total_volume": 1760,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:10:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41175.0,
-    "volume": 1,
-    "total_volume": 1834,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:11:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41172.0,
-    "volume": 1,
-    "total_volume": 1869,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:12:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41166.0,
-    "volume": 1,
-    "total_volume": 1914,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:12:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41168.0,
-    "volume": 1,
-    "total_volume": 1947,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:13:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41171.0,
-    "volume": 1,
-    "total_volume": 1971,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:13:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41178.0,
-    "volume": 4,
-    "total_volume": 2010,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:14:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41179.0,
-    "volume": 3,
-    "total_volume": 2060,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:14:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41194.0,
-    "volume": 1,
-    "total_volume": 2145,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:15:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41207.0,
-    "volume": 1,
-    "total_volume": 2297,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:15:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41194.0,
-    "volume": 1,
-    "total_volume": 2351,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:16:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41204.0,
-    "volume": 1,
-    "total_volume": 2391,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:16:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41213.0,
-    "volume": 1,
-    "total_volume": 2440,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:17:18",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41211.0,
-    "volume": 3,
-    "total_volume": 2490,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:17:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41195.0,
-    "volume": 2,
-    "total_volume": 2518,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 15:18:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 41210.0,
-    "volume": 1,
-    "total_volume": 2563,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:06:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40850.0,
-    "volume": 1,
-    "total_volume": 7912,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:10:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40845.0,
-    "volume": 1,
-    "total_volume": 8348,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:24:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40740.0,
-    "volume": 3,
-    "total_volume": 9863,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:26:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40717.0,
-    "volume": 1,
-    "total_volume": 10061,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:27:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40711.0,
-    "volume": 1,
-    "total_volume": 10093,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:27:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40701.0,
-    "volume": 1,
-    "total_volume": 10180,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:28:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 10304,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:28:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40685.0,
-    "volume": 1,
-    "total_volume": 10361,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:29:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40653.0,
-    "volume": 8,
-    "total_volume": 10501,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:29:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40649.0,
-    "volume": 1,
-    "total_volume": 10611,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:30:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40622.0,
-    "volume": 1,
-    "total_volume": 10737,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:30:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40617.0,
-    "volume": 1,
-    "total_volume": 10820,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:31:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40620.0,
-    "volume": 1,
-    "total_volume": 10916,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:31:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 10973,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:32:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40648.0,
-    "volume": 1,
-    "total_volume": 11009,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:32:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40622.0,
-    "volume": 1,
-    "total_volume": 11049,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:33:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40606.0,
-    "volume": 1,
-    "total_volume": 11116,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:33:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40631.0,
-    "volume": 1,
-    "total_volume": 11187,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:34:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 11291,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:34:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40638.0,
-    "volume": 1,
-    "total_volume": 11346,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:35:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 11377,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:35:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40631.0,
-    "volume": 1,
-    "total_volume": 11459,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:36:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40641.0,
-    "volume": 1,
-    "total_volume": 11490,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:36:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40665.0,
-    "volume": 1,
-    "total_volume": 11549,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:37:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 11625,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:37:51",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40664.0,
-    "volume": 1,
-    "total_volume": 11690,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:38:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40673.0,
-    "volume": 1,
-    "total_volume": 11711,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:38:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40677.0,
-    "volume": 1,
-    "total_volume": 11733,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:39:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40701.0,
-    "volume": 1,
-    "total_volume": 11823,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:39:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40718.0,
-    "volume": 1,
-    "total_volume": 11889,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:40:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40731.0,
-    "volume": 1,
-    "total_volume": 11989,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:40:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40728.0,
-    "volume": 1,
-    "total_volume": 12013,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:41:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40754.0,
-    "volume": 2,
-    "total_volume": 12109,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:41:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40749.0,
-    "volume": 1,
-    "total_volume": 12163,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:42:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40754.0,
-    "volume": 1,
-    "total_volume": 12204,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:42:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40754.0,
-    "volume": 1,
-    "total_volume": 12293,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:43:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40779.0,
-    "volume": 1,
-    "total_volume": 12395,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:43:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40777.0,
-    "volume": 1,
-    "total_volume": 12447,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:44:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40785.0,
-    "volume": 2,
-    "total_volume": 12480,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:44:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40783.0,
-    "volume": 1,
-    "total_volume": 12505,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:45:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40803.0,
-    "volume": 1,
-    "total_volume": 12651,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:45:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40788.0,
-    "volume": 1,
-    "total_volume": 12709,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:46:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40796.0,
-    "volume": 1,
-    "total_volume": 12749,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:46:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40768.0,
-    "volume": 2,
-    "total_volume": 12772,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:47:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40782.0,
-    "volume": 1,
-    "total_volume": 12799,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:47:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40802.0,
-    "volume": 1,
-    "total_volume": 12873,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:48:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40805.0,
-    "volume": 1,
-    "total_volume": 12968,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:48:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40790.0,
-    "volume": 2,
-    "total_volume": 13006,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:49:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40778.0,
-    "volume": 1,
-    "total_volume": 13068,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:49:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40769.0,
-    "volume": 1,
-    "total_volume": 13081,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:50:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40759.0,
-    "volume": 1,
-    "total_volume": 13122,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:50:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40760.0,
-    "volume": 1,
-    "total_volume": 13138,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:51:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40741.0,
-    "volume": 1,
-    "total_volume": 13193,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:51:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40723.0,
-    "volume": 1,
-    "total_volume": 13242,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:52:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40711.0,
-    "volume": 1,
-    "total_volume": 13317,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:52:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40700.0,
-    "volume": 1,
-    "total_volume": 13363,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:53:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40712.0,
-    "volume": 3,
-    "total_volume": 13426,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:53:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40712.0,
-    "volume": 1,
-    "total_volume": 13484,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 16:54:23",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40716.0,
-    "volume": 1,
-    "total_volume": 13531,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:15:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40693.0,
-    "volume": 1,
-    "total_volume": 14918,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:31:30",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40677.0,
-    "volume": 1,
-    "total_volume": 16703,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:31:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40676.0,
-    "volume": 1,
-    "total_volume": 16725,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:32:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40700.0,
-    "volume": 1,
-    "total_volume": 16753,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:32:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40700.0,
-    "volume": 1,
-    "total_volume": 16768,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:33:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40705.0,
-    "volume": 1,
-    "total_volume": 16793,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:33:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40698.0,
-    "volume": 2,
-    "total_volume": 16811,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:34:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40674.0,
-    "volume": 1,
-    "total_volume": 16845,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:34:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40697.0,
-    "volume": 1,
-    "total_volume": 16920,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:35:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40686.0,
-    "volume": 1,
-    "total_volume": 16927,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:35:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40707.0,
-    "volume": 3,
-    "total_volume": 16946,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:36:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40728.0,
-    "volume": 3,
-    "total_volume": 17069,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:37:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40737.0,
-    "volume": 1,
-    "total_volume": 17095,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:37:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40734.0,
-    "volume": 2,
-    "total_volume": 17123,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:38:19",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40725.0,
-    "volume": 1,
-    "total_volume": 17157,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:38:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40734.0,
-    "volume": 1,
-    "total_volume": 17184,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:39:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40739.0,
-    "volume": 1,
-    "total_volume": 17246,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:39:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40735.0,
-    "volume": 1,
-    "total_volume": 17265,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:40:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40745.0,
-    "volume": 1,
-    "total_volume": 17283,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:40:51",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40735.0,
-    "volume": 1,
-    "total_volume": 17293,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:41:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40717.0,
-    "volume": 1,
-    "total_volume": 17342,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:41:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40713.0,
-    "volume": 1,
-    "total_volume": 17356,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:42:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40695.0,
-    "volume": 1,
-    "total_volume": 17402,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:42:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40700.0,
-    "volume": 1,
-    "total_volume": 17411,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:43:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40699.0,
-    "volume": 1,
-    "total_volume": 17425,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:43:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40686.0,
-    "volume": 2,
-    "total_volume": 17444,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:44:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40671.0,
-    "volume": 1,
-    "total_volume": 17494,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:44:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40686.0,
-    "volume": 1,
-    "total_volume": 17525,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:45:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40671.0,
-    "volume": 4,
-    "total_volume": 17543,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:45:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40674.0,
-    "volume": 2,
-    "total_volume": 17566,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:46:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40646.0,
-    "volume": 1,
-    "total_volume": 17642,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:46:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40650.0,
-    "volume": 1,
-    "total_volume": 17684,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:47:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40643.0,
-    "volume": 1,
-    "total_volume": 17714,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:47:49",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40649.0,
-    "volume": 2,
-    "total_volume": 17730,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:48:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40643.0,
-    "volume": 2,
-    "total_volume": 17753,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:49:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40656.0,
-    "volume": 4,
-    "total_volume": 17794,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:49:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 17838,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:50:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40626.0,
-    "volume": 1,
-    "total_volume": 17891,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:50:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40634.0,
-    "volume": 1,
-    "total_volume": 17938,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:51:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40617.0,
-    "volume": 2,
-    "total_volume": 18011,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:51:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40617.0,
-    "volume": 1,
-    "total_volume": 18029,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:52:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40605.0,
-    "volume": 1,
-    "total_volume": 18087,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:52:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40629.0,
-    "volume": 1,
-    "total_volume": 18120,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:53:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40627.0,
-    "volume": 1,
-    "total_volume": 18151,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:53:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40629.0,
-    "volume": 1,
-    "total_volume": 18197,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:54:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40625.0,
-    "volume": 1,
-    "total_volume": 18232,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:54:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40642.0,
-    "volume": 1,
-    "total_volume": 18273,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:55:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 18324,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:55:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40653.0,
-    "volume": 2,
-    "total_volume": 18430,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:56:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40684.0,
-    "volume": 1,
-    "total_volume": 18541,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:56:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40681.0,
-    "volume": 1,
-    "total_volume": 18561,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:57:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40674.0,
-    "volume": 1,
-    "total_volume": 18595,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:57:40",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40654.0,
-    "volume": 1,
-    "total_volume": 18605,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:58:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40654.0,
-    "volume": 2,
-    "total_volume": 18613,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:58:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40647.0,
-    "volume": 1,
-    "total_volume": 18633,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:59:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40643.0,
-    "volume": 2,
-    "total_volume": 18656,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 17:59:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40641.0,
-    "volume": 2,
-    "total_volume": 18679,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:00:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40649.0,
-    "volume": 2,
-    "total_volume": 18714,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:00:49",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40656.0,
-    "volume": 1,
-    "total_volume": 18728,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:01:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40658.0,
-    "volume": 1,
-    "total_volume": 18747,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:01:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40659.0,
-    "volume": 1,
-    "total_volume": 18767,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:02:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40660.0,
-    "volume": 1,
-    "total_volume": 18778,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:02:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40662.0,
-    "volume": 3,
-    "total_volume": 18800,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:03:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40639.0,
-    "volume": 1,
-    "total_volume": 18851,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:03:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40638.0,
-    "volume": 1,
-    "total_volume": 18872,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:04:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40612.0,
-    "volume": 1,
-    "total_volume": 18907,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:04:51",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40636.0,
-    "volume": 1,
-    "total_volume": 18927,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:05:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40645.0,
-    "volume": 1,
-    "total_volume": 18968,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:05:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40657.0,
-    "volume": 1,
-    "total_volume": 18994,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:06:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40679.0,
-    "volume": 2,
-    "total_volume": 19042,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:06:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40689.0,
-    "volume": 1,
     "total_volume": 19093,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:07:28",
+    "datetime": "2026-06-08 18:03:53",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40697.0,
+    "futures_id": "TXFR1",
+    "price": 43781.0,
     "volume": 1,
-    "total_volume": 19160,
+    "total_volume": 19104,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:07:57",
+    "datetime": "2026-06-08 18:04:26",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40697.0,
+    "futures_id": "TXFR1",
+    "price": 43789.0,
     "volume": 1,
-    "total_volume": 19199,
+    "total_volume": 19133,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:08:28",
+    "datetime": "2026-06-08 18:04:56",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40712.0,
+    "futures_id": "TXFR1",
+    "price": 43787.0,
     "volume": 1,
-    "total_volume": 19236,
+    "total_volume": 19149,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:08:58",
+    "datetime": "2026-06-08 18:05:26",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40705.0,
-    "volume": 1,
-    "total_volume": 19254,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:09:23",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40693.0,
-    "volume": 2,
-    "total_volume": 19267,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:09:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40713.0,
-    "volume": 1,
-    "total_volume": 19281,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:10:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40729.0,
-    "volume": 1,
-    "total_volume": 19347,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:10:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40746.0,
-    "volume": 1,
-    "total_volume": 19389,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:11:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40768.0,
-    "volume": 1,
-    "total_volume": 19552,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:11:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40767.0,
-    "volume": 1,
-    "total_volume": 19639,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:12:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40782.0,
-    "volume": 1,
-    "total_volume": 19683,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:12:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40782.0,
-    "volume": 1,
-    "total_volume": 19751,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:13:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40795.0,
-    "volume": 1,
-    "total_volume": 19796,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:13:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40787.0,
-    "volume": 2,
-    "total_volume": 19816,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:14:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40808.0,
-    "volume": 1,
-    "total_volume": 19904,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:14:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40796.0,
-    "volume": 1,
-    "total_volume": 19921,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:15:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40786.0,
-    "volume": 1,
-    "total_volume": 19949,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:16:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40795.0,
-    "volume": 1,
-    "total_volume": 20019,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:16:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40788.0,
-    "volume": 1,
-    "total_volume": 20034,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:17:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40792.0,
+    "futures_id": "TXFR1",
+    "price": 43814.0,
     "volume": 3,
-    "total_volume": 20078,
+    "total_volume": 19169,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:17:58",
+    "datetime": "2026-06-08 18:05:48",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40817.0,
+    "futures_id": "TXFR1",
+    "price": 43800.0,
+    "volume": 1,
+    "total_volume": 19206,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:06:22",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43815.0,
+    "volume": 1,
+    "total_volume": 19221,
+    "source": "FINMIND_FUTURES_SNAPSHOT"
+  },
+  {
+    "datetime": "2026-06-08 18:06:59",
+    "symbol": "TXF",
+    "futures_id": "TXFR1",
+    "price": 43840.0,
     "volume": 2,
-    "total_volume": 20191,
+    "total_volume": 19249,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:18:28",
+    "datetime": "2026-06-08 18:07:22",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40800.0,
+    "futures_id": "TXFR1",
+    "price": 43843.0,
     "volume": 1,
-    "total_volume": 20315,
+    "total_volume": 19277,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 18:18:58",
+    "datetime": "2026-06-08 18:07:59",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40796.0,
-    "volume": 2,
-    "total_volume": 20341,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:19:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40815.0,
-    "volume": 1,
-    "total_volume": 20372,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:19:51",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40797.0,
-    "volume": 3,
-    "total_volume": 20396,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:20:21",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40810.0,
-    "volume": 1,
-    "total_volume": 20437,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:20:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40819.0,
-    "volume": 1,
-    "total_volume": 20486,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:21:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40840.0,
-    "volume": 1,
-    "total_volume": 20587,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:21:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40814.0,
-    "volume": 2,
-    "total_volume": 20677,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:22:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40830.0,
-    "volume": 1,
-    "total_volume": 20736,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:22:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40821.0,
-    "volume": 1,
-    "total_volume": 20784,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:23:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40840.0,
-    "volume": 2,
-    "total_volume": 20899,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:23:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40864.0,
-    "volume": 2,
-    "total_volume": 20993,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:24:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40865.0,
-    "volume": 2,
-    "total_volume": 21182,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:24:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40853.0,
-    "volume": 1,
-    "total_volume": 21208,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:25:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40868.0,
-    "volume": 1,
-    "total_volume": 21275,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:25:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40860.0,
-    "volume": 4,
-    "total_volume": 21352,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:26:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40855.0,
-    "volume": 1,
-    "total_volume": 21365,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:26:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40832.0,
-    "volume": 1,
-    "total_volume": 21396,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:27:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40824.0,
-    "volume": 1,
-    "total_volume": 21427,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:27:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40806.0,
-    "volume": 2,
-    "total_volume": 21484,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:28:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40802.0,
-    "volume": 1,
-    "total_volume": 21542,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:29:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40800.0,
-    "volume": 1,
-    "total_volume": 21591,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:29:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40803.0,
-    "volume": 3,
-    "total_volume": 21612,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:30:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40805.0,
-    "volume": 1,
-    "total_volume": 21681,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:30:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40822.0,
-    "volume": 1,
-    "total_volume": 21696,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:31:30",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40820.0,
-    "volume": 1,
-    "total_volume": 21718,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:31:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40820.0,
-    "volume": 1,
-    "total_volume": 21755,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:32:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40842.0,
-    "volume": 2,
-    "total_volume": 21792,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:32:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40845.0,
-    "volume": 1,
-    "total_volume": 21817,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:33:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40851.0,
-    "volume": 1,
-    "total_volume": 21834,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:33:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40874.0,
-    "volume": 1,
-    "total_volume": 21865,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:34:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40861.0,
-    "volume": 1,
-    "total_volume": 21910,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:34:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40866.0,
-    "volume": 1,
-    "total_volume": 21937,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:35:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40880.0,
-    "volume": 1,
-    "total_volume": 21994,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:35:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40863.0,
-    "volume": 1,
-    "total_volume": 22046,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:36:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40850.0,
-    "volume": 1,
-    "total_volume": 22088,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:36:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40845.0,
-    "volume": 4,
-    "total_volume": 22122,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:37:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40855.0,
-    "volume": 1,
-    "total_volume": 22147,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:37:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40814.0,
-    "volume": 1,
-    "total_volume": 22227,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:38:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40822.0,
-    "volume": 1,
-    "total_volume": 22248,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:38:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40805.0,
-    "volume": 1,
-    "total_volume": 22272,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:39:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40796.0,
-    "volume": 1,
-    "total_volume": 22363,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:39:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40787.0,
-    "volume": 1,
-    "total_volume": 22386,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:40:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40788.0,
-    "volume": 1,
-    "total_volume": 22439,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:40:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40770.0,
-    "volume": 3,
-    "total_volume": 22502,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:41:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40759.0,
-    "volume": 1,
-    "total_volume": 22666,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:41:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40762.0,
-    "volume": 1,
-    "total_volume": 22678,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:42:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40774.0,
-    "volume": 1,
-    "total_volume": 22706,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:42:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40783.0,
-    "volume": 2,
-    "total_volume": 22728,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:43:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40790.0,
-    "volume": 2,
-    "total_volume": 22759,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:43:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40777.0,
-    "volume": 1,
-    "total_volume": 22774,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:44:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40767.0,
-    "volume": 1,
-    "total_volume": 22800,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:44:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40806.0,
-    "volume": 18,
-    "total_volume": 22959,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:45:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40853.0,
-    "volume": 1,
-    "total_volume": 23101,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:45:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40854.0,
-    "volume": 1,
-    "total_volume": 23141,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:46:30",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40871.0,
-    "volume": 1,
-    "total_volume": 23338,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:46:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40847.0,
-    "volume": 1,
-    "total_volume": 23393,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:47:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40877.0,
-    "volume": 1,
-    "total_volume": 23422,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:47:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40896.0,
-    "volume": 1,
-    "total_volume": 23592,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:48:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40922.0,
-    "volume": 1,
-    "total_volume": 23763,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:48:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40903.0,
-    "volume": 1,
-    "total_volume": 23951,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:49:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40909.0,
-    "volume": 1,
-    "total_volume": 23976,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:49:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40885.0,
-    "volume": 1,
-    "total_volume": 24105,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:50:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40888.0,
-    "volume": 1,
-    "total_volume": 24207,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:50:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40896.0,
-    "volume": 1,
-    "total_volume": 24237,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:51:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40943.0,
-    "volume": 1,
-    "total_volume": 24392,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:51:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40943.0,
-    "volume": 1,
-    "total_volume": 24567,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:52:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40967.0,
-    "volume": 2,
-    "total_volume": 24701,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:52:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40939.0,
-    "volume": 1,
-    "total_volume": 24790,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:53:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40954.0,
-    "volume": 1,
-    "total_volume": 24822,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:53:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40945.0,
-    "volume": 1,
-    "total_volume": 24876,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:54:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40944.0,
-    "volume": 1,
-    "total_volume": 24927,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:54:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40961.0,
-    "volume": 1,
-    "total_volume": 24996,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:55:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40966.0,
-    "volume": 1,
-    "total_volume": 25064,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:55:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40952.0,
-    "volume": 1,
-    "total_volume": 25103,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:56:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40948.0,
-    "volume": 2,
-    "total_volume": 25134,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:56:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40945.0,
-    "volume": 1,
-    "total_volume": 25167,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:57:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40928.0,
-    "volume": 2,
-    "total_volume": 25286,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:57:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40954.0,
-    "volume": 1,
-    "total_volume": 25353,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:58:23",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40958.0,
-    "volume": 1,
-    "total_volume": 25361,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:58:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40948.0,
-    "volume": 1,
-    "total_volume": 25377,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:59:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40937.0,
-    "volume": 1,
-    "total_volume": 25403,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 18:59:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40935.0,
-    "volume": 1,
-    "total_volume": 25419,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:00:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40965.0,
-    "volume": 1,
-    "total_volume": 25487,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:00:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40962.0,
-    "volume": 1,
-    "total_volume": 25537,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:01:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40960.0,
-    "volume": 1,
-    "total_volume": 25567,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:01:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40960.0,
-    "volume": 1,
-    "total_volume": 25589,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:02:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40920.0,
-    "volume": 1,
-    "total_volume": 25682,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:02:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40943.0,
-    "volume": 1,
-    "total_volume": 25709,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:03:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40930.0,
-    "volume": 1,
-    "total_volume": 25839,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:04:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40911.0,
-    "volume": 1,
-    "total_volume": 25901,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:04:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40894.0,
-    "volume": 1,
-    "total_volume": 26001,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:05:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40918.0,
-    "volume": 1,
-    "total_volume": 26023,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:05:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40921.0,
-    "volume": 1,
-    "total_volume": 26052,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:06:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40930.0,
-    "volume": 1,
-    "total_volume": 26069,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:06:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40930.0,
-    "volume": 1,
-    "total_volume": 26097,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:07:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40919.0,
-    "volume": 1,
-    "total_volume": 26110,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:07:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40917.0,
-    "volume": 2,
-    "total_volume": 26122,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:08:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40912.0,
-    "volume": 1,
-    "total_volume": 26154,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:08:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40909.0,
-    "volume": 1,
-    "total_volume": 26169,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:09:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40906.0,
-    "volume": 1,
-    "total_volume": 26178,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:09:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40898.0,
-    "volume": 1,
-    "total_volume": 26194,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:10:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40901.0,
-    "volume": 1,
-    "total_volume": 26238,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:10:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40901.0,
-    "volume": 1,
-    "total_volume": 26261,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:11:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40912.0,
-    "volume": 1,
-    "total_volume": 26284,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:11:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40922.0,
-    "volume": 1,
-    "total_volume": 26299,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:12:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40925.0,
-    "volume": 1,
-    "total_volume": 26307,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:12:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40906.0,
-    "volume": 1,
-    "total_volume": 26411,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:13:20",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40897.0,
-    "volume": 1,
-    "total_volume": 26498,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:13:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40899.0,
-    "volume": 1,
-    "total_volume": 26532,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:14:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40919.0,
-    "volume": 1,
-    "total_volume": 26600,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:15:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40911.0,
-    "volume": 1,
-    "total_volume": 26611,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:15:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40922.0,
-    "volume": 1,
-    "total_volume": 26627,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:16:31",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40905.0,
-    "volume": 1,
-    "total_volume": 26704,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:16:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40896.0,
-    "volume": 1,
-    "total_volume": 26715,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:17:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40898.0,
-    "volume": 1,
-    "total_volume": 26723,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:17:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40892.0,
-    "volume": 1,
-    "total_volume": 26817,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:18:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40889.0,
-    "volume": 1,
-    "total_volume": 26841,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:18:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40885.0,
-    "volume": 1,
-    "total_volume": 26849,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:19:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40897.0,
-    "volume": 2,
-    "total_volume": 26892,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:19:48",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40882.0,
-    "volume": 4,
-    "total_volume": 26906,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:20:21",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40888.0,
-    "volume": 1,
-    "total_volume": 26955,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:20:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40888.0,
-    "volume": 1,
-    "total_volume": 26959,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:21:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40886.0,
-    "volume": 2,
-    "total_volume": 27008,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:21:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40863.0,
-    "volume": 1,
-    "total_volume": 27072,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:22:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40854.0,
-    "volume": 1,
-    "total_volume": 27165,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:22:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40850.0,
-    "volume": 1,
-    "total_volume": 27219,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:23:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40846.0,
-    "volume": 1,
-    "total_volume": 27250,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:23:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40838.0,
-    "volume": 1,
-    "total_volume": 27302,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:24:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40840.0,
-    "volume": 1,
-    "total_volume": 27331,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:24:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40837.0,
-    "volume": 1,
-    "total_volume": 27344,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:25:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40828.0,
-    "volume": 2,
-    "total_volume": 27389,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:25:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40810.0,
-    "volume": 1,
-    "total_volume": 27459,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:26:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40808.0,
-    "volume": 2,
-    "total_volume": 27568,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:26:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40820.0,
-    "volume": 1,
-    "total_volume": 27641,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:27:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40820.0,
-    "volume": 1,
-    "total_volume": 27658,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:27:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40824.0,
-    "volume": 1,
-    "total_volume": 27665,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:28:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40833.0,
-    "volume": 7,
-    "total_volume": 27696,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:28:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40839.0,
-    "volume": 3,
-    "total_volume": 27728,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:29:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40830.0,
-    "volume": 1,
-    "total_volume": 27748,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:29:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40826.0,
-    "volume": 1,
-    "total_volume": 27752,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:30:15",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40830.0,
-    "volume": 1,
-    "total_volume": 27758,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:30:47",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40827.0,
-    "volume": 1,
-    "total_volume": 27800,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:31:12",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40829.0,
-    "volume": 1,
-    "total_volume": 27807,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:31:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40832.0,
-    "volume": 1,
-    "total_volume": 27817,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:32:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40817.0,
-    "volume": 1,
-    "total_volume": 27861,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:32:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40797.0,
-    "volume": 1,
-    "total_volume": 27899,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:33:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40797.0,
-    "volume": 1,
-    "total_volume": 27918,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:33:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40787.0,
-    "volume": 2,
-    "total_volume": 27956,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:34:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40765.0,
-    "volume": 1,
-    "total_volume": 28020,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:34:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40775.0,
-    "volume": 1,
-    "total_volume": 28135,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:35:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40780.0,
-    "volume": 1,
-    "total_volume": 28190,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:35:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40792.0,
-    "volume": 1,
-    "total_volume": 28212,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:36:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40781.0,
-    "volume": 1,
-    "total_volume": 28263,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:36:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40782.0,
-    "volume": 2,
-    "total_volume": 28281,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:37:23",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40775.0,
-    "volume": 1,
-    "total_volume": 28303,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:37:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40773.0,
-    "volume": 1,
-    "total_volume": 28363,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:38:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40760.0,
-    "volume": 1,
-    "total_volume": 28386,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:38:47",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40762.0,
-    "volume": 2,
-    "total_volume": 28401,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:39:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40745.0,
-    "volume": 1,
-    "total_volume": 28483,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:39:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40735.0,
-    "volume": 1,
-    "total_volume": 28510,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:40:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40728.0,
-    "volume": 1,
-    "total_volume": 28586,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:40:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40716.0,
-    "volume": 1,
-    "total_volume": 28645,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:41:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40705.0,
-    "volume": 3,
-    "total_volume": 28728,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:41:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40708.0,
-    "volume": 1,
-    "total_volume": 28749,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:42:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40696.0,
-    "volume": 1,
-    "total_volume": 28845,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:42:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40717.0,
-    "volume": 1,
-    "total_volume": 28897,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:43:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40719.0,
-    "volume": 3,
-    "total_volume": 28923,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:43:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40728.0,
-    "volume": 1,
-    "total_volume": 28956,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:44:23",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40727.0,
-    "volume": 1,
-    "total_volume": 28975,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:44:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40714.0,
-    "volume": 1,
-    "total_volume": 28995,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:45:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40722.0,
-    "volume": 1,
-    "total_volume": 29046,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:45:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40734.0,
-    "volume": 1,
-    "total_volume": 29066,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:46:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40743.0,
-    "volume": 1,
-    "total_volume": 29126,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:46:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40763.0,
-    "volume": 1,
-    "total_volume": 29163,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:47:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40757.0,
-    "volume": 2,
-    "total_volume": 29202,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:47:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40760.0,
-    "volume": 1,
-    "total_volume": 29221,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:48:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40770.0,
-    "volume": 1,
-    "total_volume": 29311,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:48:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40782.0,
-    "volume": 1,
-    "total_volume": 29373,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:49:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40785.0,
-    "volume": 1,
-    "total_volume": 29408,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:49:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40771.0,
-    "volume": 1,
-    "total_volume": 29441,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:50:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40768.0,
-    "volume": 1,
-    "total_volume": 29455,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:50:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40786.0,
-    "volume": 1,
-    "total_volume": 29474,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:51:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40790.0,
-    "volume": 1,
-    "total_volume": 29572,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:51:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40790.0,
-    "volume": 2,
-    "total_volume": 29644,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:52:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40797.0,
-    "volume": 1,
-    "total_volume": 29670,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:52:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40790.0,
-    "volume": 2,
-    "total_volume": 29684,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:53:25",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40781.0,
-    "volume": 1,
-    "total_volume": 29709,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:53:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40780.0,
-    "volume": 1,
-    "total_volume": 29718,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:54:21",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40784.0,
-    "volume": 1,
-    "total_volume": 29731,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:54:43",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40780.0,
-    "volume": 1,
-    "total_volume": 29758,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:55:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40766.0,
-    "volume": 1,
-    "total_volume": 29797,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:55:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40752.0,
-    "volume": 1,
-    "total_volume": 29817,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:56:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40742.0,
-    "volume": 2,
-    "total_volume": 29861,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:56:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40754.0,
-    "volume": 1,
-    "total_volume": 29906,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:57:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40742.0,
-    "volume": 1,
-    "total_volume": 29922,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:57:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40741.0,
-    "volume": 1,
-    "total_volume": 29937,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:58:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40722.0,
-    "volume": 2,
-    "total_volume": 29962,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:59:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40716.0,
-    "volume": 2,
-    "total_volume": 30048,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 19:59:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40714.0,
-    "volume": 1,
-    "total_volume": 30110,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:00:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40692.0,
-    "volume": 1,
-    "total_volume": 30182,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:00:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40689.0,
-    "volume": 1,
-    "total_volume": 30264,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:01:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40660.0,
-    "volume": 2,
-    "total_volume": 30378,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:01:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40669.0,
-    "volume": 2,
-    "total_volume": 30442,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:02:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40651.0,
-    "volume": 2,
-    "total_volume": 30527,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:02:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40666.0,
-    "volume": 1,
-    "total_volume": 30536,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:03:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40682.0,
-    "volume": 1,
-    "total_volume": 30576,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:03:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40695.0,
-    "volume": 1,
-    "total_volume": 30601,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:04:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40705.0,
-    "volume": 1,
-    "total_volume": 30641,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:04:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40699.0,
-    "volume": 1,
-    "total_volume": 30672,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:05:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40698.0,
-    "volume": 1,
-    "total_volume": 30696,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:05:49",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40700.0,
-    "volume": 2,
-    "total_volume": 30710,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:06:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40689.0,
-    "volume": 1,
-    "total_volume": 30733,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:06:52",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40694.0,
-    "volume": 1,
-    "total_volume": 30744,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:07:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 30788,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:07:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40658.0,
-    "volume": 1,
-    "total_volume": 30825,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:08:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40654.0,
-    "volume": 1,
-    "total_volume": 30875,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:08:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40660.0,
-    "volume": 1,
-    "total_volume": 30894,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:09:19",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40660.0,
-    "volume": 1,
-    "total_volume": 30920,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:09:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40672.0,
-    "volume": 5,
-    "total_volume": 30970,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:10:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40686.0,
-    "volume": 1,
-    "total_volume": 31015,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:10:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40696.0,
-    "volume": 1,
-    "total_volume": 31055,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:11:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40670.0,
-    "volume": 1,
-    "total_volume": 31064,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:11:45",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40673.0,
-    "volume": 1,
-    "total_volume": 31065,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:12:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40659.0,
-    "volume": 1,
-    "total_volume": 31113,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:12:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40673.0,
-    "volume": 1,
-    "total_volume": 31121,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:13:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40665.0,
-    "volume": 2,
-    "total_volume": 31132,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:13:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40666.0,
-    "volume": 1,
-    "total_volume": 31140,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:14:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40619.0,
-    "volume": 2,
-    "total_volume": 31242,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:14:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40632.0,
-    "volume": 1,
-    "total_volume": 31290,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:15:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 31371,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:15:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40662.0,
-    "volume": 1,
-    "total_volume": 31413,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:16:30",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40661.0,
-    "volume": 1,
-    "total_volume": 31448,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:16:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40682.0,
-    "volume": 1,
-    "total_volume": 31494,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:17:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40680.0,
-    "volume": 1,
-    "total_volume": 31560,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:18:10",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40666.0,
-    "volume": 1,
-    "total_volume": 31563,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:18:52",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40677.0,
-    "volume": 1,
-    "total_volume": 31565,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:19:23",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40670.0,
-    "volume": 1,
-    "total_volume": 31611,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:19:42",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 2,
-    "total_volume": 31633,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:20:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40679.0,
-    "volume": 1,
-    "total_volume": 31661,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:20:47",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40688.0,
-    "volume": 1,
-    "total_volume": 31755,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:21:17",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40680.0,
-    "volume": 1,
-    "total_volume": 31786,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:21:46",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40681.0,
-    "volume": 1,
-    "total_volume": 31804,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:22:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40693.0,
-    "volume": 1,
-    "total_volume": 31827,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:22:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40701.0,
-    "volume": 1,
-    "total_volume": 31909,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:23:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40700.0,
-    "volume": 1,
-    "total_volume": 31937,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:23:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40690.0,
-    "volume": 1,
-    "total_volume": 32007,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:24:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40646.0,
-    "volume": 1,
-    "total_volume": 32052,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:24:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 32066,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:25:19",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40658.0,
-    "volume": 1,
-    "total_volume": 32073,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:25:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40660.0,
-    "volume": 1,
-    "total_volume": 32081,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:26:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40664.0,
-    "volume": 1,
-    "total_volume": 32094,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:27:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40616.0,
-    "volume": 5,
-    "total_volume": 32163,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:27:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40628.0,
-    "volume": 1,
-    "total_volume": 32191,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:28:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40628.0,
-    "volume": 2,
-    "total_volume": 32223,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:28:54",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40630.0,
-    "volume": 2,
-    "total_volume": 32250,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:29:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 2,
-    "total_volume": 32261,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:29:48",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40642.0,
-    "volume": 1,
-    "total_volume": 32326,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:30:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40624.0,
-    "volume": 1,
-    "total_volume": 32424,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:30:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40604.0,
-    "volume": 2,
-    "total_volume": 32544,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:31:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40616.0,
-    "volume": 1,
-    "total_volume": 32592,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:31:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40627.0,
-    "volume": 2,
-    "total_volume": 32634,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:32:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40615.0,
-    "volume": 1,
-    "total_volume": 32654,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:32:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40633.0,
-    "volume": 1,
-    "total_volume": 32666,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:33:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40627.0,
-    "volume": 1,
-    "total_volume": 32688,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:33:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40638.0,
-    "volume": 1,
-    "total_volume": 32707,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:34:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40636.0,
-    "volume": 1,
-    "total_volume": 32720,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:34:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 32732,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:35:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40635.0,
-    "volume": 1,
-    "total_volume": 32749,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:36:24",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40613.0,
-    "volume": 1,
-    "total_volume": 32764,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:36:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40624.0,
-    "volume": 2,
-    "total_volume": 32806,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:37:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40602.0,
-    "volume": 2,
-    "total_volume": 32860,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:37:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40612.0,
-    "volume": 1,
-    "total_volume": 32877,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:38:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40621.0,
-    "volume": 1,
-    "total_volume": 32898,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:38:52",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40615.0,
-    "volume": 1,
-    "total_volume": 32904,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:39:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40624.0,
-    "volume": 1,
-    "total_volume": 32920,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:39:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40634.0,
-    "volume": 2,
-    "total_volume": 32944,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:40:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40637.0,
-    "volume": 1,
-    "total_volume": 32956,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:40:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40669.0,
-    "volume": 1,
-    "total_volume": 33090,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:41:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40682.0,
-    "volume": 1,
-    "total_volume": 33153,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:41:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40682.0,
-    "volume": 1,
-    "total_volume": 33177,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:42:20",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 33242,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:42:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40641.0,
-    "volume": 1,
-    "total_volume": 33281,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:43:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40647.0,
-    "volume": 3,
-    "total_volume": 33312,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:43:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40665.0,
+    "futures_id": "TXFR1",
+    "price": 43845.0,
     "volume": 1,
-    "total_volume": 33327,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:44:27",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40650.0,
-    "volume": 1,
-    "total_volume": 33372,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:44:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40655.0,
-    "volume": 1,
-    "total_volume": 33422,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:45:22",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40655.0,
-    "volume": 1,
-    "total_volume": 33437,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:45:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40664.0,
-    "volume": 1,
-    "total_volume": 33462,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:46:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 33474,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:46:55",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 33493,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:47:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40660.0,
-    "volume": 1,
-    "total_volume": 33523,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:47:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40673.0,
-    "volume": 2,
-    "total_volume": 33548,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:48:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40670.0,
-    "volume": 1,
-    "total_volume": 33575,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:48:49",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40668.0,
-    "volume": 1,
-    "total_volume": 33581,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:49:10",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40671.0,
-    "volume": 1,
-    "total_volume": 33586,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:49:41",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40664.0,
-    "volume": 2,
-    "total_volume": 33604,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:50:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40659.0,
-    "volume": 1,
-    "total_volume": 33631,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:50:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40664.0,
-    "volume": 1,
-    "total_volume": 33643,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:51:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40678.0,
-    "volume": 1,
-    "total_volume": 33661,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:51:59",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40692.0,
-    "volume": 1,
-    "total_volume": 33680,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:52:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40694.0,
-    "volume": 5,
-    "total_volume": 33707,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:52:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40714.0,
-    "volume": 1,
-    "total_volume": 33779,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:53:58",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40714.0,
-    "volume": 1,
-    "total_volume": 33880,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:54:26",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40718.0,
-    "volume": 1,
-    "total_volume": 33918,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:54:57",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40731.0,
-    "volume": 1,
-    "total_volume": 33946,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:55:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40723.0,
-    "volume": 1,
-    "total_volume": 33974,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:55:56",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40727.0,
-    "volume": 1,
-    "total_volume": 33996,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:56:29",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40738.0,
-    "volume": 2,
-    "total_volume": 34032,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:56:53",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40726.0,
-    "volume": 2,
-    "total_volume": 34051,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:57:28",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40725.0,
-    "volume": 1,
-    "total_volume": 34060,
-    "source": "FINMIND_FUTURES_SNAPSHOT"
-  },
-  {
-    "datetime": "2026-05-15 20:57:50",
-    "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40723.0,
-    "volume": 2,
-    "total_volume": 34066,
+    "total_volume": 19296,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 20:58:29",
+    "datetime": "2026-06-08 18:08:18",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40745.0,
-    "volume": 4,
-    "total_volume": 34096,
+    "futures_id": "TXFR1",
+    "price": 43851.0,
+    "volume": 9,
+    "total_volume": 19318,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 21:32:58",
+    "datetime": "2026-06-08 18:08:58",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40687.0,
+    "futures_id": "TXFR1",
+    "price": 43844.0,
     "volume": 1,
-    "total_volume": 36931,
+    "total_volume": 19326,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   },
   {
-    "datetime": "2026-05-15 21:33:28",
+    "datetime": "2026-06-08 18:09:21",
     "symbol": "TXF",
-    "futures_id": "TXFE6",
-    "price": 40645.0,
+    "futures_id": "TXFR1",
+    "price": 43840.0,
     "volume": 1,
-    "total_volume": 37011,
+    "total_volume": 19342,
     "source": "FINMIND_FUTURES_SNAPSHOT"
   }
 ]

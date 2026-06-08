@@ -2,19 +2,7 @@
 
 from datetime import datetime
 
-
-def format_price(value):
-    """
-    價格格式化。
-    """
-
-    if value is None:
-        return "N/A"
-
-    try:
-        return round(float(value), 1)
-    except Exception:
-        return value
+from utils import format_price
 
 
 def build_option_stop_text(direction: str = "CALL") -> str:

@@ -1,14 +1,7 @@
 # scenario_engine.py
 
+from utils import format_price  # noqa: F401  共用工具，避免重複定義
 
-def format_price(value):
-    if value is None:
-        return "N/A"
-
-    try:
-        return round(float(value), 1)
-    except Exception:
-        return value
 
 
 def classify_intraday_scenario(

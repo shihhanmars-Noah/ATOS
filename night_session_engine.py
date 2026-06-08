@@ -3,25 +3,12 @@
 from datetime import datetime, time
 
 from persistent_state import load_state, save_state
+from utils import format_price
 
 try:
     from data_engine import txf_tick_cache_to_dataframe
 except Exception:
     txf_tick_cache_to_dataframe = None
-
-
-def format_price(value):
-    """
-    價格格式化。
-    """
-
-    if value is None:
-        return "N/A"
-
-    try:
-        return round(float(value), 1)
-    except Exception:
-        return value
 
 
 def get_latest_txf_cache_price():
