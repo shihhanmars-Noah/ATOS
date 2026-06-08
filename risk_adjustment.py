@@ -67,14 +67,14 @@ def apply_big_player_adjustments(
             adjustment -= 1
             warnings.append(
                 f"⚠️ 外資空單已獲利（成本估算 {foreign_cost_estimate}，現價 {current_price}），"
-                f"注意回補/軋空風險，空方信心分 -1"
+                f"注意回補/軋空風險，空方信心分 -1（停損100點=NT$20,000/口）"
             )
             if foreign_covering:
                 adjustment -= 1
                 squeeze_risk = 'HIGH'
                 warnings.append(
                     f"⚠️ 外資空單獲利 + 今日開始回補（{foreign_net_chg_1d:+,}口），"
-                    f"軋空風險升高，空方再降 -1"
+                    f"軋空風險升高，空方再降 -1（停損100點=NT$20,000/口）"
                 )
             else:
                 squeeze_risk = 'MEDIUM'
@@ -84,27 +84,26 @@ def apply_big_player_adjustments(
         if days_to_settlement <= 3:
             settlement_pressure = 'HIGH'
             if signal_type == 'SHORT' and current_price <= put_wall + 100:
-                # 結算前3天跌破 Put wall，大戶護盤機率高
                 adjustment -= 2
                 false_breakout_risk = 'HIGH'
                 warnings.append(
                     f"⚠️ 結算前{days_to_settlement}天跌破 Put wall，"
                     f"賣方護盤誘因極高，假跌破機率大，"
-                    f"若快速站回 {put_wall} 改為反彈做多機會"
+                    f"若快速站回 {put_wall} 改為反彈做多機會（停損100點=NT$20,000/口）"
                 )
             elif signal_type == 'LONG' and current_price >= call_wall - 100:
                 adjustment -= 2
                 false_breakout_risk = 'HIGH'
                 warnings.append(
                     f"⚠️ 結算前{days_to_settlement}天突破 Call wall，"
-                    f"賣方壓制誘因極高，假突破機率大"
+                    f"賣方壓制誘因極高，假突破機率大（停損100點=NT$20,000/口）"
                 )
         elif days_to_settlement <= 7:
             settlement_pressure = 'MEDIUM'
             adjustment -= 1
             warnings.append(
                 f"⚠️ 結算前{days_to_settlement}天，"
-                f"Put wall/Call wall 吸力增強，突破訊號信心分 -1"
+                f"Put wall/Call wall 吸力增強，突破訊號信心分 -1（停損100點=NT$20,000/口）"
             )
 
     # --- 修正四：散戶貪婪警示 ---

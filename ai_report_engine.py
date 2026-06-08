@@ -17,7 +17,14 @@ GEMINI_RETRY_DELAY = 5  # 429 重試等待秒數
 _SYSTEM_BASE = """你是台指期和台股的專業分析師。
 分析風格：客觀、精準、直接，不說廢話。
 輸出語言：繁體中文。
-策略框架：以 Put wall/Call wall 為核心觸發點，外資籌碼為方向判斷。"""
+策略框架：以 Put wall/Call wall 為核心觸發點，外資籌碼為方向判斷。
+
+重要規則：
+1. 只能使用輸入中明確提供的點位數字，絕對不能自創數字
+2. 不得重複報告中已有的操作策略內容
+3. 只說最重要的一個矛盾訊號，不超過指定行數
+4. 若 C/P Ratio < 0.5：分析散戶大量追Put的軋空含義
+5. 若外資現貨異動 > 300億：特別分析此訊號的意義"""
 
 _api_stats: dict = {"calls": 0, "total_tokens": 0}
 
@@ -517,6 +524,55 @@ _PREOPEN_GUIDANCE_SYSTEM = """你是 ATOS 盤前操作指引引擎。
 1. 不說「建議做多/做空/買進/賣出」，描述結構和條件
 2. 純文字，不用 Markdown 符號
 3. 使用繁體中文"""
+
+
+@safe_execute
+def generate_preopen_contradiction(
+    chip_ctx: Optional[dict],
+    active_pivot,
+    r1,
+    s1,
+) -> Optional[str]:
+    """
+    產生盤前「AI 矛盾分析」段落。
+    只說最重要的一個訊號矛盾，不超過4行，不重複策略內容。
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key or not chip_ctx:
+        return None
+
+    fn = chip_ctx.get("foreign_net", 0)
+    score = chip_ctx.get("sentiment_score", 0)
+    cp = chip_ctx.get("call_put_ratio", "N/A")
+    cw = chip_ctx.get("call_wall", "N/A")
+    pw = chip_ctx.get("put_wall", "N/A")
+    mp = chip_ctx.get("max_pain", "N/A")
+    spot = chip_ctx.get("spot_foreign_net_buy_bn", 0)
+    fg = chip_ctx.get("fear_greed_index", "N/A")
+
+    known_levels = (
+        f"已知點位（只能用這些數字）：\n"
+        f"  Pivot={active_pivot}，R1={r1}，S1={s1}，"
+        f"Call wall={cw}，Put wall={pw}，Max Pain={mp}"
+    )
+
+    user_prompt = (
+        f"外資期貨：{fn:+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
+        f"情緒評分：{score:+d}（{chip_ctx.get('sentiment_bias', 'N/A')}）\n"
+        f"C/P比：{cp}，Max Pain：{mp}\n"
+        f"現貨外資：{spot:+.1f}億，Fear&Greed：{fg}\n"
+        f"{known_levels}\n\n"
+        "請只說今日籌碼中最重要的一個訊號矛盾（例如：籌碼偏空但Fear&Greed偏高、"
+        "Put wall OI異常大但外資繼續加空等）。\n"
+        "不超過4行，不重複上方策略操作內容，不自創點位數字。"
+    )
+
+    client = genai.Client(api_key=api_key)
+    text = _call_gemini_with_retry(client, user_prompt, max_output_tokens=300)
+    if text is None:
+        return None
+    print(f"✅ [ai_report_engine] 矛盾分析完成（{len(text)} 字）")
+    return text
 
 
 @safe_execute

@@ -285,20 +285,44 @@ def build_preopen_payload() -> dict:
     close_price = levels.get("close", None)
     volume = levels.get("volume", None)
 
-    # 中軸：前日高低中間值，取代舊 Flip
-    mid_range = None
+    # Active Pivot 計算（取代 mid_range 顯示邏輯）
+    mid_range = None  # 保留供向後相容
     if high is not None and low is not None:
         try:
             mid_range = round((float(high) + float(low)) / 2, 1)
         except Exception:
             pass
 
-    chip_ctx = None
+    chip_ctx_tmp = None
     if build_chip_context is not None:
         try:
-            chip_ctx = build_chip_context()
+            chip_ctx_tmp = build_chip_context()
         except Exception:
             pass
+
+    _cw_tmp = chip_ctx_tmp.get("call_wall") if chip_ctx_tmp else None
+    _pw_tmp = chip_ctx_tmp.get("put_wall") if chip_ctx_tmp else None
+
+    active_pivot = None
+    pivot_note = ""
+    if high is not None and low is not None and close_price is not None:
+        try:
+            _sp = (float(high) + float(low) + float(close_price)) / 3
+            if _cw_tmp is not None and _pw_tmp is not None:
+                _cw_f = float(_cw_tmp)
+                _pw_f = float(_pw_tmp)
+                if _sp >= _cw_f or _sp <= _pw_f:
+                    active_pivot = round((_cw_f + _pw_f) / 2, 1)
+                    pivot_note = "（前日大波動，改用區間中點）"
+                else:
+                    active_pivot = round(_sp, 1)
+                    pivot_note = ""
+            else:
+                active_pivot = round(_sp, 1)
+        except Exception:
+            pass
+
+    chip_ctx = chip_ctx_tmp  # 已在 active_pivot 計算時取得
 
     chip_sentiment_score = 0
     if chip_ctx:
@@ -338,6 +362,8 @@ def build_preopen_payload() -> dict:
         "r1": r1,
         "s1": s1,
         "pivot": pivot,
+        "active_pivot": active_pivot,
+        "pivot_note": pivot_note,
         "mid_range": mid_range,
         "source_date": source_date,
         "contract_date": contract_date,
@@ -373,6 +399,7 @@ def save_preopen_plan_to_state(payload: dict) -> bool:
     pivot = payload.get("pivot")
     mid_range = payload.get("mid_range")
 
+    active_pivot = payload.get("active_pivot") or payload.get("pivot")
     bias = payload.get("bias", {}) or {}
     sentiment_info = payload.get("sentiment_info", {}) or {}
     scenarios = payload.get("scenarios", {}) or {}
@@ -427,9 +454,10 @@ def save_preopen_plan_to_state(payload: dict) -> bool:
     state["preopen_bias"] = bias.get("label")
     state["preopen_plan"] = preopen_plan
 
-    # mid_range 取代 flip 作為中軸，同時保留 flip 欄位供其他模組向後相容
-    state["mid_range"] = safe_float(mid_range)
-    state["flip"] = safe_float(mid_range)
+    # active_pivot 寫入 flip（取代舊 mid_range 邏輯），向後相容保留 mid_range
+    state["active_pivot"] = safe_float(active_pivot)
+    state["flip"] = safe_float(active_pivot)   # flip 欄位改用 active_pivot
+    state["mid_range"] = safe_float(mid_range)  # 保留向後相容
     state["pivot"] = safe_float(pivot)
     state["r1"] = safe_float(r1)
     state["s1"] = safe_float(s1)
@@ -522,8 +550,64 @@ def _spot_dir(val) -> str:
 # Message Builder
 # --------------------------------------------------
 
+def _closer_wall(price, call_wall, put_wall) -> str:
+    """判斷現價較接近哪個 wall。"""
+    try:
+        d_call = abs(float(price) - float(call_wall))
+        d_put  = abs(float(price) - float(put_wall))
+        return "Call wall" if d_call < d_put else "Put wall"
+    except Exception:
+        return "N/A"
+
+
+def _pain_direction(max_pain, current_price) -> str:
+    if max_pain is None or current_price is None:
+        return "N/A"
+    try:
+        return "往下" if float(max_pain) < float(current_price) else "往上"
+    except Exception:
+        return "N/A"
+
+
+def _scenario_one_liner(sentiment_score, price_position_pct, call_wall, put_wall) -> str:
+    """根據情緒評分和價位位置產生最可能場景一行描述。"""
+    try:
+        score = int(sentiment_score) if sentiment_score is not None else 0
+        pct = float(price_position_pct) if price_position_pct is not None else 50.0
+        cw = _fp(call_wall)
+        pw = _fp(put_wall)
+
+        if score <= -5:
+            return f"籌碼極端偏空，最可能在 {pw}～{cw} 區間震盪壓縮，等跌破 {pw} 才有加速行情"
+        if score <= -3:
+            return f"外資偏空主導，反彈到 {cw} 附近量縮是主要空方機會，不破 {pw} 就繼續磨"
+        if score >= 5:
+            return f"籌碼偏多，站穩 {pw} 上方且外資持續回補時，突破 {cw} 機率上升"
+        if score >= 3:
+            return f"籌碼中性偏多，觀察能否突破 {cw}；破前以 Pivot 為多空分水嶺"
+        return f"籌碼中性，在 {pw}～{cw} 區間大戶收割時間價值，無明確方向不做"
+    except Exception:
+        return "依籌碼與 5分K 確認再判斷方向"
+
+
+def _incentive_one_liner(sentiment_score, call_wall, put_wall, fn) -> str:
+    """短期誘因與限制一行描述。"""
+    try:
+        score = int(sentiment_score) if sentiment_score is not None else 0
+        fn_i = int(fn) if fn is not None else 0
+        cw = _fp(call_wall)
+        pw = _fp(put_wall)
+        if score <= -3 and fn_i < -30000:
+            return f"外資極端空單 {fn_i:,}口壓制 {cw}，多方突破需外資同步回補才成立"
+        if score >= 3:
+            return f"籌碼偏多，Put wall {pw} 有大戶多頭保護，回測 {pw} 不破可偏多"
+        return f"在 {pw}～{cw} 框架內大戶收割時間價值，無量能突破前不做方向"
+    except Exception:
+        return "以 Put wall / Call wall 為核心，等量能確認再進場"
+
+
 def build_preopen_sip_message(payload: dict | None = None) -> str:
-    """建立新版簡潔盤前報告。"""
+    """建立新版決策工具格式盤前報告。"""
 
     if payload is None:
         payload = build_preopen_payload()
@@ -534,18 +618,15 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     r1 = payload.get("r1")
     s1 = payload.get("s1")
     pivot = payload.get("pivot")
-    mid_range = payload.get("mid_range")
+    active_pivot = payload.get("active_pivot") or pivot
+    pivot_note = payload.get("pivot_note", "")
     high = payload.get("previous_high")
     low = payload.get("previous_low")
     close_price = payload.get("previous_close")
     volume = payload.get("previous_volume")
 
-    bias = payload.get("bias", {})
-    bias_label = bias.get("label", "N/A")
-    night_context_text = payload.get("night_context_text", "") or ""
     chip_ctx = payload.get("chip_ctx") or {}
 
-    # 籌碼欄位
     fn = chip_ctx.get("foreign_net", 0)
     fn_level = chip_ctx.get("foreign_net_level", "N/A")
     fn_1d = chip_ctx.get("foreign_net_chg_1d", 0)
@@ -566,143 +647,118 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     fear_greed_emo = _fmt_emo(chip_ctx.get("fear_greed_emotion", ""))
     warnings = chip_ctx.get("warnings", [])
 
-    # 計算 Call wall - 500
+    # 衍生計算
     try:
-        call_target = _fp(float(call_wall) - 500) if call_wall else "N/A"
+        cw_f = float(call_wall)
+        pw_f = float(put_wall)
+        width = int(cw_f - pw_f)
+        cw_stop = _fp(cw_f + 100)
+        pw_stop = _fp(pw_f + 100)
+        pw_t1   = _fp(pw_f - 500)
+        pw_t2   = _fp(pw_f - 1000)
+        cw_stop_short = _fp(cw_f - 100)
+        cw_t1   = _fp(cw_f + 500)
     except Exception:
-        call_target = "N/A"
+        width = "N/A"
+        cw_stop = pw_stop = pw_t1 = pw_t2 = cw_stop_short = cw_t1 = "N/A"
 
-    score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
+    ref_price = close_price  # 盤前以前日收盤為現價參考
+    closer = _closer_wall(ref_price, call_wall, put_wall) if ref_price else "N/A"
     pos_pct_str = f"{price_position_pct:.1f}" if price_position_pct is not None else "N/A"
+    score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
+    spot_dir = _spot_dir(spot_val)
+    pain_dir = _pain_direction(max_pain, ref_price)
 
-    # AI 指引（今天怎麼做 + AI判斷）
-    today_guidance = ""
-    ai_judgment = ""
+    incentive = _incentive_one_liner(sentiment_score, call_wall, put_wall, fn)
+    scenario = _scenario_one_liner(sentiment_score, price_position_pct, call_wall, put_wall)
+
+    # AI 矛盾分析（新版 prompt）
+    ai_contradiction = ""
     try:
-        from ai_report_engine import generate_preopen_guidance
-        result = generate_preopen_guidance(chip_ctx, bias_label)
-        if isinstance(result, dict):
-            today_guidance = result.get("today", "")
-            ai_judgment = result.get("judgment", "")
+        from ai_report_engine import generate_preopen_contradiction
+        ai_contradiction = generate_preopen_contradiction(chip_ctx, active_pivot, r1, s1) or ""
     except Exception:
         pass
+    if not ai_contradiction:
+        try:
+            from ai_report_engine import generate_preopen_guidance
+            result = generate_preopen_guidance(chip_ctx, sentiment_bias or "N/A")
+            if isinstance(result, dict):
+                ai_contradiction = result.get("judgment", "")
+        except Exception:
+            pass
 
     lines = []
 
-    # 標頭
     lines.append(f"🛡️ ATOS 盤前 {today} {now_time}")
-    lines.append(f"方向：{bias_label}")
     lines.append("")
 
-    # 今天怎麼做
-    lines.append("今天怎麼做")
-    if today_guidance:
-        lines.append(today_guidance)
-    else:
-        lines.append(f"今天關鍵問題只有一個：{_fp(put_wall)} 守不守得住？")
-        lines.append(f"外資極端空單 {fn:+,}口壓制，反彈到中軸 {_fp(mid_range)} 量縮是空方機會。")
-        lines.append(f"跌破 {_fp(put_wall)} 才是今年最好的空方機會，不破就繼續震盪等待。")
-    lines.append(f"開盤第一步：觀察開盤價位置，若開盤在中軸 {_fp(mid_range)} 下方，等第一根5分K收盤確認再決定方向，不搶第一根。")
+    # ━━ 今天的結構 ━━
+    lines.append("━━ 今天的結構 ━━")
+    lines.append(f"外資 {fn_level} {fn:+,}口，現貨{spot_dir} {abs(spot_val):.1f}億")
+    lines.append(f"大戶框架：Put wall {_fp(put_wall)} ~ Call wall {_fp(call_wall)}（寬度{width}點）")
+    lines.append(f"現價 {_fp(ref_price)}，位於框架 {pos_pct_str}%（接近{closer}）")
+    lines.append(f"Max Pain {_fp(max_pain)}，大戶希望{pain_dir}結算")
+    lines.append(f"→ {incentive}")
     lines.append("")
 
-    # 關鍵價位
-    lines.append("關鍵價位")
-    lines.append(f"Call wall：{_fp(call_wall)}（突破才追多）")
-    lines.append(f"中軸：{_fp(mid_range)}（區間內參考）")
-    lines.append(f"Pivot：{_fp(pivot)}")
-    lines.append(f"Put wall：{_fp(put_wall)}（跌破才追空）")
+    # ━━ 最可能的場景 ━━
+    lines.append("━━ 最可能的場景 ━━")
+    lines.append(scenario)
     lines.append("")
 
-    # 時段操作指引
-    lines.append("時段操作指引")
-    lines.append("08:45-09:30：觀察開盤缺口，不追第一根")
-    lines.append(f"09:30-11:30：主力時段，反彈到中軸 {_fp(mid_range)} 量縮是空方進場點")
-    lines.append("13:00-13:45：注意外資尾盤方向，觀察是否大量加倉")
+    # ━━ 今天等什麼 ━━
+    lines.append("━━ 今天等什麼 ━━")
+    lines.append(f"等一（空方）：反彈到 Call wall {_fp(call_wall)} 附近量縮 → 空方機會")
+    lines.append(f"等二（空方）：跌破 Put wall {_fp(put_wall)} 且量能確認 → 追空加速")
+    lines.append(f"等三（多方）：突破 Call wall {_fp(call_wall)} 且量能確認 → 追多（機率低，需外資同步回補）")
     lines.append("")
 
-    # 選擇權
-    lines.append("選擇權")
-    lines.append(f"Call wall {_fp(call_wall)} 壓頂，多單目標不超過 {call_target}")
-    lines.append(f"Put wall {_fp(put_wall)} 支撐，跌破才加速")
-    lines.append(f"Max Pain {_fp(max_pain)}，{_pain_label(max_pain, close_price)}")
+    # ━━ 進場怎麼做 ━━
+    lines.append("━━ 進場怎麼做 ━━")
+    lines.append(f"空方（等一）：")
+    lines.append(f"  進場：Call wall 附近5分K量縮確認轉弱")
+    lines.append(f"  停損：Call wall 上方100點（{cw_stop}）（一口計=NT$20,000，請依帳戶規模調控）")
+    lines.append(f"  目標：Pivot {_fp(active_pivot)}{pivot_note} → Put wall {_fp(put_wall)}")
+    lines.append("")
+    lines.append(f"空方（等二）：")
+    lines.append(f"  進場：跌破{_fp(put_wall)}且下一根5分K確認")
+    lines.append(f"  （若破線太快現價離Put wall已超過50點，放棄追單，改等反彈測試不破進場）")
+    lines.append(f"  停損：{pw_stop}（一口計=NT$20,000）")
+    lines.append(f"  目標：{pw_t1} → {pw_t2}")
+    lines.append("")
+    lines.append(f"多方（等三）：")
+    lines.append(f"  進場：突破{_fp(call_wall)}且下一根5分K確認+量能放大")
+    lines.append(f"  停損：{cw_stop_short}（一口計=NT$20,000）")
+    lines.append(f"  目標：{cw_t1}")
     lines.append("")
 
-    # 籌碼數據
-    lines.append("籌碼數據")
-    lines.append(f"外資期貨：{fn_level} {fn:+,}口｜1日 {fn_1d:+,}｜3日 {fn_3d:+,}")
-    lines.append(f"現貨外資：{_spot_dir(spot_val)} {spot_val:+.1f}億｜5日累計 {spot_5d:+.1f}億")
-    lines.append(
-        f"Call wall：{_fp(call_wall)}（OI {call_wall_oi or 'N/A'}）"
-        f"｜Put wall：{_fp(put_wall)}（OI {put_wall_oi or 'N/A'}）"
-    )
-    lines.append(
-        f"C/P比：{call_put_ratio or 'N/A'}｜現價位置：{pos_pct_str}%（{_pos_label(price_position_pct)}）"
-    )
-    lines.append(f"情緒評分：{score_str} {sentiment_bias}｜Fear&Greed：{fear_greed} {fear_greed_emo}")
+    # ━━ 今天完全不做 ━━
+    lines.append("━━ 今天完全不做 ━━")
+    lines.append("✗ 開盤第一根追單")
+    lines.append(f"✗ 在 Pivot {_fp(active_pivot)}{pivot_note} 附近無方向硬猜")
+    lines.append("✗ 外資空單持續增加時追多")
+    lines.append("✗ 低流動性時段（11:30-13:00）的突破訊號")
+    lines.append("")
+
+    # ━━ 關鍵價位 ━━
+    lines.append("━━ 關鍵價位 ━━")
+    lines.append(f"Call wall：{_fp(call_wall)} | Pivot：{_fp(active_pivot)} | Put wall：{_fp(put_wall)}")
+    lines.append("")
+
+    # ━━ 籌碼數據 ━━
+    lines.append("━━ 籌碼數據 ━━")
+    lines.append(f"外資期貨：{fn_level} {fn:+,}口 | 1日變動 {fn_1d:+,}")
+    lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億 | 5日累計 {spot_5d:+.1f}億")
+    lines.append(f"C/P比：{call_put_ratio or 'N/A'} | Max Pain：{_fp(max_pain)}")
+    lines.append(f"情緒：{score_str} {sentiment_bias} | Fear&Greed：{fear_greed} {fear_greed_emo}")
     for w in warnings:
         lines.append(str(w))
-    try:
-        fg_val = int(fear_greed) if fear_greed not in (None, "N/A") else 0
-        s_score = int(sentiment_score) if sentiment_score is not None else 0
-        if fg_val > 60 and s_score <= -3:
-            if not any("散戶貪婪" in str(w) for w in warnings):
-                lines.append(f"⚠️ 散戶貪婪({fg_val})+外資偏空({s_score:+d}分）：歷史上這個組合往往是短期高點特徵，做多需極度謹慎")
-    except Exception:
-        pass
-    try:
-        from risk_adjustment import apply_big_player_adjustments
-        from settlement_engine import get_days_to_settlement as _get_days
-        try:
-            _days = _get_days()
-        except Exception:
-            _days = 99
-        _risk_adj = apply_big_player_adjustments(
-            current_price=float(chip_ctx.get("prev_close") or close_price or 0),
-            foreign_net=chip_ctx.get("foreign_net", 0),
-            foreign_net_chg_1d=chip_ctx.get("foreign_net_chg_1d", 0),
-            foreign_cost_estimate=chip_ctx.get("foreign_cost_estimate"),
-            top5_net=chip_ctx.get("lt_top5_net") or 0,
-            top5_net_chg=chip_ctx.get("lt_top5_net_chg") or 0,
-            put_wall=float(put_wall) if put_wall else 0.0,
-            call_wall=float(call_wall) if call_wall else 0.0,
-            days_to_settlement=_days,
-            fear_greed=int(fear_greed) if fear_greed not in (None, "N/A") else 0,
-            sentiment_score=int(sentiment_score) if sentiment_score is not None else 0,
-            signal_time=datetime.now(),
-            signal_type="NEUTRAL",
-            volume_confirmed=True,
-        )
-        _existing = {str(w) for w in warnings}
-        for _w in _risk_adj.get("warnings", []):
-            if str(_w) not in _existing:
-                lines.append(str(_w))
-        lines.append(f"大戶動向：{_risk_adj['big_player_interpretation']}")
-    except Exception:
-        pass
     lines.append("")
 
-    # 前日資料
-    lines.append("前日資料")
-    lines.append(f"H {_fp(high)} / L {_fp(low)} / C {_fp(close_price)}｜量 {volume or 'N/A'}")
-    lines.append(f"R1：{_fp(r1)}｜Pivot：{_fp(pivot)}｜S1：{_fp(s1)}")
-
-    # 夜盤背景（有資料才顯示）
-    night_line = night_context_text.strip().split("\n")[0] if night_context_text.strip() else ""
-    if night_line and "無夜盤" not in night_line and "N/A" not in night_line:
-        lines.append("")
-        lines.append(night_line)
-
-    # AI判斷
-    lines.append("")
-    lines.append("AI判斷：")
-    lines.append(ai_judgment if ai_judgment else "（AI 分析暫不可用）")
-    lines.append("")
-
-    # 今日禁止
-    lines.append("今日禁止")
-    lines.append("✗ 開盤第一根追單")
-    lines.append(f"✗ 卡在 {_fp(put_wall)}～{_fp(call_wall)} 區間硬猜方向")
-    lines.append(f"✗ 不等 Put wall {_fp(put_wall)} 跌破確認就追空")
+    # ━━ AI 矛盾分析 ━━
+    lines.append("━━ AI 矛盾分析 ━━")
+    lines.append(ai_contradiction if ai_contradiction else "（AI 分析暫不可用）")
 
     return "\n".join(lines)
 

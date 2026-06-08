@@ -987,12 +987,44 @@ def _fp(v) -> str:
         return "N/A"
 
 
+def _build_wall_status(today_high, today_low, price_f, wall_f, wall_type: str) -> str:
+    """產生 Call/Put wall 狀態描述（假突破判斷）。"""
+    try:
+        h = float(today_high)
+        l = float(today_low)
+        p = float(price_f)
+        w = float(wall_f)
+        if wall_type == "call":
+            if h > w and p < w:
+                return f"Call wall {int(w)}：假突破，賣方護盤成功（空方訊號）"
+            elif h > w and p >= w:
+                return f"Call wall {int(w)}：有效突破，多方主控"
+            else:
+                return f"Call wall {int(w)}：未觸及"
+        else:  # put
+            if l < w and p > w:
+                return f"Put wall {int(w)}：假跌破，買方護盤成功（多方訊號）"
+            elif l < w and p <= w:
+                return f"Put wall {int(w)}：有效跌破，空方主控"
+            else:
+                return f"Put wall {int(w)}：未觸及"
+    except Exception:
+        return "N/A"
+
+
+def _build_pivot_status(price_f, active_pivot_f) -> str:
+    try:
+        if float(price_f) > float(active_pivot_f):
+            return f"Pivot {int(active_pivot_f)}：收盤站上，偏多"
+        else:
+            return f"Pivot {int(active_pivot_f)}：收盤跌破，偏空"
+    except Exception:
+        return "N/A"
+
+
 def build_evening_report_message(readiness: dict | None = None) -> str | None:
     """
-    建立新版簡潔晚盤報告。
-
-    傳送前由 send_evening_report() 做資料完整性把關。
-    build_evening_report_message() 本身盡量輸出，缺欄位填 N/A。
+    建立新版決策工具格式晚盤報告。
     """
 
     state = load_state()
@@ -1001,22 +1033,19 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     if readiness is None:
         readiness = check_evening_report_readiness(state, summary)
 
-    # 只要有基本價格資料就輸出；缺籌碼或 OI 用 chip_data_engine 補
     day_ctx = readiness.get("day") or get_day_session_context(state)
 
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M")
 
     price = day_ctx.get("price")
-    flip = day_ctx.get("flip")
-    pivot = day_ctx.get("pivot")
+    active_pivot = state.get("active_pivot") or day_ctx.get("pivot")
     r1 = day_ctx.get("r1")
     s1 = day_ctx.get("s1")
     today_high = day_ctx.get("today_high")
     today_low = day_ctx.get("today_low")
 
-    # 取完整籌碼資料
+    # 完整籌碼
     chip_ctx = {}
     if _build_chip_ctx is not None:
         try:
@@ -1025,134 +1054,106 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
             pass
 
     call_wall = chip_ctx.get("call_wall") or state.get("call_wall")
-    put_wall = chip_ctx.get("put_wall") or state.get("put_wall")
+    put_wall  = chip_ctx.get("put_wall")  or state.get("put_wall")
 
-    # call_wall - 500
-    try:
-        call_target = _fp(float(call_wall) - 500) if call_wall else "N/A"
-    except Exception:
-        call_target = "N/A"
-
-    # 籌碼一行摘要
     fn = chip_ctx.get("foreign_net", 0)
     fn_level = chip_ctx.get("foreign_net_level", "N/A")
-    chip_one_line = (
-        f"外資期貨 {fn_level} {fn:+,}口" if chip_ctx
-        else (state.get("institutional_sentiment") or "N/A")
-    )
+    fn_1d = chip_ctx.get("foreign_net_chg_1d", 0)
+    spot_val = chip_ctx.get("spot_foreign_net_buy_bn") or 0
+    spot_dir = "買超" if float(spot_val) > 0 else "賣超"
 
-    # 日盤結論（一行）
-    day_result = classify_day_result(day_ctx)
+    # 前期籌碼（回補還是加碼）
+    try:
+        prev_net = fn - int(fn_1d)
+        chg_str = f"回補 {abs(fn_1d):,}口（{prev_net:+,} → {fn:+,}）" if fn_1d > 0 else f"加碼 {abs(fn_1d):,}口（{prev_net:+,} → {fn:+,}）"
+    except Exception:
+        chg_str = f"變動 {fn_1d:+,}口"
 
-    # 複盤驗證
-    def _flip_status():
-        try:
-            return "已站上" if float(price) >= float(flip) else "未站上"
-        except Exception:
-            return "N/A"
+    # 假突破判斷
+    try:
+        price_f = float(price)
+    except Exception:
+        price_f = 0
 
-    def _r1_status():
-        try:
-            return "觸及" if float(today_high) >= float(r1) else "未觸及"
-        except Exception:
-            return "N/A"
+    if call_wall:
+        call_wall_status = _build_wall_status(today_high, today_low, price_f, call_wall, "call")
+    else:
+        call_wall_status = "Call wall N/A"
 
-    def _s1_status():
-        try:
-            return "跌破" if float(today_low) <= float(s1) else "未跌破"
-        except Exception:
-            return "N/A"
+    if put_wall:
+        put_wall_status = _build_wall_status(today_high, today_low, price_f, put_wall, "put")
+    else:
+        put_wall_status = "Put wall N/A"
 
-    # 警報列表
+    pivot_status = _build_pivot_status(price_f, active_pivot)
+
+    # 收盤位置決定空方次要條件
+    try:
+        ap_f = float(active_pivot)
+        if price_f >= ap_f:
+            short_sub = f"若收盤在Pivot上方：跌回Pivot下方且無法站回確認"
+        else:
+            short_sub = f"若收盤在Pivot下方：反彈到今日高點附近未過確認"
+    except Exception:
+        short_sub = "參考 Pivot 確認後操作"
+
+    # 警報
     total_alerts = int(summary.get("total", 0) or 0)
     alert_text = build_alert_log_text() or ""
 
-    # AI 解讀
+    # AI 夜盤解讀
     ai_text = ""
     try:
         from ai_report_engine import generate_evening_guidance
+        day_result = classify_day_result(day_ctx)
         ai_text = generate_evening_guidance(day_result, chip_ctx, summary) or ""
     except Exception:
         pass
 
     lines = []
-
-    lines.append(f"🌙 ATOS 晚盤 {date_str} {time_str}")
+    lines.append(f"🌙 ATOS 晚盤 {date_str}")
     lines.append("")
 
-    # 日盤結果
-    lines.append("日盤結果")
-    lines.append(f"收盤：{_fp(price)}｜H {_fp(today_high)} / L {_fp(today_low)}")
-    lines.append(day_result)
+    # ━━ 今天發生了什麼 ━━
+    lines.append("━━ 今天發生了什麼 ━━")
+    lines.append(f"收盤：{_fp(price)} | H {_fp(today_high)} / L {_fp(today_low)}")
+    lines.append(call_wall_status)
+    lines.append(put_wall_status)
+    lines.append(pivot_status)
+    lines.append(f"籌碼變化：外資期貨今日{chg_str}")
+    lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億")
     lines.append("")
 
-    # 複盤驗證
-    def _call_wall_status():
-        try:
-            if float(today_high) >= float(call_wall):
-                return "突破且守住" if float(price) >= float(call_wall) else "盤中觸及未守住"
-            return "未觸及"
-        except Exception:
-            return "N/A"
-
-    def _put_wall_status():
-        try:
-            if float(today_low) <= float(put_wall):
-                return "跌破未收回" if float(price) <= float(put_wall) else "跌破後收回"
-            return "未跌破"
-        except Exception:
-            return "N/A"
-
-    lines.append("複盤驗證")
-    lines.append(f"● Call wall {_fp(call_wall)}：{_call_wall_status()}")
-    lines.append(f"● Put wall {_fp(put_wall)}：{_put_wall_status()}")
-    lines.append(f"● 中軸 {_fp(flip)}：{_flip_status()}")
-    lines.append(f"● 籌碼：{chip_one_line}")
-    lines.append("")
-
-    # 今日警報
-    lines.append(f"今日警報（{total_alerts}則）")
-    if total_alerts == 0 or not alert_text.strip():
-        lines.append("今日無警報")
-    else:
-        lines.append(alert_text.strip())
-    lines.append("")
-
-    # 夜盤操作指示
-    lines.append("夜盤操作指示")
+    # ━━ 夜盤怎麼做 ━━
+    lines.append("━━ 夜盤怎麼做 ━━")
     lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")
-
-    # 做空條件依收盤位置動態調整
-    try:
-        _price_f = float(price)
-        _flip_f = float(flip)
-        if _price_f >= _flip_f:
-            # 收盤站在中軸上方 → 空方需先跌回中軸下方才有意義
-            short_cond = (
-                f"強訊號：跌破 Put wall {_fp(put_wall)} 且量能確認；"
-                f"次訊號：收盤跌回中軸 {_fp(flip)} 下方且無法站回"
-            )
-        else:
-            # 收盤已在中軸下方 → 反彈到中軸未過是進場點
-            short_cond = (
-                f"強訊號：跌破 Put wall {_fp(put_wall)} 且量能確認；"
-                f"次訊號：反彈到中軸 {_fp(flip)} 附近未過確認"
-            )
-    except Exception:
-        short_cond = f"跌破 Put wall {_fp(put_wall)} 量能確認 或 中軸 {_fp(flip)} 轉壓"
-
-    lines.append(f"做空條件：{short_cond}")
-    lines.append(f"觀望條件：在 {_fp(put_wall)}～{_fp(call_wall)} 區間內無明確訊號")
+    lines.append(f"做空條件（強）：跌破 Put wall {_fp(put_wall)} 且量能確認")
+    lines.append(f"做空條件（次）：")
+    lines.append(f"  {short_sub}")
+    lines.append(f"觀望條件：在{_fp(put_wall)}~{_fp(call_wall)}無明確方向")
+    lines.append("")
+    lines.append("停損規則：")
+    lines.append("空方停損：進場後100點（一口計=NT$20,000，請依帳戶規模調控）")
+    lines.append("多方停損：進場後100點（一口計=NT$20,000）")
     lines.append("")
 
-    # 選擇權
-    lines.append("選擇權")
-    lines.append(f"Call wall {_fp(call_wall)} 壓制，夜盤不追多超過 {call_target}")
-    lines.append(f"Put wall {_fp(put_wall)} 支撐，跌破需量能確認")
+    # ━━ 今日警報 ━━
+    lines.append(f"━━ 今日警報（{total_alerts}則）━━")
+    if total_alerts == 0 or not alert_text.strip():
+        lines.append("今日盤中無關鍵事件觸發")
+    else:
+        for row in alert_text.strip().split("\n"):
+            lines.append(row)
     lines.append("")
 
-    # AI 解讀
-    lines.append("AI解讀：")
+    # ━━ 籌碼驗證 ━━
+    lines.append("━━ 籌碼驗證 ━━")
+    lines.append(f"外資期貨：{fn:+,}口（今日{chg_str}）")
+    lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億")
+    lines.append("")
+
+    # ━━ AI 夜盤解讀 ━━
+    lines.append("━━ AI 夜盤解讀 ━━")
     lines.append(ai_text if ai_text else "（AI 分析暫不可用）")
 
     # API 使用統計
@@ -1160,7 +1161,7 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
         from ai_report_engine import get_api_stats
         stats = get_api_stats()
         lines.append("")
-        lines.append(f"今日 AI API：呼叫 {stats['calls']} 次｜使用 {stats['total_tokens']} tokens")
+        lines.append(f"今日 AI API：呼叫 {stats['calls']}次 | 使用 {stats['total_tokens']} tokens")
     except Exception:
         pass
 
@@ -1176,13 +1177,27 @@ def send_evening_report() -> bool:
     發送 ATOS 晚盤報告。
 
     規則：
+    - 15:05 前不發（等期交所數據更新）
+    - 今日已發過不重複發送
     - 資料不足：不發 Telegram，return False
     - 資料完整：發送報告，return True / False
     """
+    from persistent_state import save_state
 
+    # 時間鎖：15:05 前不發
+    now = datetime.now()
+    if now.hour < 15 or (now.hour == 15 and now.minute < 5):
+        print("⚠️ 15:05前不發晚盤報告，等待期交所數據更新完成")
+        return False
+
+    # 防重複發送
+    today = now.strftime("%Y-%m-%d")
     state = load_state()
-    summary = summarize_today_alerts()
+    if state.get("evening_report_sent_date") == today:
+        print("⚠️ 今日晚盤報告已發送，不重複發送")
+        return False
 
+    summary = summarize_today_alerts()
     readiness = check_evening_report_readiness(state, summary)
 
     if not readiness["ready"]:
@@ -1196,7 +1211,12 @@ def send_evening_report() -> bool:
     if not msg:
         return False
 
-    return send_to_telegram(msg)
+    result = send_to_telegram(msg)
+    if result:
+        state["evening_report_sent_date"] = today
+        save_state(state)
+
+    return result
 
 
 if __name__ == "__main__":

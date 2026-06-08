@@ -71,6 +71,11 @@ try:
 except Exception:
     ai_generate_report = None
 
+try:
+    from data_backfill import check_and_backfill
+except Exception:
+    check_and_backfill = None
+
 
 load_dotenv()
 
@@ -235,7 +240,17 @@ class AtosCommander:
     def refresh_chip(self):
         """
         更新完整籌碼快取（chip_cache.json），供晚盤報告使用。
+        結算日隔天提示轉倉影響。
         """
+        # 結算日隔天提示
+        try:
+            from settlement_engine import get_settlement_type
+            from datetime import date, timedelta
+            yesterday = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+            if get_settlement_type(yesterday) is not None:
+                print("⚠️ 結算日隔天，期貨淨部位含換月轉倉，變動量僅供參考")
+        except Exception:
+            pass
         try:
             from chip_data_engine import update_chip_cache, build_chip_context
             ok = update_chip_cache()
@@ -376,7 +391,7 @@ class AtosCommander:
     @safe_execute
     def send_evening_report(self):
         """
-        發送 ATOS 晚盤作戰報告。
+        發送 ATOS 晚盤作戰報告（含結算日提示）。
         """
 
         if send_evening_report_func is None:
@@ -385,6 +400,14 @@ class AtosCommander:
                 "找不到 evening_report_engine.py 或 send_evening_report。"
             )
             return
+
+        # 結算日提示
+        try:
+            from settlement_engine import is_settlement_day, get_days_to_settlement
+            if is_settlement_day():
+                send_to_telegram("⚠️ 今日為結算日，大戶框架結算後重置，夜盤OI數據將換月")
+        except Exception:
+            pass
 
         send_evening_report_func()
 
@@ -590,6 +613,13 @@ class AtosCommander:
         """
         啟動 ATOS Commander。
         """
+
+        # 資料回補檢查
+        if check_and_backfill is not None:
+            try:
+                check_and_backfill()
+            except Exception as e:
+                print(f"⚠️ data_backfill failed: {e}")
 
         self.send_startup_message()
         self.setup_schedule()

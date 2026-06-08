@@ -321,6 +321,23 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     price = alert_context.get("price")
     put_wall = chip_ctx.get("put_wall") if chip_ctx else None
 
+    # 滑價防禦：跌破 Put wall 太快（現價距 Put wall > 50點）→ 等反彈再進場
+    broke_put_wall = (
+        event in ("FLIP_BREAK", "SHORT_RETEST_FAIL_V3") or
+        (put_wall and price and float(price) < float(put_wall))
+    )
+    if broke_put_wall and put_wall and price:
+        try:
+            distance_from_put_wall = abs(float(price) - float(put_wall))
+            if distance_from_put_wall > 50:
+                print(f"⚠️ [claude_advisor] 跌破Put wall過快（距離{distance_from_put_wall:.0f}點），等反彈")
+                return (
+                    f"跌破Put wall過快，現價距Put wall已{distance_from_put_wall:.0f}點，"
+                    f"放棄追空，等反彈測試{_p(put_wall)}不破再進場"
+                )
+        except Exception:
+            pass
+
     # Pre-check：結算前3天跌破 Put wall → 大戶護盤機率高，直接回傳多方機會提示
     if put_wall and price:
         try:

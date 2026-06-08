@@ -633,7 +633,7 @@ def calculate_scores(chip: dict, tech: dict, market: dict):
     }
 
 
-def classify_stock(scores: dict, tech: dict, market: dict):
+def classify_stock(scores: dict, tech: dict, market: dict, sentiment_score: int = 0):
     """
     個股分級。
     """
@@ -641,21 +641,31 @@ def classify_stock(scores: dict, tech: dict, market: dict):
     total = scores["total_score"]
     distance_to_ma5 = tech.get("distance_to_ma5")
 
+    # 低於5MA 直接不列入觀察
+    if not tech.get("above_ma5", True):
+        return "C", "低於5MA，不列入觀察"
+
     # 大盤偏空時，不給 A 級
     if market["mode"] == "BEAR":
         if total >= 70:
             return "B", "大盤偏空，降級為觀察"
         return "C", "大盤偏空，剔除"
 
-    # 台指期籌碼極端偏空：A 級自動降為 B
+    # 台指期籌碼極端偏空：A 級自動降為 B，且加嚴門檻
     if market["mode"] == "BEAR_CHIP":
-        sentiment_score = market.get("sentiment_score", 0)
+        _score = market.get("sentiment_score", sentiment_score)
         if tech.get("upper_shadow_ratio", 0) >= 0.5 and tech.get("volume_ratio", 0) >= 2:
             return "C", "爆量長上影，疑似上方賣壓"
         if distance_to_ma5 is not None and distance_to_ma5 > 8:
             return "C", "距5MA過遠，剔除"
+        # 偏空環境 A 級加嚴（sentiment_score <= -3）
+        if _score <= -3:
+            consec = scores.get("chip_score", 0)  # 從 chip 計算出的連買天數需從 chip dict 拿
+            # 直接用 market 傳入的 sentiment_score 判斷
+            if tech.get("distance_to_ma5", 0) > 5:
+                return "B", "偏空環境：距5MA過遠，降為觀察"
         if total >= 80:
-            return "B", f"台指期籌碼偏空（{sentiment_score}分），降級觀察"
+            return "B", f"台指期籌碼偏空（{_score}分），降級觀察"
         if total >= 60:
             return "B", "B級：條件尚可，但需等待確認"
         return "C", "剔除：條件不足"
@@ -775,6 +785,7 @@ def build_stock_watchlist(
                 scores=scores,
                 tech=tech,
                 market=market,
+                sentiment_score=int(market.get("sentiment_score", 0) or 0),
             )
 
             item = {
@@ -1056,13 +1067,23 @@ def send_stock_picks_report(
     lines = []
 
     # 標頭
-    lines.append(f"📈 個股觀察 {date_str} {time_str}")
-    lines.append(f"籌碼資料：{chip_source_date}｜OI資料：{oi_source_date}")
+    lines.append(f"📈 個股觀察 {date_str}")
     lines.append(
         f"大盤：{market_label}｜台指情緒：{bias_label}({score_str})"
         f"｜Fear&Greed：{fear_greed} {fear_greed_emotion}"
     )
     lines.append("")
+
+    # 偏空環境提示
+    try:
+        _ss = int(sentiment_score) if sentiment_score is not None else 0
+        if _ss <= -3:
+            lines.append(f"⚠️ 市場偏空環境（情緒評分 {score_str}）")
+            lines.append("以下為「大盤反彈時相對強勢股」預備清單")
+            lines.append("現在不主動操作，等市場方向明朗後再使用")
+            lines.append("")
+    except Exception:
+        pass
 
     # A 級 — 批次取 AI 點評（一次呼叫）
     batch_commentaries: dict = {}
@@ -1073,7 +1094,15 @@ def send_stock_picks_report(
         except Exception:
             pass
 
-    lines.append("🟢 A級優先觀察")
+    try:
+        _ss2 = int(sentiment_score) if sentiment_score is not None else 0
+        if _ss2 <= -3:
+            lines.append("🟢 A級（反彈首選）")
+            lines.append("（偏空環境門檻：投信連買>=3天 + 距5MA<5% + 站在5MA上方）")
+        else:
+            lines.append("🟢 A級優先觀察")
+    except Exception:
+        lines.append("🟢 A級優先觀察")
     if not a_items:
         lines.append("今日無A級標的")
     else:
@@ -1096,7 +1125,14 @@ def send_stock_picks_report(
     lines.append("")
 
     # B 級
-    lines.append("🟡 B級觀察（不主動進場）")
+    try:
+        _ss3 = int(sentiment_score) if sentiment_score is not None else 0
+        if _ss3 <= -3:
+            lines.append("🟡 B級（次選觀察，不建議主動進場）")
+        else:
+            lines.append("🟡 B級觀察（不主動進場）")
+    except Exception:
+        lines.append("🟡 B級觀察（不主動進場）")
     if not b_items:
         lines.append("今日無B級標的")
     else:
@@ -1122,8 +1158,8 @@ def send_stock_picks_report(
     lines.append("")
 
     # 市場狀態
-    lines.append("---")
-    lines.append("📊 目前市場狀態")
+    lines.append("")
+    lines.append("━━ 目前市場狀態 ━━")
 
     notional_str = f"（NT${foreign_notional_bn}億）" if foreign_notional_bn is not None else ""
     lines.append(f"外資期貨：{foreign_net_level} {foreign_net:+,}口{notional_str}")
