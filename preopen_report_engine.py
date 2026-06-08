@@ -368,6 +368,7 @@ def build_preopen_payload() -> dict:
         "mid_range": mid_range,
         "source_date": source_date,
         "contract_date": contract_date,
+        "days_to_settlement": days_to_settlement,
         "previous_high": high,
         "previous_low": low,
         "previous_close": close_price,
@@ -625,6 +626,9 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     low = payload.get("previous_low")
     close_price = payload.get("previous_close")
     volume = payload.get("previous_volume")
+
+    contract_date      = payload.get("contract_date", "N/A")
+    days_to_settlement = payload.get("days_to_settlement", 99)
 
     chip_ctx = payload.get("chip_ctx") or {}
 
