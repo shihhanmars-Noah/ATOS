@@ -280,6 +280,7 @@ def build_preopen_payload() -> dict:
     pivot = levels.get("pivot", None)
     source_date = levels.get("source_date", "N/A")
     contract_date = levels.get("contract_date", "N/A")
+    days_to_settlement = levels.get("days_to_settlement", 99)
     high = levels.get("high", None)
     low = levels.get("low", None)
     close_price = levels.get("close", None)
@@ -748,6 +749,8 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     lines.append(f"外資 {fn_level} {fn:+,}口，現貨{spot_dir} {abs(spot_val):.1f}億")
     lines.append(f"大戶框架：Put wall {_fp(put_wall)} ~ Call wall {_fp(call_wall)}（寬度{width}點）")
     lines.append(f"現價 {_fp(ref_price)}，{position_label}")
+    _dtl = int(days_to_settlement) if days_to_settlement is not None else "?"
+    lines.append(f"合約：{contract_date}（{_dtl}天後結算）")
     lines.append(f"Max Pain {_fp(max_pain)}，大戶希望{pain_dir}結算")
     lines.append(f"→ {incentive}")
     lines.append("")

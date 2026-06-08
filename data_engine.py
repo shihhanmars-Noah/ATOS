@@ -1166,6 +1166,57 @@ def get_latest_close_from_history(df_5min: pd.DataFrame) -> float | None:
 
 
 # --------------------------------------------------
+# Active Contract Selection
+# --------------------------------------------------
+
+def get_active_contract(latest_df: "pd.DataFrame") -> str:
+    """
+    從最新交易日的 DataFrame 中選出正確的主力合約。
+
+    規則：
+    - 結算日前 7 天以上：選最大量合約（正常邏輯）
+    - 結算日前 7 天以內：鎖定近月合約（最小月份代碼）
+      避免換月轉倉期間量能轉移導致系統誤切到次月合約
+
+    Args:
+        latest_df: 已過濾至最新交易日的 DataFrame，必須含 contract_date / volume 欄位
+
+    Returns:
+        合約代碼字串，例如 '202606'；找不到時回傳空字串
+    """
+    try:
+        from settlement_engine import get_days_to_settlement
+        days_to_settlement = get_days_to_settlement()
+    except Exception:
+        days_to_settlement = 99
+
+    if latest_df.empty:
+        return ""
+
+    # 依量排序，取最大量合約
+    top_row = latest_df.sort_values("volume", ascending=False).iloc[0]
+    top_contract = str(top_row["contract_date"])
+
+    # 結算日前 7 天內 → 鎖近月，防誤切換
+    if days_to_settlement <= 7:
+        # 只看月合約（6位數字，不含週合約的 W 字元）
+        monthly = [
+            str(c) for c in latest_df["contract_date"].unique()
+            if len(str(c)) == 6 and "W" not in str(c).upper()
+        ]
+        if monthly:
+            near_month = sorted(monthly)[0]
+            if near_month != top_contract:
+                print(
+                    f"⚠️ [data_engine] 結算前 {days_to_settlement} 天，"
+                    f"鎖定近月合約 {near_month}（最大量是 {top_contract}）"
+                )
+            return near_month
+
+    return top_contract
+
+
+# --------------------------------------------------
 # Flip Level
 # --------------------------------------------------
 
@@ -1219,13 +1270,24 @@ def get_flip_level(
             print("⚠️ get_flip_level：找不到最新交易日")
             return fallback
 
-        row = latest_df.sort_values("volume", ascending=False).iloc[0]
+        contract = get_active_contract(latest_df)
+        if not contract:
+            print("⚠️ get_flip_level：get_active_contract 回傳空值")
+            return fallback
+
+        row = latest_df[latest_df["contract_date"] == contract].iloc[0]
         flip = float(row["close"])
+
+        try:
+            from settlement_engine import get_days_to_settlement
+            days = get_days_to_settlement()
+        except Exception:
+            days = 99
 
         print(
             f"✅ prev_close: {round(flip, 1)} "
             f"| date={latest_date.date()} "
-            f"| contract={row['contract_date']} "
+            f"| contract={contract}（{days}天後結算）"
             f"| volume={int(row['volume'])}"
         )
 
@@ -1732,28 +1794,39 @@ def get_dynamic_resistance_support(
             print("⚠️ get_dynamic_resistance_support：找不到最新交易日")
             return {"R1": 0, "S1": 0, "pivot": None, "source_date": "N/A"}
 
-        row = latest_df.sort_values("volume", ascending=False).iloc[0]
+        contract_date = get_active_contract(latest_df)
+        if not contract_date:
+            print("⚠️ get_dynamic_resistance_support：get_active_contract 回傳空值")
+            return {"R1": 0, "S1": 0, "pivot": None, "source_date": "N/A"}
 
-        high = float(row["max"])
-        low = float(row["min"])
-        close = float(row["close"])
+        row = latest_df[latest_df["contract_date"] == contract_date].iloc[0]
+
+        high   = float(row["max"])
+        low    = float(row["min"])
+        close  = float(row["close"])
         volume = int(row["volume"])
-        contract_date = row["contract_date"]
 
         pivot = (high + low + close) / 3
-        r1 = 2 * pivot - low
-        s1 = 2 * pivot - high
+        r1    = 2 * pivot - low
+        s1    = 2 * pivot - high
+
+        try:
+            from settlement_engine import get_days_to_settlement
+            days_to_settlement = get_days_to_settlement()
+        except Exception:
+            days_to_settlement = 99
 
         result = {
-            "R1": round(r1, 1),
-            "S1": round(s1, 1),
-            "pivot": round(pivot, 1),
-            "source_date": str(latest_date.date()),
-            "contract_date": contract_date,
-            "high": round(high, 1),
-            "low": round(low, 1),
-            "close": round(close, 1),
-            "volume": volume,
+            "R1":                round(r1, 1),
+            "S1":                round(s1, 1),
+            "pivot":             round(pivot, 1),
+            "source_date":       str(latest_date.date()),
+            "contract_date":     contract_date,
+            "days_to_settlement": days_to_settlement,
+            "high":              round(high, 1),
+            "low":               round(low, 1),
+            "close":             round(close, 1),
+            "volume":            volume,
         }
 
         print("✅ R/S calculated:", result)
