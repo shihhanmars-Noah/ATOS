@@ -834,12 +834,48 @@ def generate_stock_commentaries_batch(stocks: list, chip_ctx: Optional[dict] = N
 
 
 # --------------------------------------------------
-# 批次新聞重要性評分（一次呼叫）
+# 批次新聞市場影響評估（一次呼叫）
 # --------------------------------------------------
+
+_NEWS_TRIAGE_SYSTEM = """你是台指期盤中主編，負責判斷每則新聞是否需要立刻發出警報。
+
+判斷標準（必須同時符合才算需要警報）：
+1. 今天交易時段內會直接影響台指期方向（不是長期展望、不是業績回顧）
+2. 影響幅度足以讓大盤單日波動超過 100 點以上
+3. 訊息具體、有數字或決策（不是「市場觀望」「可能」「分析師預期」等模糊字眼）
+
+以下類型不需要警報：
+- 個股財報、法說會（除非是台積電且數字大幅偏離預期）
+- 已知事件的例行更新（Fed 照預期升息、GDP 小幅修正）
+- 分析師目標價調整、評等變更
+- 技術分析文章、市場展望專欄
+- 超過 2 小時的舊聞
+
+需要警報的例子：
+- 美國緊急宣布新關稅，且立刻生效
+- Fed 超預期升息或降息（偏離市場預期 25bp 以上）
+- 台積電法說會：毛利率大幅低於預期 3% 以上
+- 地緣政治突發（軍事行動、制裁令生效）
+- 台灣強震 5.5 級以上影響生產
+
+回傳格式（每則一行，格式嚴格）：
+編號|Y或N|多或空或中性|一句話說明
+
+例如：
+1|N|中性|例行財報，無驚喜
+2|Y|空|Fed 超預期升息，直接衝擊風險資產
+3|N|中性|分析師目標價調整，不影響今日行情"""
+
 
 @safe_execute
 def batch_score_news(news_list: list) -> list:
-    """一次呼叫對多則新聞評分 1-5（台股台指期重要性），回傳與輸入同長度的分數列表。"""
+    """
+    AI 逐則判斷新聞是否需要發警報。
+
+    回傳與輸入同長度的分數列表：
+    - 5 = 需要立刻發警報（Y）
+    - 0 = 不需要（N）
+    """
     if not news_list:
         return []
 
@@ -847,31 +883,57 @@ def batch_score_news(news_list: list) -> list:
     if not api_key:
         return [0] * len(news_list)
 
-    items = [f"{i + 1}. {n.get('title', '')}" for i, n in enumerate(news_list)]
-    prompt = (
-        "以下新聞對台股台指期的重要性評分（1=不重要，5=極重要），只回傳分數，用逗號分隔：\n"
+    items = []
+    for i, n in enumerate(news_list):
+        title = n.get("title", "")
+        pub = n.get("pub_time", "")[:16]
+        stock = n.get("stock_id", "")
+        line = f"{i + 1}. [{pub}]"
+        if stock:
+            line += f"（{stock}）"
+        line += f" {title}"
+        items.append(line)
+
+    full_prompt = (
+        _NEWS_TRIAGE_SYSTEM
+        + "\n\n---\n以下新聞逐則判斷：\n"
         + "\n".join(items)
-        + "\n\n例如：1,4,2,3,1"
+        + "\n\n請按格式回傳，每則一行："
     )
 
     client = genai.Client(api_key=api_key)
-    text = _call_gemini_with_retry(client, prompt, max_output_tokens=max(20, len(news_list) * 3))
+    text = _call_gemini_with_retry(
+        client, full_prompt, max_output_tokens=max(60, len(news_list) * 30)
+    )
     if not text:
         return [0] * len(news_list)
 
     import re
-    scores = []
-    for x in re.split(r"[,\n]", text):
-        x = x.strip()
-        if x.isdigit() and 1 <= int(x) <= 5:
-            scores.append(int(x))
-        elif x.isdigit():
-            scores.append(0)
+    scores = [0] * len(news_list)
+    for line in text.strip().split("\n"):
+        line = line.strip()
+        # 解析 "編號|Y或N|方向|說明"
+        parts = line.split("|")
+        if len(parts) < 2:
+            continue
+        try:
+            idx = int(re.sub(r"\D", "", parts[0])) - 1
+            need_alert = parts[1].strip().upper() == "Y"
+            direction = parts[2].strip() if len(parts) > 2 else ""
+            reason = parts[3].strip() if len(parts) > 3 else ""
+            if 0 <= idx < len(news_list):
+                scores[idx] = 5 if need_alert else 0
+                # 把 AI 的判斷理由和方向寫回 news_list 供警報訊息使用
+                news_list[idx]["ai_direction"] = direction
+                news_list[idx]["ai_reason"] = reason
+                if need_alert:
+                    print(f"  🔴 [{idx+1}] 需要警報｜{direction}｜{reason}")
+                else:
+                    print(f"  ⬜ [{idx+1}] 略過｜{reason[:30]}")
+        except Exception:
+            continue
 
-    while len(scores) < len(news_list):
-        scores.append(0)
-
-    return scores[: len(news_list)]
+    return scores
 
 
 # --------------------------------------------------

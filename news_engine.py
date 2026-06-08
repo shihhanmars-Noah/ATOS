@@ -26,7 +26,7 @@ from messenger import send_to_telegram
 # 監控的主要個股（對大盤影響最大）
 WATCH_STOCKS = ["2330", "2317", "2454", "2412", "2882"]
 
-# 繁體中文關鍵字（發現任一即觸發）
+# 關鍵字列表（保留供參考，實際篩選已改由 AI 判斷，不再使用關鍵字過濾）
 KEYWORDS_ZH = [
     # 市場結構
     "暴跌", "崩盤", "熔斷", "停盤", "跌停", "漲停鎖死",
@@ -237,14 +237,23 @@ def _build_alert_message(item: dict, commentary: Optional[str]) -> str:
     stock_id = item.get("stock_id")
     title = item.get("title", "")
     url = item.get("url", "")
+    ai_direction = item.get("ai_direction", "")   # AI 判斷的影響方向
+    ai_reason = item.get("ai_reason", "")         # AI 判斷需要警報的理由
 
-    lines = [
-        f"【重大事件警報】{now}",
-        f"來源：{source}" + (f"（{stock_id}）" if stock_id else ""),
-        f"標題：{title}",
-    ]
+    lines = [f"【重大事件警報】{now}"]
+
+    if ai_direction and ai_direction != "中性":
+        lines.append(f"影響方向：{ai_direction}")
+
+    lines.append(f"來源：{source}" + (f"（{stock_id}）" if stock_id else ""))
+    lines.append(f"標題：{title}")
+
+    if ai_reason:
+        lines.append(f"AI 判斷：{ai_reason}")
+
     if commentary:
         lines.append(f"AI 快評：{commentary}")
+
     if url and url.startswith("http"):
         lines.append(f"連結：{url}")
 
