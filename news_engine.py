@@ -59,10 +59,12 @@ YAHOO_RSS_URLS = [
     "https://finance.yahoo.com/rss/topstories",
 ]
 
-NEWS_COOLDOWN = 1800   # 秒，同一則新聞 30 分鐘內不重複發送
+NEWS_COOLDOWN = 1800        # 秒，同一則新聞 30 分鐘內不重複發送
+NEWS_FRESH_WINDOW = 30      # 分鐘，只處理最近 N 分鐘內發布的新聞（防啟動時炸版）
+MAX_ALERTS_PER_POLL = 2     # 每輪最多發 N 則，其餘等下一輪
 
 # --------------------------------------------------
-# 去重狀態（session 內有效）
+# 去重狀態（持久化 + 記憶體雙層）
 # --------------------------------------------------
 
 _last_sent: dict[str, float] = {}
@@ -72,12 +74,67 @@ def _news_hash(title: str) -> str:
     return hashlib.md5(title.strip().encode("utf-8")).hexdigest()[:12]
 
 
+def _load_persisted_sent() -> dict:
+    """從 state.json 讀取已發送記錄（跨重啟不重發）。"""
+    try:
+        from persistent_state import load_state
+        return load_state().get("news_last_sent", {})
+    except Exception:
+        return {}
+
+
+def _save_persisted_sent(h: str, ts: float) -> None:
+    """把發送記錄寫入 state.json。"""
+    try:
+        from persistent_state import load_state, save_state
+        state = load_state()
+        records = state.get("news_last_sent", {})
+        records[h] = ts
+        # 只保留最近 200 筆
+        if len(records) > 200:
+            oldest = sorted(records, key=lambda k: records[k])
+            for old_key in oldest[:len(records) - 200]:
+                del records[old_key]
+        state["news_last_sent"] = records
+        save_state(state)
+    except Exception:
+        pass
+
+
 def _can_send(h: str) -> bool:
-    return time.time() - _last_sent.get(h, 0) > NEWS_COOLDOWN
+    now = time.time()
+    # 先查記憶體，首次查詢時從 state.json 補充
+    if h not in _last_sent:
+        persisted = _load_persisted_sent()
+        if h in persisted:
+            _last_sent[h] = persisted[h]
+    return now - _last_sent.get(h, 0) > NEWS_COOLDOWN
 
 
-def _mark_sent(h: str):
-    _last_sent[h] = time.time()
+def _mark_sent(h: str) -> None:
+    ts = time.time()
+    _last_sent[h] = ts
+    _save_persisted_sent(h, ts)
+
+
+def _is_fresh(pub_time_str: str) -> bool:
+    """
+    判斷新聞是否在 NEWS_FRESH_WINDOW 分鐘以內發布。
+    無法解析時間 → 視為新鮮（不過濾，保守處理）。
+    """
+    if not pub_time_str:
+        return True
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%a, %d %b %Y %H:%M:%S %z",
+                "%a, %d %b %Y %H:%M:%S +0000"):
+        try:
+            dt = datetime.strptime(pub_time_str[:25], fmt[:len(pub_time_str[:25])])
+            # 去掉 timezone 資訊做本地比較
+            dt_naive = dt.replace(tzinfo=None)
+            age_minutes = (datetime.now() - dt_naive).total_seconds() / 60
+            return age_minutes <= NEWS_FRESH_WINDOW
+        except Exception:
+            continue
+    return True  # 解析失敗時保守放行
 
 
 # --------------------------------------------------
@@ -242,11 +299,15 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
     if not all_items:
         return 0
 
-    # 去重（排除近 30 分鐘已發過的標題）
+    # 過濾：只留「新鮮」且「未發過」的新聞
     candidates = []
     for item in all_items:
         title = item.get("title", "")
         if not title:
+            continue
+        # 新鮮度過濾：只處理最近 NEWS_FRESH_WINDOW 分鐘內的新聞
+        # 防止系統啟動時把過去 24 小時舊新聞一次打出去
+        if not _is_fresh(item.get("pub_time", "")):
             continue
         if not _can_send(_news_hash(title)):
             continue
@@ -271,6 +332,11 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
 
     sent = 0
     for item in important_items:
+        # 每輪最多發 MAX_ALERTS_PER_POLL 則，避免單輪炸版
+        if sent >= MAX_ALERTS_PER_POLL:
+            print(f"⏳ [news_engine] 本輪已發 {sent} 則（上限 {MAX_ALERTS_PER_POLL}），其餘留至下輪")
+            break
+
         title = item.get("title", "")
         h = _news_hash(title)
         importance = item.get("importance", 4)
