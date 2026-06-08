@@ -50,7 +50,12 @@ ALERT_COOLDOWN = {
     "SHORT_RETEST_FAIL_V3": 600,  # 10分鐘
 }
 
-_last_alert_time = {}
+# 全域最小發送間隔（秒）：任意兩則警報之間至少間隔此時間
+# 避免多事件同時觸發連炸多則；單一事件仍受 ALERT_COOLDOWN 控制
+GLOBAL_ALERT_MIN_INTERVAL = 90  # 1分30秒
+
+_last_alert_time = {}        # {alert_key: timestamp}，記憶體層
+_last_any_alert_time = 0.0   # 全域最後一次發送時間
 
 
 # --------------------------------------------------
@@ -87,20 +92,76 @@ def normalize_event(event: str | None) -> str:
     return event
 
 
+def _load_persisted_alert_times() -> dict:
+    """從 atos_state.json 讀取上次警報時間（跨重啟持久化）。"""
+    try:
+        from persistent_state import load_state
+        state = load_state()
+        return state.get("alert_last_sent", {})
+    except Exception:
+        return {}
+
+
+def _save_persisted_alert_time(key: str, ts: float) -> None:
+    """把警報時間寫回 atos_state.json，避免重啟後冷卻歸零。"""
+    try:
+        from persistent_state import load_state, save_state
+        state = load_state()
+        times = state.get("alert_last_sent", {})
+        times[key] = ts
+        # 只保留最近 50 筆，避免無限膨脹
+        if len(times) > 50:
+            oldest = sorted(times, key=lambda k: times[k])
+            for old_key in oldest[: len(times) - 50]:
+                del times[old_key]
+        state["alert_last_sent"] = times
+        save_state(state)
+    except Exception:
+        pass
+
+
 def can_send(event: str, key: str) -> bool:
     """
     冷卻時間控制，避免重複洗版。
+
+    雙層保護：
+    1. 全域最小間隔（GLOBAL_ALERT_MIN_INTERVAL）：任意兩則警報間距
+       → 防止多事件同時觸發連炸
+    2. 單事件冷卻（ALERT_COOLDOWN）：同一 key 的重複觸發間距
+       → 防止同一訊號持續洗版
+    3. 持久化：從 state.json 讀取上次時間，重啟後冷卻不歸零
     """
+    global _last_any_alert_time
 
     now = time.time()
+
+    # --- 層1：全域最小間隔 ---
+    if now - _last_any_alert_time < GLOBAL_ALERT_MIN_INTERVAL:
+        remaining = int(GLOBAL_ALERT_MIN_INTERVAL - (now - _last_any_alert_time))
+        print(f"⏳ [alert] 全域冷卻中，還有 {remaining}s，跳過 {event}")
+        return False
+
+    # --- 層2：單事件冷卻（記憶體 + 持久化合併取最新） ---
     cooldown = ALERT_COOLDOWN.get(event, 900)
-    last = _last_alert_time.get(key, 0)
+    mem_last = _last_alert_time.get(key, 0)
 
-    if now - last >= cooldown:
-        _last_alert_time[key] = now
-        return True
+    # 首次或記憶體為空時從 state.json 補充
+    if mem_last == 0:
+        persisted = _load_persisted_alert_times()
+        mem_last = persisted.get(key, 0)
+        if mem_last:
+            _last_alert_time[key] = mem_last  # 回填記憶體
 
-    return False
+    if now - mem_last < cooldown:
+        remaining = int(cooldown - (now - mem_last))
+        print(f"⏳ [alert] {event} 冷卻中，還有 {remaining}s")
+        return False
+
+    # --- 通過：更新記憶體 + 持久化 ---
+    _last_alert_time[key] = now
+    _last_any_alert_time = now
+    _save_persisted_alert_time(key, now)
+    return True
 
 
 def build_alert_key(context: dict) -> str:
