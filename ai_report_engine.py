@@ -623,12 +623,21 @@ def generate_preopen_guidance(chip_ctx: Optional[dict], bias_label: str) -> Opti
 
 _EVENING_GUIDANCE_SYSTEM = """你是 ATOS 晚盤複盤分析引擎。
 
-根據今日盤面表現、警報和籌碼，用4-5行分析今日重點，並說明夜盤需關注的關鍵判斷點。
+你的唯一任務：用4-5行點出今日籌碼與盤面中最重要的一個「矛盾訊號」或「結構特徵」，
+讓交易員明白夜盤最需要警惕的陷阱是什麼。
 
-規則：
-1. 不說「建議做多/做空/買進/賣出」，描述條件和結構
-2. 純文字，不用 Markdown 符號
-3. 使用繁體中文"""
+絕對禁止事項：
+1. 禁止重複報告中已有的做多/做空/觀望條件（Call wall、Put wall點位已在報告本文列明）
+2. 禁止僅憑收盤位於Pivot上方就說「日盤偏多」——必須同時考慮假突破、現貨大賣等負面訊號
+3. 禁止自創點位數字，只能引用輸入中的點位
+4. 不說「建議做多/做空」，描述矛盾結構和陷阱
+5. 純文字，不用 Markdown，使用繁體中文
+
+判斷準則（優先順序）：
+- 若 Call wall 出現假突破 → 這是上方主力防守極重的訊號，必須提及
+- 若現貨外資賣超 > 200億 → 屬於重大異動，必須特別描述其含義
+- 若期貨回補但現貨大賣 → 這是「現期背離」矛盾，是今日最大陷阱
+- 若 C/P Ratio < 0.5 → 散戶過度追空，軋空風險"""
 
 
 @safe_execute
@@ -636,9 +645,16 @@ def generate_evening_guidance(
     day_result: str,
     chip_ctx: Optional[dict],
     alert_summary: dict,
+    call_wall_status: str = "",
+    put_wall_status: str = "",
+    pivot_status: str = "",
+    today_high=None,
+    today_low=None,
+    price=None,
 ) -> Optional[str]:
     """
-    產生晚盤 AI 解讀（4-5行）。
+    產生晚盤 AI 矛盾解讀（4-5行）。
+    接收假突破狀態、現貨大賣等關鍵事實，避免 AI 自行腦補錯誤結論。
     """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -652,27 +668,56 @@ def generate_evening_guidance(
     if alert_summary.get("has_sweep"):
         alert_types.append("掃單")
     if alert_summary.get("has_flip_break"):
-        alert_types.append("跌破中軸")
+        alert_types.append("跌破Pivot")
     if alert_summary.get("has_flip_recover"):
-        alert_types.append("站回中軸")
+        alert_types.append("站回Pivot")
 
     ctx = chip_ctx or {}
     fn = ctx.get("foreign_net", 0)
+    fn_1d = ctx.get("foreign_net_chg_1d", 0)
     score = ctx.get("sentiment_score", 0)
+    spot = ctx.get("spot_foreign_net_buy_bn", 0)
+    cp = ctx.get("call_put_ratio", "N/A")
+
+    # 現貨大賣警示
+    spot_note = ""
+    try:
+        if abs(float(spot)) > 200:
+            spot_note = f"（注意：現貨外資賣超 {abs(spot):.1f}億，屬重大異動）"
+    except Exception:
+        pass
+
+    # 今日盤面事實摘要（不讓 AI 自行推斷，直接告訴它事實）
+    facts = []
+    if call_wall_status:
+        facts.append(f"Call wall事實：{call_wall_status}")
+    if put_wall_status:
+        facts.append(f"Put wall事實：{put_wall_status}")
+    if pivot_status:
+        facts.append(f"Pivot事實：{pivot_status}")
+    if today_high and price:
+        try:
+            shadow = float(today_high) - float(price)
+            if shadow > 150:
+                facts.append(f"今日高點{today_high}距收盤{price}差{shadow:.0f}點，留有長上影線")
+        except Exception:
+            pass
 
     user_prompt = (
-        f"今日盤面結論：{day_result}\n"
-        f"今日警報類型：{', '.join(alert_types) if alert_types else '無主要事件'}\n"
-        f"外資期貨：{fn:+,}口（{ctx.get('foreign_net_level', 'N/A')}）\n"
-        f"情緒評分：{score:+d}（{ctx.get('sentiment_bias', 'N/A')}）\n"
-        f"Call牆：{ctx.get('call_wall', 'N/A')}｜Put牆：{ctx.get('put_wall', 'N/A')}\n\n"
-        "請用4-5行分析今日表現並說明夜盤需關注的關鍵點："
+        f"=== 今日盤面事實（必須以此為準，不得推翻）===\n"
+        + "\n".join(facts) + "\n\n"
+        f"=== 籌碼數據 ===\n"
+        f"外資期貨：{fn:+,}口（今日{'+' if fn_1d > 0 else ''}{fn_1d:,}口）\n"
+        f"現貨外資：{spot:+.1f}億{spot_note}\n"
+        f"C/P比：{cp}｜情緒評分：{score:+d}（{ctx.get('sentiment_bias', 'N/A')}）\n"
+        f"今日警報：{', '.join(alert_types) if alert_types else '無主要事件'}\n\n"
+        "請只說今日籌碼與盤面中最重要的一個矛盾訊號或陷阱結構（4-5行，不重複報告已有的操作條件）："
     )
 
     full_prompt = f"{_EVENING_GUIDANCE_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
-    text = _call_gemini_with_retry(client, full_prompt, max_output_tokens=800)
+    text = _call_gemini_with_retry(client, full_prompt, max_output_tokens=400)
     if text is None:
         return None
     print(f"✅ [ai_report_engine] 晚盤解讀完成（{len(text)} 字）")

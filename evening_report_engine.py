@@ -1085,15 +1085,39 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     else:
         put_wall_status = "Put wall N/A"
 
-    pivot_status = _build_pivot_status(price_f, active_pivot)
+    # Call wall 是否出現假突破（影響 pivot_status 文字與做空次條件）
+    call_wall_fakeout = False
+    try:
+        if float(today_high) > float(call_wall) and price_f < float(call_wall):
+            call_wall_fakeout = True
+    except Exception:
+        pass
 
-    # 收盤位置決定空方次要條件
+    # Pivot 狀態：假突破當日不寫「偏多」，改為「撐壓待夜盤驗證」
+    if call_wall_fakeout:
+        try:
+            pivot_status = f"Pivot {int(float(active_pivot))}：收盤站上，但 Call wall 假突破壓頂，撐壓待夜盤驗證"
+        except Exception:
+            pivot_status = _build_pivot_status(price_f, active_pivot)
+    else:
+        pivot_status = _build_pivot_status(price_f, active_pivot)
+
+    # 做空次條件：動態考慮假突破 + 今日高點上影線
     try:
         ap_f = float(active_pivot)
+        cw_f = float(call_wall)
+        hi_f = float(today_high)
         if price_f >= ap_f:
-            short_sub = f"若收盤在Pivot上方：跌回Pivot下方且無法站回確認"
+            if call_wall_fakeout and (hi_f - price_f) > 200:
+                # 假突破 + 長上影 → 夜盤反彈到高點/Call wall是更好的放空點
+                short_sub = (
+                    f"1. 夜盤反彈至今日高點 {_fp(hi_f)} / Call wall {_fp(cw_f)} 附近量縮轉弱確認\n"
+                    f"  2. 跌回 Pivot {_fp(ap_f)} 下方且回測無法站回確認"
+                )
+            else:
+                short_sub = f"跌回 Pivot {_fp(ap_f)} 下方且無法站回確認"
         else:
-            short_sub = f"若收盤在Pivot下方：反彈到今日高點附近未過確認"
+            short_sub = f"反彈到今日高點 {_fp(hi_f)} 附近未過確認"
     except Exception:
         short_sub = "參考 Pivot 確認後操作"
 
@@ -1101,12 +1125,20 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     total_alerts = int(summary.get("total", 0) or 0)
     alert_text = build_alert_log_text() or ""
 
-    # AI 夜盤解讀
+    # AI 夜盤解讀（傳入假突破與現貨大賣等關鍵事實）
     ai_text = ""
     try:
         from ai_report_engine import generate_evening_guidance
         day_result = classify_day_result(day_ctx)
-        ai_text = generate_evening_guidance(day_result, chip_ctx, summary) or ""
+        ai_text = generate_evening_guidance(
+            day_result, chip_ctx, summary,
+            call_wall_status=call_wall_status,
+            put_wall_status=put_wall_status,
+            pivot_status=pivot_status,
+            today_high=today_high,
+            today_low=today_low,
+            price=price,
+        ) or ""
     except Exception:
         pass
 
@@ -1128,8 +1160,9 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     lines.append("━━ 夜盤怎麼做 ━━")
     lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")
     lines.append(f"做空條件（強）：跌破 Put wall {_fp(put_wall)} 且量能確認")
-    lines.append(f"做空條件（次）：")
-    lines.append(f"  {short_sub}")
+    lines.append("做空條件（次）：")
+    for _sub_line in short_sub.split("\n"):
+        lines.append(f"  {_sub_line}")
     lines.append(f"觀望條件：在{_fp(put_wall)}~{_fp(call_wall)}無明確方向")
     lines.append("")
     lines.append("停損規則：")
