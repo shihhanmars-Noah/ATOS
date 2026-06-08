@@ -646,6 +646,18 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     fear_greed = chip_ctx.get("fear_greed_index", "N/A")
     fear_greed_emo = _fmt_emo(chip_ctx.get("fear_greed_emotion", ""))
     warnings = chip_ctx.get("warnings", [])
+    atr_5d = chip_ctx.get("atr_5d")
+
+    # ATR 停損參考提示（附在每個停損說明後）
+    if atr_5d and float(atr_5d) > 0:
+        atr_half = round(float(atr_5d) * 0.5, 0)
+        atr_note = (
+            f"  （參考：今日ATR={int(atr_5d)}點，"
+            f"0.5×ATR={int(atr_half)}點，"
+            f"若市場波動放大可考慮動態停損）"
+        )
+    else:
+        atr_note = ""
 
     # 衍生計算
     try:
@@ -755,17 +767,23 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     lines.append(f"空方（等一）：")
     lines.append(f"  進場：Call wall 附近5分K量縮確認轉弱")
     lines.append(f"  停損：Call wall 上方100點（{cw_stop}）（一口計=NT$20,000，請依帳戶規模調控）")
+    if atr_note:
+        lines.append(atr_note)
     lines.append(f"  目標：Pivot {_fp(active_pivot)}{pivot_note} → Put wall {_fp(put_wall)}")
     lines.append("")
     lines.append(f"空方（等二）：")
     lines.append(f"  進場：跌破{_fp(put_wall)}且下一根5分K確認")
     lines.append(f"  （若破線太快現價離Put wall已超過50點，放棄追單，改等反彈測試不破進場）")
     lines.append(f"  停損：{pw_stop}（一口計=NT$20,000）")
+    if atr_note:
+        lines.append(atr_note)
     lines.append(f"  目標：{pw_t1} → {pw_t2}")
     lines.append("")
     lines.append(f"多方（等三）：")
     lines.append(f"  進場：突破{_fp(call_wall)}且下一根5分K確認+量能放大")
     lines.append(f"  停損：{cw_stop_short}（一口計=NT$20,000）")
+    if atr_note:
+        lines.append(atr_note)
     lines.append(f"  目標：{cw_t1}")
     lines.append("")
 

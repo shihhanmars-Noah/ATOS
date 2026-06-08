@@ -5,8 +5,8 @@
 #   2. Yahoo Finance RSS（國際市場大事件）
 #
 # 每 5 分鐘輪詢一次（由 main_commander 排程）
-# 發現重大關鍵字 → AI 快評 → Telegram 警報
-# 相同標題 30 分鐘內不重複發送
+# 三級優先：Level 3 合併窗口 → Level 2 優先隊列 → Level 1 常規隊列
+# 相同標題 30 分鐘內不重複發送；同關鍵字 Level 3 事件 24 小時冷卻
 
 import hashlib
 import os
@@ -23,35 +23,20 @@ from messenger import send_to_telegram
 # 設定
 # --------------------------------------------------
 
-# 監控的主要個股（對大盤影響最大）
 WATCH_STOCKS = ["2330", "2317", "2454", "2412", "2882"]
 
-# 關鍵字列表（保留供參考，實際篩選已改由 AI 判斷，不再使用關鍵字過濾）
-KEYWORDS_ZH = [
-    # 市場結構
-    "暴跌", "崩盤", "熔斷", "停盤", "跌停", "漲停鎖死",
-    # 政策與總經
-    "緊急", "聯準會", "FOMC", "升息", "降息", "利率決定",
-    "CPI", "PCE", "通膨", "衰退", "失業率",
-    # 地緣政治
-    "制裁", "關稅", "貿易戰", "台灣海峽", "軍事演習",
-    # 重大企業
-    "台積電", "外資大幅", "三大法人",
-    # 天災
-    "地震", "強震", "颱風警報",
+# Level 3：重大總經/地緣/市場結構事件 → 合併窗口發送 + 24小時冷卻
+LEVEL3_KEYWORDS = [
+    'Fed', '聯準會', 'CPI', 'PCE', '非農', '降息', '升息',
+    '利率決議', '戰爭', '台海', '制裁', '熔斷', '崩盤',
+    '緊急', '停牌', '暫停交易', 'FOMC', '台灣海峽',
 ]
 
-# 英文關鍵字
-KEYWORDS_EN = [
-    # Market structure
-    "crash", "circuit breaker", "trading halt", "emergency",
-    # Fed / macro
-    "FOMC", "rate hike", "rate cut", "interest rate decision",
-    "inflation", "CPI", "PCE", "recession",
-    # Geopolitics
-    "Taiwan Strait", "sanction", "tariff", "trade war",
-    # Companies
-    "TSMC", "semiconductor",
+# Level 2：重要但非緊急 → 優先隊列，下輪優先發
+LEVEL2_KEYWORDS = [
+    '外資', '法人', '台積電', '晶片', '關稅', '匯率',
+    '三大法人', '期貨', '選擇權', '大跌', '暴跌',
+    'TSMC', 'semiconductor', 'tariff',
 ]
 
 # Yahoo Finance RSS 來源
@@ -59,9 +44,20 @@ YAHOO_RSS_URLS = [
     "https://finance.yahoo.com/rss/topstories",
 ]
 
-NEWS_COOLDOWN = 1800        # 秒，同一則新聞 30 分鐘內不重複發送
-NEWS_FRESH_WINDOW = 30      # 分鐘，只處理最近 N 分鐘內發布的新聞（防啟動時炸版）
-MAX_ALERTS_PER_POLL = 2     # 每輪最多發 N 則，其餘等下一輪
+NEWS_COOLDOWN          = 1800   # 秒，同一則新聞 30 分鐘內不重複發送
+NEWS_FRESH_WINDOW      = 30     # 分鐘，只處理最近 N 分鐘內的新聞（防啟動炸版）
+MAX_ALERTS_PER_POLL    = 2      # 每輪 Level 1/2 最多發 N 則
+COLLECTION_WINDOW_MINUTES = 5   # Level 3 收集窗口（分鐘）
+COOLDOWN_HOURS         = 24     # Level 3 同關鍵字冷卻（小時）
+
+# --------------------------------------------------
+# 三級優先狀態（記憶體）
+# --------------------------------------------------
+
+_event_collection: dict = {}   # key=關鍵字, value={'news': [], 'window_start': datetime}
+_event_cooldown:   dict = {}   # key=關鍵字, value=last_sent datetime
+_priority_queue:   list = []   # Level 2 待發隊列
+_normal_queue:     list = []   # Level 1 待發隊列
 
 # --------------------------------------------------
 # 去重狀態（持久化 + 記憶體雙層）
@@ -75,7 +71,6 @@ def _news_hash(title: str) -> str:
 
 
 def _load_persisted_sent() -> dict:
-    """從 state.json 讀取已發送記錄（跨重啟不重發）。"""
     try:
         from persistent_state import load_state
         return load_state().get("news_last_sent", {})
@@ -84,13 +79,11 @@ def _load_persisted_sent() -> dict:
 
 
 def _save_persisted_sent(h: str, ts: float) -> None:
-    """把發送記錄寫入 state.json。"""
     try:
         from persistent_state import load_state, save_state
         state = load_state()
         records = state.get("news_last_sent", {})
         records[h] = ts
-        # 只保留最近 200 筆
         if len(records) > 200:
             oldest = sorted(records, key=lambda k: records[k])
             for old_key in oldest[:len(records) - 200]:
@@ -103,7 +96,6 @@ def _save_persisted_sent(h: str, ts: float) -> None:
 
 def _can_send(h: str) -> bool:
     now = time.time()
-    # 先查記憶體，首次查詢時從 state.json 補充
     if h not in _last_sent:
         persisted = _load_persisted_sent()
         if h in persisted:
@@ -118,38 +110,49 @@ def _mark_sent(h: str) -> None:
 
 
 def _is_fresh(pub_time_str: str) -> bool:
-    """
-    判斷新聞是否在 NEWS_FRESH_WINDOW 分鐘以內發布。
-    無法解析時間 → 視為新鮮（不過濾，保守處理）。
-    """
+    """判斷新聞是否在 NEWS_FRESH_WINDOW 分鐘以內發布。無法解析 → 視為新鮮。"""
     if not pub_time_str:
         return True
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%a, %d %b %Y %H:%M:%S %z",
                 "%a, %d %b %Y %H:%M:%S +0000"):
         try:
             dt = datetime.strptime(pub_time_str[:25], fmt[:len(pub_time_str[:25])])
-            # 去掉 timezone 資訊做本地比較
             dt_naive = dt.replace(tzinfo=None)
             age_minutes = (datetime.now() - dt_naive).total_seconds() / 60
             return age_minutes <= NEWS_FRESH_WINDOW
         except Exception:
             continue
-    return True  # 解析失敗時保守放行
+    return True
 
 
 # --------------------------------------------------
-# 關鍵字判斷
+# 三級分類工具
 # --------------------------------------------------
+
+def _get_news_level(title: str) -> int:
+    """判斷新聞等級：3=重大事件 / 2=重要 / 1=一般"""
+    t = title.lower()
+    for kw in LEVEL3_KEYWORDS:
+        if kw.lower() in t:
+            return 3
+    for kw in LEVEL2_KEYWORDS:
+        if kw.lower() in t:
+            return 2
+    return 1
+
+
+def _get_triggered_keyword(title: str) -> str:
+    """回傳觸發 Level 3 的關鍵字（第一個命中）。"""
+    t = title.lower()
+    for kw in LEVEL3_KEYWORDS:
+        if kw.lower() in t:
+            return kw
+    return ""
+
 
 def _is_major_event(title: str, content: str = "") -> bool:
-    text = (title + " " + content).upper()
-    for kw in KEYWORDS_ZH:
-        if kw.upper() in text:
-            return True
-    for kw in KEYWORDS_EN:
-        if kw.upper() in text:
-            return True
-    return False
+    """向後相容：任何等級 >= 2 都算重大事件。"""
+    return _get_news_level(title + " " + content) >= 2
 
 
 # --------------------------------------------------
@@ -228,7 +231,55 @@ def _fetch_yahoo_rss() -> list[dict]:
 
 
 # --------------------------------------------------
-# 警報訊息
+# Level 3 合併發送
+# --------------------------------------------------
+
+def _send_merged_event(keyword: str, news_list: list) -> None:
+    """收集窗口結束後，合併多則 Level 3 新聞為一則重大事件警報。"""
+    count = len(news_list)
+    titles = '\n'.join([f"- {n['title']}" for n in news_list[:10]])
+
+    prompt = (
+        f"以下是關於「{keyword}」的 {count} 則新聞報導，請：\n"
+        f"1. 合併成一則重點摘要（不超過3行）\n"
+        f"2. 說明對台指期的即時影響\n"
+        f"3. 給出一個具體的操作注意事項\n\n"
+        f"新聞標題：\n{titles}\n\n"
+        f"格式：\n【摘要】...\n【台指影響】...\n【操作注意】..."
+    )
+
+    commentary = _get_commentary_with_retry(prompt, max_tokens=300)
+
+    if not commentary:
+        commentary = (
+            f"【摘要】偵測到 {count} 則{keyword}相關重大新聞\n"
+            f"【台指影響】請注意市場波動\n"
+            f"【操作注意】暫停追單，等待方向確認"
+        )
+
+    msg = (
+        f"🚨 重大事件警報（來自 {count} 則新聞）\n"
+        f"關鍵字：{keyword}\n"
+        f"時間：{datetime.now().strftime('%H:%M')}\n\n"
+        f"{commentary}"
+    )
+
+    send_to_telegram(msg)
+    print(f"✅ [news_engine] 重大事件合併發送：{keyword}（{count}則）")
+
+
+def _get_commentary_with_retry(prompt: str, max_tokens: int = 300) -> Optional[str]:
+    """呼叫 Gemini 生成快評，失敗時靜默回傳 None。"""
+    try:
+        from ai_report_engine import _call_gemini_with_retry
+        return _call_gemini_with_retry(prompt, max_tokens=max_tokens)
+    except Exception as e:
+        print(f"⚠️ [news_engine] Gemini 快評失敗：{e}")
+        return None
+
+
+# --------------------------------------------------
+# 警報訊息（Level 1/2）
 # --------------------------------------------------
 
 def _build_alert_message(item: dict, commentary: Optional[str]) -> str:
@@ -237,8 +288,8 @@ def _build_alert_message(item: dict, commentary: Optional[str]) -> str:
     stock_id = item.get("stock_id")
     title = item.get("title", "")
     url = item.get("url", "")
-    ai_direction = item.get("ai_direction", "")   # AI 判斷的影響方向
-    ai_reason = item.get("ai_reason", "")         # AI 判斷需要警報的理由
+    ai_direction = item.get("ai_direction", "")
+    ai_reason = item.get("ai_reason", "")
 
     lines = [f"【重大事件警報】{now}"]
 
@@ -265,9 +316,7 @@ def _build_alert_message(item: dict, commentary: Optional[str]) -> str:
 # --------------------------------------------------
 
 def batch_evaluate_news(news_list: list) -> list:
-    """
-    一次呼叫 Gemini 評估所有新聞重要性，回傳 importance >= 4 的項目（附 importance 欄位）。
-    """
+    """一次呼叫 Gemini 評估所有新聞重要性，回傳 importance >= 4 的項目。"""
     if not news_list:
         return []
 
@@ -293,29 +342,29 @@ def batch_evaluate_news(news_list: list) -> list:
 
 def poll_news(chip_ctx: Optional[dict] = None) -> int:
     """
-    輪詢所有新聞來源：
-    1. 收集這輪所有新聞（去重）
-    2. 一次批次呼叫 Gemini 評估重要性
-    3. 只對重要性 >= 4 的新聞各呼叫一次 _get_commentary()
+    輪詢所有新聞來源，三級處理：
+    - Level 3：關鍵字命中 → 收集窗口（5分鐘）→ 合併發送 + 24小時冷卻
+    - Level 2：優先隊列，每輪優先發
+    - Level 1：常規隊列，每輪最多 MAX_ALERTS_PER_POLL 則
 
     Returns:
         本次發送的警報數
     """
+    global _priority_queue, _normal_queue
+
     finmind_items: list = _fetch_finmind_news() or []
-    yahoo_items: list = _fetch_yahoo_rss() or []
+    yahoo_items:   list = _fetch_yahoo_rss() or []
     all_items = finmind_items + yahoo_items
 
     if not all_items:
         return 0
 
-    # 過濾：只留「新鮮」且「未發過」的新聞
+    # 過濾：只留新鮮且未發過的
     candidates = []
     for item in all_items:
         title = item.get("title", "")
         if not title:
             continue
-        # 新鮮度過濾：只處理最近 NEWS_FRESH_WINDOW 分鐘內的新聞
-        # 防止系統啟動時把過去 24 小時舊新聞一次打出去
         if not _is_fresh(item.get("pub_time", "")):
             continue
         if not _can_send(_news_hash(title)):
@@ -323,27 +372,76 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
         candidates.append(item)
 
     if not candidates:
+        _flush_expired_level3_windows()
         return 0
 
-    # 批次評估重要性（一次 AI 呼叫）
+    # 批次 AI 評估重要性
     important_items = batch_evaluate_news(candidates)
 
-    if not important_items:
-        return 0
+    # 依等級分流
+    for news in (important_items or []):
+        title = news.get("title", "")
+        level = _get_news_level(title)
+
+        if level == 3:
+            keyword = _get_triggered_keyword(title)
+            now = datetime.now()
+
+            # 24 小時冷卻檢查
+            if keyword in _event_cooldown:
+                elapsed_h = (now - _event_cooldown[keyword]).total_seconds() / 3600
+                if elapsed_h < COOLDOWN_HOURS:
+                    # 例外：含「更新/修正/異動/最新」字樣時重新觸發
+                    if not any(w in title for w in ['更新', '修正', '異動', '最新']):
+                        print(f"⏸️ [news_engine] {keyword} 24小時冷卻中，略過")
+                        continue
+
+            # 加入收集窗口
+            if keyword not in _event_collection:
+                _event_collection[keyword] = {
+                    'news': [],
+                    'window_start': now,
+                }
+            _event_collection[keyword]['news'].append(news)
+            print(f"📥 [news_engine] Level3 收集：{keyword}（已有 {len(_event_collection[keyword]['news'])} 則）")
+
+            # 窗口已滿 → 立即合併發送
+            window_age = (now - _event_collection[keyword]['window_start']).total_seconds() / 60
+            if window_age >= COLLECTION_WINDOW_MINUTES:
+                _send_merged_event(keyword, _event_collection[keyword]['news'])
+                _event_cooldown[keyword] = now
+                del _event_collection[keyword]
+
+        elif level == 2:
+            _priority_queue.append(news)
+            print(f"📋 [news_engine] Level2 加入優先隊列：{title[:50]}")
+
+        else:
+            _normal_queue.append(news)
+
+    # 輪詢結束後，補掃過期的 Level 3 窗口
+    _flush_expired_level3_windows()
 
     # 有重要新聞才載入 chip_ctx
-    if chip_ctx is None:
+    if chip_ctx is None and (_priority_queue or _normal_queue):
         try:
             from chip_data_engine import build_chip_context
             chip_ctx = build_chip_context()
         except Exception:
             chip_ctx = {}
 
+    # 發送：優先隊列先 → 常規隊列
     sent = 0
-    for item in important_items:
-        # 每輪最多發 MAX_ALERTS_PER_POLL 則，避免單輪炸版
+    send_queue = _priority_queue[:] + _normal_queue[:]
+    _priority_queue.clear()
+    _normal_queue.clear()
+
+    for item in send_queue:
         if sent >= MAX_ALERTS_PER_POLL:
             print(f"⏳ [news_engine] 本輪已發 {sent} 則（上限 {MAX_ALERTS_PER_POLL}），其餘留至下輪")
+            # 剩餘放回 normal_queue，下輪繼續
+            remaining = send_queue[send_queue.index(item):]
+            _normal_queue.extend(remaining)
             break
 
         title = item.get("title", "")
@@ -360,6 +458,17 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
     return sent
 
 
+def _flush_expired_level3_windows() -> None:
+    """掃描並發送所有已過收集窗口的 Level 3 事件。"""
+    now = datetime.now()
+    for keyword in list(_event_collection.keys()):
+        window_age = (now - _event_collection[keyword]['window_start']).total_seconds() / 60
+        if window_age >= COLLECTION_WINDOW_MINUTES:
+            _send_merged_event(keyword, _event_collection[keyword]['news'])
+            _event_cooldown[keyword] = now
+            del _event_collection[keyword]
+
+
 def _get_commentary(item: dict, chip_ctx: dict) -> Optional[str]:
     """呼叫 ai_report_engine 產生事件快評。"""
     from ai_report_engine import generate_event_report
@@ -373,7 +482,7 @@ def _get_commentary(item: dict, chip_ctx: dict) -> Optional[str]:
         return generate_event_report(event_desc, chip_ctx)
     except Exception as e:
         if "429" in str(e) or "ResourceExhausted" in type(e).__name__:
-            return None  # 429 靜默處理，只發標題
+            return None
         print(f"⚠️ [news_engine] _get_commentary 失敗：{e}")
         return None
 
@@ -385,17 +494,19 @@ def _get_commentary(item: dict, chip_ctx: dict) -> Optional[str]:
 if __name__ == "__main__":
     print("=== news_engine 手動測試 ===\n")
 
-    print("--- 測試關鍵字比對 ---")
+    print("--- 測試三級分類 ---")
     samples = [
-        ("Fed announces emergency rate cut", ""),
-        ("台積電法說會：毛利率優於預期", ""),
-        ("天氣晴，台股小幅震盪", ""),
-        ("FOMC 會議決議：維持利率不變", ""),
-        ("強震規模 7.2 發生在台灣東部", ""),
+        "Fed announces emergency rate cut",
+        "聯準會 FOMC 決議：維持利率不變",
+        "台積電法說會：毛利率優於預期",
+        "外資大幅賣超三百億",
+        "天氣晴，台股小幅震盪",
+        "台海軍事演習進入第三天",
     ]
-    for title, content in samples:
-        hit = _is_major_event(title, content)
-        print(f"  {'✅' if hit else '❌'} {title}")
+    for title in samples:
+        level = _get_news_level(title)
+        kw = _get_triggered_keyword(title) if level == 3 else ""
+        print(f"  Level {level} {'[' + kw + ']' if kw else '':15} {title}")
 
     print()
     print("--- 測試 Yahoo RSS 抓取 ---")
@@ -410,12 +521,3 @@ if __name__ == "__main__":
     print(f"  FinMind 新聞筆數：{len(fm_items)}")
     if fm_items:
         print(f"  最新標題：{fm_items[0].get('title', '')[:60]}")
-
-    print()
-    print(f"整體 poll_news()（不實際發送 Telegram）：")
-    # 測試模式：只跑關鍵字篩選，不發送
-    all_items = (fm_items) + (yahoo_items)
-    hits = [i for i in all_items if _is_major_event(i.get("title", ""), i.get("content", ""))]
-    print(f"  符合關鍵字的新聞：{len(hits)} 筆")
-    for h in hits[:3]:
-        print(f"    - {h.get('title', '')[:60]}")
