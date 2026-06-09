@@ -1107,6 +1107,7 @@ def send_stock_picks_report(
     candidate_limit: int = 30,
     top_a: int = 3,
     top_b: int = 5,
+    is_catchup: bool = False,
 ):
     """
     發送 ATOS 個股觀察報告（夜盤框架 + 結算週版本）。
@@ -1115,6 +1116,7 @@ def send_stock_picks_report(
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     today_str = date_str
+    _catchup_time = now.strftime("%H:%M") if is_catchup else ""
 
     # ── 籌碼背景 ──
     try:
@@ -1265,7 +1267,11 @@ def send_stock_picks_report(
     lines = []
 
     # ── 標頭 ──
-    lines.append(f"📈 個股觀察 {date_str}（{report_mode}）")
+    if is_catchup:
+        lines.append(f"📈 個股觀察 {date_str}（補發 {_catchup_time}）")
+        lines.append(f"⚠️ 本報告為補發版，資料為 {_catchup_time} 開機時最新狀態")
+    else:
+        lines.append(f"📈 個股觀察 {date_str}（{report_mode}）")
     if data_note:
         lines.append(data_note)
     lines.append("")

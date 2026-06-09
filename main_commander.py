@@ -485,6 +485,123 @@ class AtosCommander:
         )
 
     @safe_execute
+    def check_and_catchup(self):
+        """
+        系統啟動時執行：
+        檢查今天哪些報告沒發，自動補發。
+        """
+        now = datetime.now()
+        today = now.strftime('%Y-%m-%d')
+        current_time = now.hour * 60 + now.minute
+        state = load_state()
+
+        # 只在交易日執行（週一=0 ~ 週五=4）
+        if now.weekday() >= 5:
+            try:
+                print('非交易日，跳過補發檢查')
+            except Exception:
+                pass
+            return
+
+        open_time = now.strftime('%H:%M')
+        try:
+            print(f'補發檢查：現在 {open_time}，檢查今日未發報告...')
+        except Exception:
+            pass
+
+        # 通知 Telegram 進入補發模式
+        send_to_telegram(
+            f"ATOS 補發模式啟動（{open_time}開機）\n"
+            f"正在補發今日未發送的報告..."
+        )
+
+        catchup_results = []
+
+        # ── 1. 早盤期貨報告（08:35 後 ~ 13:45 前）──
+        preopen_sent = state.get('preopen_report_sent_date') == today
+        if not preopen_sent and 8*60+35 <= current_time <= 13*60+45:
+            try:
+                print('補發：早盤期貨報告...')
+            except Exception:
+                pass
+            try:
+                from preopen_report_engine import (
+                    send_preopen_sip_report as _send_pre,
+                    build_preopen_payload,
+                    save_preopen_plan_to_state,
+                    build_preopen_sip_message,
+                )
+                _payload = build_preopen_payload()
+                save_preopen_plan_to_state(_payload)
+                _msg = build_preopen_sip_message(_payload, is_catchup=True)
+                send_to_telegram(_msg)
+                state['preopen_report_sent_date'] = today
+                save_state(state)
+                catchup_results.append('早盤期貨報告（補發）')
+            except Exception as e:
+                catchup_results.append(f'早盤期貨報告補發失敗：{e}')
+
+        # ── 2. 早盤選股報告（08:40 後 ~ 13:45 前）──
+        stock_sent = state.get('stock_report_sent_date') == today
+        if not stock_sent and 8*60+40 <= current_time <= 13*60+45:
+            try:
+                print('補發：早盤選股報告...')
+            except Exception:
+                pass
+            try:
+                from stock_report_engine import send_stock_picks_report as _send_stock
+                _send_stock(is_catchup=True)
+                state['stock_report_sent_date'] = today
+                save_state(state)
+                catchup_results.append('早盤選股報告（補發）')
+            except Exception as e:
+                catchup_results.append(f'早盤選股報告補發失敗：{e}')
+
+        # ── 3. 晚盤期貨報告（15:30 後，今日尚未發）──
+        evening_sent = state.get('evening_report_sent_date') == today
+        if not evening_sent and current_time >= 15*60+30:
+            try:
+                print('補發：晚盤期貨報告（立刻觸發輪詢）...')
+            except Exception:
+                pass
+            try:
+                self._trigger_evening_futures_report()
+                catchup_results.append('晚盤期貨報告（補發）')
+            except Exception as e:
+                catchup_results.append(f'晚盤期貨報告補發失敗：{e}')
+
+        # ── 4. 晚盤選股報告（16:30 後，今日尚未發）──
+        evening_stock_sent = state.get('evening_stock_report_sent_date') == today
+        if not evening_stock_sent and current_time >= 16*60+30:
+            try:
+                print('補發：晚盤選股報告（立刻觸發輪詢）...')
+            except Exception:
+                pass
+            try:
+                self._trigger_evening_stock_report()
+                catchup_results.append('晚盤選股報告（補發）')
+            except Exception as e:
+                catchup_results.append(f'晚盤選股報告補發失敗：{e}')
+
+        # ── 結果彙報 ──
+        if catchup_results:
+            try:
+                print('補發結果：')
+                for r in catchup_results:
+                    print(f'  {r}')
+            except Exception:
+                pass
+            send_to_telegram(
+                "ATOS 補發完成\n"
+                + "\n".join(catchup_results)
+            )
+        else:
+            try:
+                print('今日所有報告均已發送，無需補發')
+            except Exception:
+                pass
+
+    @safe_execute
     def send_preopen_report(self):
         """
         發送盤前 SIP 作戰報告。
@@ -1088,35 +1205,85 @@ class AtosCommander:
         """
         啟動 ATOS Commander。
         """
+        try:
+            print(f"ATOS Commander starting... {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        except Exception:
+            pass
 
-        # 啟動驗證：日K價格 vs 快照交叉比對
+        # 步驟1：啟動驗證（日K vs 快照交叉比對）
+        try:
+            print("--- step1: startup validation")
+        except Exception:
+            pass
         if not self.startup_validation():
-            print("🚨 啟動驗證失敗，系統暫停，請手動確認資料後重啟")
+            try:
+                print("startup validation failed, halting")
+            except Exception:
+                pass
             return
 
-        # 資料回補檢查
+        # 步驟2：資料回補（缺漏交易日）
+        try:
+            print("--- step2: data backfill")
+        except Exception:
+            pass
         if check_and_backfill is not None:
             try:
                 check_and_backfill()
             except Exception as e:
-                print(f"⚠️ data_backfill failed: {e}")
+                try:
+                    print(f"data_backfill failed: {e}")
+                except Exception:
+                    pass
 
-        # tick cache 啟動清理（移除 3 天前的資料）
+        # 步驟3：tick cache 清理（移除 3 天前的資料）
         try:
+            print("--- step3: tick cache cleanup")
             from data_engine import load_txf_tick_cache, clean_txf_tick_cache, save_txf_tick_cache
             rows = load_txf_tick_cache()
             cleaned = clean_txf_tick_cache(rows)
             if len(cleaned) < len(rows):
                 save_txf_tick_cache(cleaned)
-                print(f"🧹 tick cache 清理：{len(rows)} → {len(cleaned)} 筆")
+                print(f"tick cache: {len(rows)} -> {len(cleaned)} rows")
         except Exception as e:
-            print(f"⚠️ tick cache 清理失敗：{e}")
+            try:
+                print(f"tick cache cleanup failed: {e}")
+            except Exception:
+                pass
 
-        self.send_startup_message()
+        # 步驟4：更新基礎資料（flip + 籌碼）
+        try:
+            print("--- step4: refresh flip + chip")
+        except Exception:
+            pass
+        self.refresh_flip()
+        self.refresh_chip()
+
+        # 步驟5：補發今日未發報告
+        try:
+            print("--- step5: catchup missed reports")
+        except Exception:
+            pass
+        self.check_and_catchup()
+
+        # 步驟6：設定排程 + 發送啟動訊息
+        try:
+            print("--- step6: setup schedule")
+        except Exception:
+            pass
         self.setup_schedule()
+        self.refresh_realtime_price()
+        send_to_telegram(
+            f"ATOS Commander running\n"
+            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
 
-        print("🛡️ ATOS Commander running...")
+        try:
+            print("ATOS Commander running...")
+        except Exception:
+            pass
 
+        # 步驟7：主循環
         while True:
             try:
                 schedule.run_pending()
@@ -1127,11 +1294,17 @@ class AtosCommander:
                 time.sleep(30)
 
             except KeyboardInterrupt:
-                print("🛑 ATOS Commander stopped by user")
+                try:
+                    print("ATOS Commander stopped by user")
+                except Exception:
+                    pass
                 break
 
             except Exception as e:
-                print(f"💥 ATOS Commander loop error: {e}")
+                try:
+                    print(f"ATOS Commander loop error: {e}")
+                except Exception:
+                    pass
                 time.sleep(10)
 
 

@@ -879,7 +879,7 @@ def _build_oi_invalid_night_report(
     return "\n".join(L)
 
 
-def build_preopen_sip_message(payload: dict | None = None) -> str:
+def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = False) -> str:
     """建立新版決策工具格式盤前報告。"""
 
     if payload is None:
@@ -1077,7 +1077,13 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     lines = []
 
-    lines.append(f"🛡️ ATOS 盤前 {today} {now_time}")
+    if is_catchup:
+        lines.append(f"🛡️ ATOS 盤前 {today}（補發 {now_time}）")
+        lines.append(f"⚠️ 本報告為補發版")
+        lines.append(f"系統於 {now_time} 開機，資料為開機時最新狀態")
+        lines.append(f"日盤資料已自動補抓至開機時間點")
+    else:
+        lines.append(f"🛡️ ATOS 盤前 {today} {now_time}")
     if not oi_framework_valid:
         lines.append("")
         lines.append(oi_warning)
@@ -1274,12 +1280,12 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 # --------------------------------------------------
 
 @safe_execute
-def send_preopen_sip_report():
+def send_preopen_sip_report(is_catchup: bool = False):
     """發送盤前 SIP 作戰報告到 Telegram。"""
 
     payload = build_preopen_payload()
     save_preopen_plan_to_state(payload)
-    msg = build_preopen_sip_message(payload)
+    msg = build_preopen_sip_message(payload, is_catchup=is_catchup)
     return send_to_telegram(msg)
 
 
