@@ -150,6 +150,20 @@ class AtosSentinel:
 
         current_price = tick["price"]
 
+        # ── 即時更新日盤高低點（盤中每 2 分鐘同步 tick 價）──
+        try:
+            from session_engine import is_day_session
+            if is_day_session():
+                _cp = float(current_price)
+                _existing_high = float(self.state.get("day_session_high", 0) or 0)
+                _existing_low  = float(self.state.get("day_session_low", 999999) or 999999)
+                if _cp > _existing_high:
+                    self.state["day_session_high"] = _cp
+                if _cp < _existing_low or _existing_low == 0:
+                    self.state["day_session_low"] = _cp
+        except Exception:
+            pass
+
         # 每輪開始主動刷新技術點位（防止 state 中的過期點位影響後續判斷）
         self._refresh_levels_from_cache(current_price)
 

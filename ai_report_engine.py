@@ -900,10 +900,36 @@ def generate_chip_market_commentary(chip_ctx: Optional[dict] = None) -> Optional
     if not chip_ctx:
         return None
 
-    fn = chip_ctx.get("foreign_net", 0)
+    fn = chip_ctx.get("foreign_net", 0) or 0
     score = chip_ctx.get("sentiment_score", 0)
+
+    # ── 外資期貨方向強制說明（防止 AI 誤讀回補為加空）──
+    foreign_net_chg = chip_ctx.get("foreign_net_chg_1d", 0) or 0
+    try:
+        foreign_net_chg = int(foreign_net_chg)
+        fn_int = int(fn)
+    except Exception:
+        foreign_net_chg = 0
+        fn_int = 0
+    if foreign_net_chg > 0:
+        foreign_direction = (
+            f"重要：今日外資期貨「被迫認輸回補」{foreign_net_chg:+,}口"
+            f"（從{fn_int - foreign_net_chg:+,}降至{fn_int:+,}口）"
+            f"，這是「回補」不是「空單大增」，請正確描述。"
+            f"總部位雖仍是極強空，但方向是在減少空單。"
+        )
+    elif foreign_net_chg < 0:
+        foreign_direction = (
+            f"重要：今日外資期貨「加碼做空」{foreign_net_chg:,}口"
+            f"（從{fn_int - foreign_net_chg:+,}增至{fn_int:+,}口）"
+            f"，空方壓力持續加重。"
+        )
+    else:
+        foreign_direction = f"今日外資期貨無明顯變化，維持{fn_int:+,}口。"
+
     user_prompt = (
-        f"外資期貨：{fn:+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
+        f"{foreign_direction}\n\n"
+        f"外資期貨：{fn_int:+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
         f"情緒評分：{score:+d}（{chip_ctx.get('sentiment_bias', 'N/A')}）\n"
         f"Call牆：{chip_ctx.get('call_wall', 'N/A')}｜Put牆：{chip_ctx.get('put_wall', 'N/A')}\n"
         f"現價位置：區間{chip_ctx.get('price_position_pct', 'N/A')}%\n"

@@ -1054,6 +1054,26 @@ def update_day_session_state_from_5min(df_5min: pd.DataFrame) -> bool:
             "%Y-%m-%d %H:%M:%S"
         )
 
+        # ── 日盤高低點合理性驗證 ──
+        # 高點不能低於收盤，低點不能高於收盤
+        day_close_v = state.get("day_session_close")
+        day_high_v  = state.get("day_session_high")
+        day_low_v   = state.get("day_session_low")
+        if day_close_v and day_high_v:
+            try:
+                if float(day_high_v) < float(day_close_v):
+                    print(f"⚠️ 日盤高點{day_high_v}低於收盤{day_close_v}，修正高點")
+                    state["day_session_high"] = day_close_v
+            except Exception:
+                pass
+        if day_close_v and day_low_v:
+            try:
+                if float(day_low_v) > float(day_close_v):
+                    print(f"⚠️ 日盤低點{day_low_v}高於收盤{day_close_v}，修正低點")
+                    state["day_session_low"] = day_close_v
+            except Exception:
+                pass
+
         save_state(state)
 
         print(
