@@ -182,6 +182,104 @@ class AtosCommander:
     # --------------------------------------------------
 
     @safe_execute
+    def refresh_night_session_close(self):
+        """
+        05:05 執行：抓取夜盤最終 H/L/C 與外資夜盤口數
+        確保 08:00 的 Pivot 計算包含夜盤資訊
+        """
+        from night_session_engine import get_night_session_data
+
+        night_data = get_night_session_data()
+
+        if not night_data or not night_data.get('night_close'):
+            try:
+                print("⚠️ 夜盤收盤資料取得失敗，Pivot 將沿用昨日日盤資料")
+            except Exception:
+                pass
+            return
+
+        night_close = night_data['night_close']
+        night_high  = night_data['night_high']
+        night_low   = night_data['night_low']
+        night_chg   = night_data.get('night_chg', 0)
+
+        # 寫入 state
+        state = load_state()
+        state['night_session_close']     = night_close
+        state['night_session_high']      = night_high
+        state['night_session_low']       = night_low
+        state['night_session_chg']       = night_chg
+        state['night_session_updated_at'] = datetime.now().isoformat()
+        save_state(state)
+
+        try:
+            print(
+                f"✅ 夜盤收盤資料更新：收{night_close} "
+                f"高{night_high} 低{night_low} "
+                f"變動{float(night_chg):+.0f}點"
+            )
+        except Exception:
+            pass
+
+        # 同時更新夜盤外資口數
+        try:
+            from chip_data_engine import fetch_afterhours_institutional
+            ah_data = fetch_afterhours_institutional()
+            if ah_data:
+                state = load_state()
+                state['afterhours_foreign_net'] = ah_data.get('foreign_ah_net', 0)
+                save_state(state)
+                try:
+                    print(f"✅ 夜盤外資口數更新：{ah_data.get('foreign_ah_net', 0):+,}口")
+                except Exception:
+                    pass
+        except Exception as _e:
+            try:
+                print(f"⚠️ 夜盤外資口數更新失敗：{_e}")
+            except Exception:
+                pass
+
+    @safe_execute
+    def reset_daily_state(self):
+        """
+        06:00 執行：重置所有當日發送鎖與快取旗標
+        確保新交易日從乾淨狀態開始
+        """
+        state = load_state()
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        # 重置發送鎖（只重置昨日的，今日的保留）
+        locks_to_reset = [
+            'evening_report_sent_date',
+            'evening_stock_report_sent_date',
+            'preopen_report_sent_date',
+            'stock_report_sent_date',
+        ]
+
+        for key in locks_to_reset:
+            existing = state.get(key, '')
+            if existing and existing != today:
+                state[key] = None
+                try:
+                    print(f"[reset] {key}: {existing} -> None")
+                except Exception:
+                    pass
+
+        # 重置日盤高低點
+        state['day_session_high']  = None
+        state['day_session_low']   = None
+        state['day_session_close'] = None
+
+        # 重置今日警報計數
+        state['today_alert_count'] = 0
+
+        save_state(state)
+        try:
+            print(f"✅ 新交易日狀態初始化完成（{today}）")
+        except Exception:
+            pass
+
+    @safe_execute
     def refresh_flip(self):
         """
         更新前日收盤（prev_close）及 mid_range（前日高低中間值），
@@ -214,10 +312,6 @@ class AtosCommander:
                 self.state["previous_futures_close"] = levels.get("close")
                 self.sentinel.state["previous_futures_close"] = levels.get("close")
 
-            if levels.get("pivot"):
-                self.state["pivot"] = levels.get("pivot")
-                self.sentinel.state["pivot"] = levels.get("pivot")
-
             if levels.get("R1"):
                 self.state["r1"] = levels.get("R1")
                 self.sentinel.state["r1"] = levels.get("R1")
@@ -227,15 +321,76 @@ class AtosCommander:
                 self.sentinel.state["s1"] = levels.get("S1")
 
             high = levels.get("high")
-            low = levels.get("low")
+            low  = levels.get("low")
             if high and low:
                 mid_range = round((high + low) / 2, 1)
                 self.state["mid_range"] = mid_range
                 self.sentinel.state["mid_range"] = mid_range
 
+            # ── Active Pivot：優先納入夜盤高低收 ──
+            try:
+                _state_now = load_state()
+                night_high  = _state_now.get('night_session_high')
+                night_low   = _state_now.get('night_session_low')
+                night_close = _state_now.get('night_session_close')
+
+                _prev_high  = float(levels.get('high',  0) or 0)
+                _prev_low   = float(levels.get('low',   0) or 0)
+                _prev_close = float(levels.get('close', 0) or 0)
+
+                if night_high and night_low and night_close:
+                    _combined_high  = max(_prev_high, float(night_high))
+                    _combined_low   = min(_prev_low,  float(night_low))
+                    _combined_close = float(night_close)   # 夜盤收盤為最新收盤
+                    active_pivot = round(
+                        (_combined_high + _combined_low + _combined_close) / 3, 1
+                    )
+                    pivot_source = "日盤+夜盤"
+                    try:
+                        print(
+                            f"✅ Active Pivot（含夜盤）：{active_pivot} "
+                            f"（日高{_prev_high}/夜高{night_high} "
+                            f"日低{_prev_low}/夜低{night_low} "
+                            f"夜收{night_close}）"
+                        )
+                    except Exception:
+                        pass
+                else:
+                    if _prev_high and _prev_low and _prev_close:
+                        active_pivot = round(
+                            (_prev_high + _prev_low + _prev_close) / 3, 1
+                        )
+                    else:
+                        active_pivot = levels.get("pivot")
+                    pivot_source = "昨日日盤"
+                    try:
+                        print(f"⚠️ 無夜盤資料，Active Pivot 使用昨日日盤：{active_pivot}")
+                    except Exception:
+                        pass
+
+                if active_pivot:
+                    self.state["pivot"]        = active_pivot
+                    self.state["flip"]         = active_pivot
+                    self.state["pivot_source"] = pivot_source
+                    self.sentinel.state["pivot"]        = active_pivot
+                    self.sentinel.state["flip"]         = active_pivot
+                    self.sentinel.state["pivot_source"] = pivot_source
+            except Exception as _pe:
+                # fallback：直接用 levels 內建 pivot
+                if levels.get("pivot"):
+                    self.state["pivot"] = levels.get("pivot")
+                    self.sentinel.state["pivot"] = levels.get("pivot")
+                try:
+                    print(f"⚠️ Active Pivot 夜盤整合失敗，使用 levels pivot：{_pe}")
+                except Exception:
+                    pass
+
         save_state(self.state)
 
-        print(f"✅ prev_close 更新完成：{prev_close}")
+        try:
+            print(f"✅ prev_close 更新完成：{prev_close}")
+        except Exception:
+            pass
         return prev_close
 
     @safe_execute
@@ -790,12 +945,18 @@ class AtosCommander:
         schedule.every().day.at("07:31").do(self.update_settlement)
         schedule.every().day.at("07:32").do(self.update_events)
 
-        # 夜盤收盤資料更新
+        # 夜盤收盤資料更新（原始快取）
         schedule.every().day.at("05:03").do(self.update_night_close)
         schedule.every().day.at("08:20").do(self.update_night_close)
 
+        # 05:05 夜盤收盤數據結算（H/L/C + 外資夜盤口數）
+        schedule.every().day.at("05:05").do(self.refresh_night_session_close)
+
+        # 06:00 新交易日狀態初始化（重置發送鎖 / 日盤高低點）
+        schedule.every().day.at("06:00").do(self.reset_daily_state)
+
         # 盤前資料更新
-        schedule.every().day.at("08:00").do(self.refresh_flip)
+        schedule.every().day.at("08:00").do(self.refresh_flip)   # 含夜盤 Pivot
         schedule.every().day.at("08:30").do(self.refresh_chip)
 
         # 盤前報告
@@ -814,14 +975,14 @@ class AtosCommander:
         # 晚盤期貨報告：15:00 開始輪詢，就緒即發，死線 16:00
         schedule.every().day.at("15:00").do(self._trigger_evening_futures_report)
 
-        # 晚盤選股報告：15:30 開始輪詢，就緒即發，死線 18:00
-        schedule.every().day.at("15:30").do(self._trigger_evening_stock_report)
+        # 晚盤選股報告：16:30 開始輪詢（法人資料通常 17:00 後才完整），死線 18:00
+        schedule.every().day.at("16:30").do(self._trigger_evening_stock_report)
 
         # 重大新聞輪詢（每 5 分鐘）
         schedule.every(5).minutes.do(self.poll_news)
 
-        # 週度績效報告（每週日 20:00）
-        schedule.every().sunday.at("20:00").do(self.send_weekly_performance_report)
+        # 週度績效報告（每週日 13:00）
+        schedule.every().sunday.at("13:00").do(self.send_weekly_performance_report)
 
         try:
             print("ATOS schedule setup completed")
