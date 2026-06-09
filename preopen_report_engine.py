@@ -905,7 +905,14 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # ━━ 關鍵價位 ━━
     lines.append("━━ 關鍵價位 ━━")
-    lines.append(f"Call wall：{_fp(call_wall)} | Pivot：{_fp(active_pivot)} | Put wall：{_fp(put_wall)}")
+    if not oi_framework_valid and night_high > 0:
+        _nd_label2 = f"（{night_date_str}）" if night_date_str else ""
+        lines.append(f"上壓：夜盤高點 {int(night_high)}{_nd_label2}")
+        lines.append(f"參考：夜盤收盤 {int(night_close)}")
+        lines.append(f"支撐：夜盤低點 {int(night_low)}")
+        lines.append(f"⚠️ 昨日 Call wall {_fp(call_wall)} / Put wall {_fp(put_wall)} 失效，不使用")
+    else:
+        lines.append(f"Call wall：{_fp(call_wall)} | Pivot：{_fp(active_pivot)} | Put wall：{_fp(put_wall)}")
     lines.append("")
 
     # ━━ 籌碼數據 ━━
