@@ -14,6 +14,7 @@ from google.genai import types
 from error_handler import safe_execute
 from chip_data_engine import build_chip_context
 from risk_adjustment import apply_big_player_adjustments
+from strategy_filter_engine import _get_current_session
 
 GEMINI_MODEL = "gemini-2.5-flash"
 CONFIDENCE_THRESHOLD = 3
@@ -280,6 +281,92 @@ def _get_days_to_settlement() -> int:
         return 99
 
 
+def _build_observe_message(
+    current_price: float,
+    direction: str,
+    confidence: int,
+    key_levels: dict,
+    session_name: str,
+) -> str:
+    """
+    觀察模式訊息（OBSERVE 時段）。
+
+    只描述方向感與參考點位，不含進場條件或停損目標。
+
+    Args:
+        current_price: 當前價格
+        direction:     '做多' / '做空' / '觀察'（來自 _extract_direction）
+        confidence:    調整後信心分
+        key_levels:    dict with pivot / r1 / s1 / call_wall / put_wall
+        session_name:  時段名稱（DAY_OPEN / DAY_CLOSE / NIGHT / NIGHT_LATE）
+    """
+    _session_labels = {
+        'DAY_OPEN':   '開盤冷靜期',
+        'DAY_CLOSE':  '尾盤',
+        'DAY_MAIN':   '主力時段（信心不足）',
+        'NIGHT':      '夜盤',
+        'NIGHT_LATE': '深夜盤',
+    }
+    label = _session_labels.get(session_name, '非主力時段')
+
+    pivot     = key_levels.get('pivot')
+    r1        = key_levels.get('r1')
+    s1        = key_levels.get('s1')
+    call_wall = key_levels.get('call_wall')
+    put_wall  = key_levels.get('put_wall')
+
+    direction_zh = (
+        '偏多' if direction == '做多'
+        else '偏空' if direction == '做空'
+        else '中性'
+    )
+
+    lines = [
+        f"觀察提示（{label}）",
+        f"現價：{int(round(float(current_price)))}｜方向感：{direction_zh}｜信心：{confidence}/5",
+    ]
+
+    # 有效點位彙總
+    if r1 and pivot and s1:
+        try:
+            lines.append(
+                f"參考：R1 {int(round(float(r1)))} / "
+                f"Pivot {int(round(float(pivot)))} / "
+                f"S1 {int(round(float(s1)))}"
+            )
+        except Exception:
+            pass
+
+    if call_wall and put_wall:
+        try:
+            lines.append(
+                f"大戶牆：Call {int(round(float(call_wall)))} / "
+                f"Put {int(round(float(put_wall)))}"
+            )
+        except Exception:
+            pass
+
+    # 依方向給觀察重點
+    if direction == '做多' and pivot:
+        try:
+            lines.append(f"觀察：5分K 是否守穩 {int(round(float(pivot)))} 以上")
+        except Exception:
+            pass
+        lines.append("不進場，等日盤主力時段確認方向")
+    elif direction == '做空' and pivot:
+        try:
+            lines.append(f"觀察：5分K 是否跌破 {int(round(float(pivot)))} 且無法站回")
+        except Exception:
+            pass
+        lines.append("不進場，等日盤主力時段確認方向")
+    else:
+        lines.append("方向不明，觀察為主，不進場")
+
+    lines.append(f"（{label}不發進場指令，僅供參考）")
+
+    return "\n".join(lines)
+
+
 # --------------------------------------------------
 # 主函式
 # --------------------------------------------------
@@ -308,6 +395,67 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
     # 非即時資料不發指令
     if not alert_context.get("is_realtime", True):
         return None
+
+    # ── 時段檢查（SILENT = 完全靜默；OBSERVE = 僅觀察提示，不呼叫 AI）──
+    _session = _get_current_session()
+    if _session['mode'] == 'SILENT':
+        try:
+            print(f"[claude_advisor] SILENT session ({_session['name']}), skipping")
+        except Exception:
+            pass
+        return None
+
+    if _session['mode'] == 'OBSERVE':
+        # 從事件名稱推斷方向（不呼叫 Gemini，節省 API 用量）
+        _obs_event = str(alert_context.get("event", "")).upper()
+        _event_direction_map = {
+            'LONG_CONFIRM_V3':    '做多',
+            'BULLISH_SWEEP':      '做多',
+            'FLIP_RECOVER':       '做多',
+            'SHORT_TRAP':         '做多',   # 軋空，多方機會
+            'SHORT_RETEST_FAIL_V3': '做空',
+            'BEARISH_SWEEP':      '做空',
+            'FLIP_BREAK':         '做空',
+            'FLIP_INVALID':       '做空',
+            'LONG_TRAP':          '做空',   # 假突破，空方機會
+        }
+        _inferred_dir = _event_direction_map.get(_obs_event, '觀察')
+        _obs_price = alert_context.get("price") or 0
+
+        # 嘗試從 chip_cache 取點位
+        _obs_levels: dict = {}
+        try:
+            with open('chip_cache.json', encoding='utf-8') as _of:
+                _occ = json.load(_of)
+            _ot = _occ.get('tech_levels', {})
+            _ooi = _occ.get('option_oi', {})
+            _obs_levels = {
+                'pivot':     _ot.get('pivot'),
+                'r1':        _ot.get('r1'),
+                's1':        _ot.get('s1'),
+                'call_wall': _ooi.get('call_wall_strike'),
+                'put_wall':  _ooi.get('put_wall_strike'),
+            }
+        except Exception:
+            pass
+
+        # 補入 alert_context 中已有的點位（可能來自 monitor_engine）
+        for _lk in ('pivot', 'r1', 's1'):
+            if not _obs_levels.get(_lk):
+                _obs_levels[_lk] = alert_context.get(_lk)
+
+        try:
+            print(f"[claude_advisor] OBSERVE session ({_session['name']}), event={_obs_event} dir={_inferred_dir}")
+        except Exception:
+            pass
+
+        return _build_observe_message(
+            current_price=float(_obs_price) if _obs_price else 0.0,
+            direction=_inferred_dir,
+            confidence=0,          # 未呼叫 AI，信心分不適用
+            key_levels=_obs_levels,
+            session_name=_session['name'],
+        )
 
     event = str(alert_context.get("event", "")).upper()
 
@@ -343,9 +491,10 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     # ── 點位有效性驗證：與現價差距 >5% 視為過期資料 ──
     _expired_levels: set = set()
-    if price:
+    _ctx_price = alert_context.get("price")
+    if _ctx_price:
         try:
-            _pv = float(price)
+            _pv = float(_ctx_price)
             alert_context = dict(alert_context)
             for _lk in ('flip', 'mid_range', 'pivot', 'r1', 's1'):
                 if not _is_valid_level(_pv, alert_context.get(_lk)):
@@ -357,12 +506,12 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     # ── OI 框架有效性：超出 Call/Put wall 500點外則標記 ──
     _oi_framework_valid = True
-    if price and chip_ctx:
+    if _ctx_price and chip_ctx:
         try:
             _cw = chip_ctx.get('call_wall')
             _pw = chip_ctx.get('put_wall')
             if _cw and _pw:
-                _pv = float(price)
+                _pv = float(_ctx_price)
                 if _pv > float(_cw) + 500 or _pv < float(_pw) - 500:
                     _oi_framework_valid = False
         except Exception:
@@ -521,13 +670,31 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     adjusted_confidence = confidence + confidence_adj
 
-    # 信心分門檻：做多 >= 4，做空 >= 3
+    # ── 時段分流：OBSERVE → 觀察提示；FULL → 正常指令流程 ──
+    _key_levels = {
+        'pivot':     alert_context.get('pivot'),
+        'r1':        alert_context.get('r1'),
+        's1':        alert_context.get('s1'),
+        'call_wall': chip_ctx.get('call_wall') if chip_ctx else None,
+        'put_wall':  chip_ctx.get('put_wall') if chip_ctx else None,
+    }
+
+    # FULL 模式：信心分門檻檢查（OBSERVE 模式已在函式頂部提前返回）
     min_confidence = 4 if direction == "做多" else CONFIDENCE_THRESHOLD
     if adjusted_confidence < min_confidence:
         label = _EVENT_LABELS.get(event, event)
         adj_note = f"（原{confidence}，調整{confidence_adj:+d}）" if confidence_adj != 0 else ""
-        print(f"⚪ [claude_advisor] {event} 調整後信心分 {adjusted_confidence}/5{adj_note}，發觀察提示")
-        return f"觀察中，條件未成熟（{label}，信心分 {adjusted_confidence}/5{adj_note}）"
+        try:
+            print(f"[claude_advisor] {event} adjusted confidence {adjusted_confidence}/5{adj_note}, observe only")
+        except Exception:
+            pass
+        return _build_observe_message(
+            current_price=float(price) if price else 0.0,
+            direction=direction,
+            confidence=adjusted_confidence,
+            key_levels=_key_levels,
+            session_name='DAY_MAIN',  # FULL 時段但信心不足
+        )
 
     # 有方向指令才做冷卻檢查
     if direction in ("做多", "做空"):

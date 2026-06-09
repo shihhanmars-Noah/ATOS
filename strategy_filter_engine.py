@@ -5,6 +5,78 @@ from datetime import datetime, time
 
 STRATEGY_MODE = "DEFENSE"
 
+# --------------------------------------------------
+# 交易時段定義
+# --------------------------------------------------
+
+SESSION_CONFIG = {
+    'DAY_MAIN': {
+        'start': '09:00',
+        'end': '13:30',
+        'mode': 'FULL',       # 完整判斷，可發進場指令
+        'min_confidence': 3,
+    },
+    'DAY_OPEN': {
+        'start': '08:45',
+        'end': '09:00',
+        'mode': 'OBSERVE',    # 開盤冷靜期，只發觀察提示
+        'min_confidence': 99,
+    },
+    'DAY_CLOSE': {
+        'start': '13:30',
+        'end': '13:45',
+        'mode': 'OBSERVE',    # 尾盤，只發觀察提示
+        'min_confidence': 99,
+    },
+    'NIGHT': {
+        'start': '15:00',
+        'end': '23:59',
+        'mode': 'OBSERVE',    # 夜盤：只發觀察提示，不發進場指令
+        'min_confidence': 99,
+    },
+    'NIGHT_LATE': {
+        'start': '00:00',
+        'end': '05:00',
+        'mode': 'OBSERVE',    # 深夜：只發觀察提示
+        'min_confidence': 99,
+    },
+    'PRE_OPEN': {
+        'start': '05:00',
+        'end': '08:45',
+        'mode': 'SILENT',     # 盤前：靜默，不發任何警報
+        'min_confidence': 99,
+    },
+}
+
+
+def _get_current_session() -> dict:
+    """
+    依當前系統時間回傳時段設定。
+
+    回傳 dict 包含：
+    - name:           時段名稱
+    - mode:           FULL / OBSERVE / SILENT
+    - min_confidence: 最低信心分門檻（99 = 不發指令）
+    """
+    now = datetime.now()
+    t = now.hour * 60 + now.minute
+
+    _sessions = [
+        ('PRE_OPEN',   5 * 60,       8 * 60 + 45),
+        ('DAY_OPEN',   8 * 60 + 45,  9 * 60),
+        ('DAY_MAIN',   9 * 60,       13 * 60 + 30),
+        ('DAY_CLOSE',  13 * 60 + 30, 13 * 60 + 45),
+        ('NIGHT',      15 * 60,      24 * 60),
+        ('NIGHT_LATE', 0,            5 * 60),
+    ]
+
+    for name, start, end in _sessions:
+        if start <= t < end:
+            return {'name': name, **SESSION_CONFIG[name]}
+
+    # 13:45–15:00：結算後到夜盤開盤前
+    return {'name': 'BETWEEN', 'mode': 'SILENT', 'min_confidence': 99}
+
 GRADE_A = "A"
 GRADE_B = "B"
 GRADE_C = "C"
@@ -131,15 +203,32 @@ def get_event_grade(event: str, context: dict) -> dict:
             "reasons": ["價格位於中軸 / Pivot 中性區，禁止交易"],
         }
 
-    if not is_in_trade_window(context):
+    session = _get_current_session()
+
+    if session['mode'] == 'SILENT':
         return {
             "strategy_mode": STRATEGY_MODE,
             "signal_grade": GRADE_C,
             "allow_entry": False,
             "suggested_action": "NO_TRADE",
+            "observe_only": False,
+            "session": session['name'],
             "stop_points": DEFAULT_STOP_POINTS,
             "target_points": DEFAULT_TARGET_POINTS,
-            "reasons": ["不在 Defense Mode 允許觀察時段 09:00–13:30"],
+            "reasons": [f"靜默時段（{session['name']}），不輸出訊號"],
+        }
+
+    if session['mode'] == 'OBSERVE':
+        return {
+            "strategy_mode": STRATEGY_MODE,
+            "signal_grade": GRADE_C,
+            "allow_entry": False,
+            "suggested_action": "OBSERVE_ONLY",
+            "observe_only": True,
+            "session": session['name'],
+            "stop_points": DEFAULT_STOP_POINTS,
+            "target_points": DEFAULT_TARGET_POINTS,
+            "reasons": [f"{session['name']}（{session['mode']}）：觀察模式，不發進場指令"],
         }
 
     # --------------------------------------------------
