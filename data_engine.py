@@ -2,6 +2,7 @@
 
 import os
 import json
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -227,6 +228,80 @@ def fugle_get(endpoint: str, params: dict | None = None) -> dict | None:
 
     except Exception as e:
         print(f"⚠️ Fugle request failed: {e}")
+        return None
+
+
+# --------------------------------------------------
+# Retry Helper
+# --------------------------------------------------
+
+def _fetch_with_retry(fetch_func, max_retries: int = 2, delay: int = 3):
+    """
+    通用 retry wrapper。
+    失敗最多重試 max_retries 次，每次間隔 delay 秒。
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            result = fetch_func()
+            if result is not None:
+                return result
+        except Exception as e:
+            if attempt < max_retries:
+                print(f"⚠️ 第{attempt + 1}次失敗，{delay}秒後重試：{e}")
+                time.sleep(delay)
+            else:
+                print(f"⚠️ 重試{max_retries}次後仍失敗：{e}")
+    return None
+
+
+# --------------------------------------------------
+# Fugle TXFR1 台指期備援
+# --------------------------------------------------
+
+def _get_fugle_futures_price() -> dict | None:
+    """
+    Fugle 台指期近月合約（TXFR1）備援報價。
+    比 IX0001 加權指數更準確，直接是台指期價格。
+    is_realtime = False（備援來源，不觸發交易）。
+    """
+    try:
+        fugle_key = os.getenv("FUGLE_API_KEY")
+        if not fugle_key:
+            return None
+
+        url = "https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/TXFR1"
+        headers = {"X-API-KEY": fugle_key}
+        r = requests.get(url, headers=headers, timeout=8)
+
+        if r.status_code != 200:
+            print(f"⚠️ Fugle TXFR1 HTTP error: {r.status_code}")
+            return None
+
+        data = r.json()
+        price = (
+            data.get("closePrice")
+            or data.get("lastPrice")
+            or data.get("price")
+        )
+
+        if not price:
+            print(f"⚠️ Fugle TXFR1 無有效價格，raw={data}")
+            return None
+
+        price_f = float(price)
+        print(f"✅ Fugle TXFR1 fallback：{price_f}")
+
+        return {
+            "price": round(price_f, 1),
+            "source": "FUGLE_TXFR1_FALLBACK",
+            "tick_source": "FUGLE_TXFR1_FALLBACK",
+            "time": datetime.now().strftime("%H:%M:%S"),
+            "is_realtime": False,
+            "note": "Fugle TXFR1 台指期近月備援，不觸發交易。",
+        }
+
+    except Exception as e:
+        print(f"⚠️ Fugle TXFR1 fallback 失敗：{e}")
         return None
 
 
@@ -562,7 +637,7 @@ def get_futures_snapshot_tick(
             FINMIND_FUTURES_SNAPSHOT_URL,
             headers=headers,
             params=params,
-            timeout=10,
+            timeout=15,
         )
 
         if response.status_code != 200:
@@ -807,30 +882,89 @@ def get_fugle_index_backup_tick(symbol: str = BACKUP_INDEX_SYMBOL) -> dict | Non
 @safe_execute
 def get_realtime_tick(symbol: str = DEFAULT_FUTURES_SYMBOL) -> dict | None:
     """
+    即時報價，帶 retry 與多層 fallback。
+
     優先順序：
-    1. FinMind REST taiwan_futures_snapshot：真正 TXF 即時價
-    2. Fugle IX0001：加權指數備援，不觸發交易
+    1. FinMind REST taiwan_futures_snapshot（重試最多2次，間隔3秒）
+    2. Fugle TXFR1 台指期近月（點位最接近台指期）
+    3. Fugle IX0001 加權指數（最後手段，點位有差距）
+    4. state 快取價格（5分鐘內有效）
+
+    每次成功取得價格都寫入 state['tick_source'] 與 state['last_price_update']。
     """
 
-    futures_tick = get_futures_snapshot_tick(
-        data_id=symbol,
-        write_cache=True,
+    # ── 第一優先：FinMind，帶 retry ──────────────────────────────────
+    futures_tick = _fetch_with_retry(
+        lambda: get_futures_snapshot_tick(data_id=symbol, write_cache=True),
+        max_retries=2,
+        delay=3,
     )
 
     if futures_tick:
+        _write_tick_source_to_state(
+            futures_tick.get("tick_source") or futures_tick.get("source"),
+        )
         return futures_tick
 
-    print("⚠️ FinMind futures snapshot 失敗，fallback Fugle IX0001")
+    # ── 第二優先：Fugle TXFR1 台指期近月 ────────────────────────────
+    print("⚠️ FinMind futures snapshot 失敗（含重試），fallback Fugle TXFR1")
+    txfr1_tick = _get_fugle_futures_price()
+
+    if txfr1_tick:
+        _write_tick_source_to_state("FUGLE_TXFR1_FALLBACK")
+        return txfr1_tick
+
+    # ── 第三優先：Fugle IX0001 加權指數（最後手段）──────────────────
+    print("⚠️ Fugle TXFR1 失敗，最後手段 fallback Fugle IX0001")
     print("⚠️ 注意：IX0001 為加權指數，非台指期，點位可能有差距")
     print("⚠️ 警報觸發點位以台指期為準，本次 fallback 僅供參考")
 
-    backup_tick = get_fugle_index_backup_tick(symbol=BACKUP_INDEX_SYMBOL)
+    ix_tick = get_fugle_index_backup_tick(symbol=BACKUP_INDEX_SYMBOL)
+    if ix_tick:
+        ix_tick["tick_source"] = "FUGLE_IX0001_FALLBACK"
+        _write_tick_source_to_state("FUGLE_IX0001_FALLBACK")
+        return ix_tick
 
-    if backup_tick:
-        backup_tick["tick_source"] = "FUGLE_IX0001_FALLBACK"
-        return backup_tick
+    # ── 第四優先：state 快取價格（5分鐘內有效）──────────────────────
+    try:
+        _state = load_state()
+        cached_price = _state.get("price")
+        cached_time  = _state.get("last_price_update")
 
+        if cached_price and cached_time:
+            elapsed = (
+                datetime.now() - datetime.fromisoformat(cached_time)
+            ).total_seconds()
+
+            if elapsed < 300:
+                print(
+                    f"⚠️ 使用快取價格（{elapsed:.0f}秒前）：{cached_price}"
+                )
+                _write_tick_source_to_state("CACHE_FALLBACK")
+                return {
+                    "price": float(cached_price),
+                    "source": "CACHE_FALLBACK",
+                    "tick_source": "CACHE_FALLBACK",
+                    "time": datetime.now().strftime("%H:%M:%S"),
+                    "is_realtime": False,
+                    "note": f"快取價格，{elapsed:.0f}秒前更新，僅供參考。",
+                }
+    except Exception:
+        pass
+
+    print("🚨 所有價格來源失敗，無法取得即時報價")
     return None
+
+
+def _write_tick_source_to_state(source: str | None) -> None:
+    """在 state 寫入 tick_source 與 last_price_update，供後續模組識別資料來源。"""
+    try:
+        _state = load_state()
+        _state["tick_source"] = source or "UNKNOWN"
+        _state["last_price_update"] = datetime.now().isoformat()
+        save_state(_state)
+    except Exception:
+        pass
 
 def update_day_session_state_from_5min(df_5min: pd.DataFrame) -> bool:
     """
