@@ -3,6 +3,26 @@
 # 根據 Put wall / Call wall / Active Pivot 產生進場計畫。
 # ATR 只用於計算停損距離，目標點位以大戶牆為準。
 
+import math
+
+
+def _is_valid_num(v) -> bool:
+    """判斷 v 是有效數字（非 None、非 NaN、非 Inf）。"""
+    if v is None:
+        return False
+    try:
+        f = float(v)
+        return not (math.isnan(f) or math.isinf(f))
+    except Exception:
+        return False
+
+
+def _safe_int(v) -> int:
+    """安全轉 int，NaN / None 回傳 0。"""
+    if not _is_valid_num(v):
+        return 0
+    return int(round(float(v)))
+
 
 def calculate_trade_plan(state: dict) -> dict:
     """
@@ -17,12 +37,18 @@ def calculate_trade_plan(state: dict) -> dict:
     """
     regime = state.get("regime", "")
     pivot  = state.get("flip")       # active_pivot 寫入 flip 欄位
-    atr    = state.get("atr") or 100
+    atr    = state.get("atr")
     cw     = state.get("call_wall")
     pw     = state.get("put_wall")
 
-    if not pivot:
-        return _no_trade("Active Pivot 尚未建立，禁止交易")
+    # NaN / None guard：pivot 無效則不交易
+    if not _is_valid_num(pivot):
+        return _no_trade("Active Pivot 尚未建立或為 NaN，禁止交易")
+
+    pivot_f = float(pivot)
+
+    # ATR：NaN 或 None 時用預設 100
+    atr_f = float(atr) if _is_valid_num(atr) else 100.0
 
     # 停損距離：固定 100 點（一口 NT$20,000）
     STOP = 100
@@ -31,17 +57,17 @@ def calculate_trade_plan(state: dict) -> dict:
     # 空方模式：反彈到 Pivot 附近做空
     # --------------------------------------------------
     if "空方" in regime:
-        entry_high = int(round(float(pivot)))
-        entry_low  = int(round(float(pivot) - 0.2 * atr))
-        stop_loss  = int(round(float(pivot) + STOP))
+        entry_high = _safe_int(pivot_f)
+        entry_low  = _safe_int(pivot_f - 0.2 * atr_f)
+        stop_loss  = _safe_int(pivot_f + STOP)
 
-        # 目標：Put wall > 有效跌破門檻 > 動態 S1
-        if pw:
-            tp1 = int(round(float(pw)))
-            tp2 = int(round(float(pw) - 500))
+        # 目標：Put wall（有效時）> 動態 S1
+        if _is_valid_num(pw):
+            tp1 = _safe_int(float(pw))
+            tp2 = _safe_int(float(pw) - 500)
         else:
-            tp1 = int(round(float(pivot) - atr))
-            tp2 = int(round(float(pivot) - 1.5 * atr))
+            tp1 = _safe_int(pivot_f - atr_f)
+            tp2 = _safe_int(pivot_f - 1.5 * atr_f)
 
         return {
             "mode": "SHORT",
@@ -57,17 +83,17 @@ def calculate_trade_plan(state: dict) -> dict:
     # 多方模式：拉回到 Pivot 附近做多
     # --------------------------------------------------
     if "多方" in regime:
-        entry_low  = int(round(float(pivot)))
-        entry_high = int(round(float(pivot) + 0.2 * atr))
-        stop_loss  = int(round(float(pivot) - STOP))
+        entry_low  = _safe_int(pivot_f)
+        entry_high = _safe_int(pivot_f + 0.2 * atr_f)
+        stop_loss  = _safe_int(pivot_f - STOP)
 
-        # 目標：Call wall > 有效突破門檻 > 動態 R1
-        if cw:
-            tp1 = int(round(float(cw)))
-            tp2 = int(round(float(cw) + 500))
+        # 目標：Call wall（有效時）> 動態 R1
+        if _is_valid_num(cw):
+            tp1 = _safe_int(float(cw))
+            tp2 = _safe_int(float(cw) + 500)
         else:
-            tp1 = int(round(float(pivot) + atr))
-            tp2 = int(round(float(pivot) + 1.5 * atr))
+            tp1 = _safe_int(pivot_f + atr_f)
+            tp2 = _safe_int(pivot_f + 1.5 * atr_f)
 
         return {
             "mode": "LONG",

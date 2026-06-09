@@ -144,7 +144,10 @@ class AtosSentinel:
         if not tick.get("is_realtime", False):
             self.state["allow_trade"] = False
 
+            # forbidden 在 risk_engine 裡是字串，需確保這裡是 list
             forbidden = self.state.get("forbidden", [])
+            if isinstance(forbidden, str):
+                forbidden = [forbidden] if forbidden else []
 
             if "即時價格來源非 REALTIME，禁止交易" not in forbidden:
                 forbidden.append("即時價格來源非 REALTIME，禁止交易")
