@@ -82,17 +82,26 @@ def send_single_message(chat_id: str, message: str) -> bool:
         )
 
         if response.status_code == 200:
-            print(f"✅ [Messenger] 訊息已成功發送至 ID: {chat_id}")
+            try:
+                print(f"[Messenger] OK sent to {chat_id}")
+            except Exception:
+                pass
             return True
 
-        print(
-            f"❌ [Messenger] 發送至 ID {chat_id} 失敗："
-            f"{response.status_code} {response.text}"
-        )
+        try:
+            print(
+                f"[Messenger] FAIL to {chat_id}: "
+                f"{response.status_code} {response.text[:200]}"
+            )
+        except Exception:
+            pass
         return False
 
     except Exception as e:
-        print(f"💥 [Messenger] 發送至 ID {chat_id} 時發生異常：{e}")
+        try:
+            print(f"[Messenger] ERROR sending to {chat_id}: {e}")
+        except Exception:
+            pass
         return False
 
 
