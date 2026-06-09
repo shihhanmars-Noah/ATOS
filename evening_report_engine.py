@@ -197,6 +197,43 @@ def get_day_session_context(state: dict) -> dict:
         ],
     )
 
+    # ── 驗證：day_session_close vs price(即時快照) 差距 > 200 點 → 改用快照 ──
+    _day_close_raw = (
+        state.get("day_session_close") or
+        state.get("day_close") or
+        state.get("session_close")
+    )
+    _snapshot = state.get("price")
+    if _day_close_raw and _snapshot:
+        try:
+            _price_diff = abs(float(_day_close_raw) - float(_snapshot))
+            if _price_diff > 200:
+                try:
+                    print(
+                        f"[EVENING] day_session_close({_day_close_raw}) vs "
+                        f"price({_snapshot}) diff={_price_diff:.0f}pt >200, use snapshot"
+                    )
+                except Exception:
+                    pass
+                price = _snapshot
+        except Exception:
+            pass
+
+    # ── 驗證：高點低於收盤 99% → 高點資料未更新，至少調成等於收盤 ──
+    if today_high is not None and price is not None:
+        try:
+            if float(today_high) < float(price) * 0.99:
+                try:
+                    print(
+                        f"[EVENING] day_session_high({today_high}) < price({price})*0.99, "
+                        f"adjusting high to price"
+                    )
+                except Exception:
+                    pass
+                today_high = price
+        except Exception:
+            pass
+
     tick_source = (
         state.get("day_session_source")
         or state.get("tick_source")
@@ -1114,6 +1151,27 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     today_high = day_ctx.get("today_high")
     today_low = day_ctx.get("today_low")
 
+    # ── 用今日實際高低收重新計算 Pivot/R1/S1 ──
+    # 比盤前 preopen 計算值更準確（preopen 用的是昨日 H/L/C）
+    try:
+        _ph = float(today_high or 0)
+        _pl = float(today_low or 0)
+        _pc = float(price or 0)
+        if _ph > 0 and _pl > 0 and _pc > 0:
+            today_pivot = round((_ph + _pl + _pc) / 3, 1)
+            today_r1 = round(2 * today_pivot - _pl, 1)
+            today_s1 = round(2 * today_pivot - _ph, 1)
+            try:
+                print(f"[EVENING] Today Pivot={today_pivot} R1={today_r1} S1={today_s1}")
+            except Exception:
+                pass
+            # 用今日實際值覆蓋盤前計算值
+            active_pivot = today_pivot
+            r1 = today_r1
+            s1 = today_s1
+    except Exception:
+        pass
+
     # 完整籌碼
     chip_ctx = {}
     if _build_chip_ctx is not None:
@@ -1145,6 +1203,22 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     except Exception:
         chg_arrow = f"變動 {fn_1d:+,}口"
         chg_str   = chg_arrow
+
+    # ── 今日漲跌幅（需要 prev_close）──
+    prev_close = chip_ctx.get("prev_close") or state.get("prev_close") or 0
+    if not prev_close:
+        try:
+            with open("chip_cache.json") as _f:
+                _cc = json.load(_f)
+            prev_close = _cc.get("tech_levels", {}).get("prev_close", 0) or 0
+        except Exception:
+            pass
+    try:
+        day_chg = round(float(price or 0) - float(prev_close), 0) if prev_close else 0
+        day_chg_pct = round(day_chg / float(prev_close) * 100, 1) if prev_close else 0
+    except Exception:
+        day_chg = 0
+        day_chg_pct = 0
 
     # 假突破判斷
     try:
@@ -1202,13 +1276,49 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     total_alerts = int(summary.get("total", 0) or 0)
     alert_text = build_alert_log_text() or ""
 
+    # ── 大波動判斷 ──
+    try:
+        _is_big_move_up = (
+            day_chg > 500
+            and today_high is not None
+            and price_f >= float(today_high) * 0.995
+        )
+        _is_big_move_dn = (
+            day_chg < -500
+            and today_low is not None
+            and price_f <= float(today_low) * 1.005
+        )
+    except Exception:
+        _is_big_move_up = False
+        _is_big_move_dn = False
+
+    # ── AI 背景注入：大波動時補充今日行情背景 ──
+    _chip_ctx_ai = dict(chip_ctx)
+    if abs(day_chg) > 500:
+        try:
+            _close_pos = (
+                "最高點附近" if _is_big_move_up
+                else "最低點附近" if _is_big_move_dn
+                else "中間位置"
+            )
+            _chip_ctx_ai["_big_move_context"] = (
+                f"重要背景：今日台指期大幅{'上漲' if day_chg > 0 else '下跌'}"
+                f"{day_chg:+.0f}點（{day_chg_pct:+.1f}%），"
+                f"收在{_close_pos}。"
+                f"夜盤操作以{'順勢多方為主，不隨便摸頂放空' if day_chg > 0 else '順勢空方為主，不隨便摸底做多'}。"
+                f"外資今日{'回補' if (fn_1d or 0) > 0 else '加碼'}空單"
+                f" {abs(int(fn_1d or 0)):,}口。"
+            )
+        except Exception:
+            pass
+
     # AI 夜盤解讀（傳入假突破與現貨大賣等關鍵事實）
     ai_text = ""
     try:
         from ai_report_engine import generate_evening_guidance
         day_result = classify_day_result(day_ctx)
         ai_text = generate_evening_guidance(
-            day_result, chip_ctx, summary,
+            day_result, _chip_ctx_ai, summary,
             call_wall_status=call_wall_status,
             put_wall_status=put_wall_status,
             pivot_status=pivot_status,
@@ -1235,12 +1345,52 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
 
     # ━━ 夜盤怎麼做 ━━
     lines.append("━━ 夜盤怎麼做 ━━")
-    lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")
-    lines.append(f"做空條件（強）：跌破 Put wall {_fp(put_wall)} 且量能確認")
-    lines.append("做空條件（次）：")
-    for _sub_line in short_sub.split("\n"):
-        lines.append(f"  {_sub_line}")
-    lines.append(f"觀望條件：在{_fp(put_wall)}~{_fp(call_wall)}無明確方向")
+    if _is_big_move_up:
+        # 大漲收高：順勢多方策略
+        try:
+            _next_round = int(round(price_f / 500 + 1) * 500)
+        except Exception:
+            _next_round = int(price_f) + 350
+        lines.append(f"今日大漲{day_chg:+.0f}點，收在高點附近，以順勢多方為主")
+        lines.append("")
+        lines.append("做多條件：")
+        lines.append(f"  主線：開盤守穩 {_fp(price_f)}，5分K確認 → 順勢追多")
+        lines.append(f"  回測：拉回到 {_fp(price_f - 300)} 附近止跌 → 逢低做多")
+        lines.append(f"  停損：{_fp(price_f - 100)}（進場後100點）")
+        lines.append(f"  目標：{_fp(price_f + 300)} → {_fp(_next_round)}（整數關卡）")
+        lines.append("")
+        lines.append("做空條件（逆勢，極輕倉）：")
+        lines.append(f"  長黑K跌破 {_fp(price_f - 300)} 且站不回 → 極短空")
+        lines.append(f"  停損：{_fp(price_f - 200)}")
+        lines.append(f"  目標：{_fp(price_f - 600)}（尋找缺口支撐）")
+        lines.append("")
+        lines.append("觀望條件：")
+        lines.append(f"  在 {_fp(price_f - 300)}～{_fp(price_f + 100)} 之間震盪 → 等方向")
+    elif _is_big_move_dn:
+        # 大跌收低：順勢空方策略
+        lines.append(f"今日大跌{abs(day_chg):.0f}點，收在低點附近，以順勢空方為主")
+        lines.append("")
+        lines.append("做空條件：")
+        lines.append(f"  主線：開盤跌穿 {_fp(price_f)}，5分K確認 → 順勢追空")
+        lines.append(f"  反彈：反彈到 {_fp(price_f + 300)} 附近受阻 → 逢高放空")
+        lines.append(f"  停損：{_fp(price_f + 100)}（進場後100點）")
+        lines.append(f"  目標：{_fp(price_f - 300)} → {_fp(put_wall)}（Put wall）")
+        lines.append("")
+        lines.append("做多條件（逆勢，極輕倉）：")
+        lines.append(f"  長白K站回 {_fp(price_f + 300)} → 極短多")
+        lines.append(f"  停損：{_fp(price_f + 200)}")
+        lines.append(f"  目標：{_fp(price_f + 600)}")
+        lines.append("")
+        lines.append("觀望條件：")
+        lines.append(f"  在 {_fp(price_f - 100)}～{_fp(price_f + 300)} 之間震盪 → 等方向")
+    else:
+        # 一般行情：原有 Call/Put wall 框架
+        lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")
+        lines.append(f"做空條件（強）：跌破 Put wall {_fp(put_wall)} 且量能確認")
+        lines.append("做空條件（次）：")
+        for _sub_line in short_sub.split("\n"):
+            lines.append(f"  {_sub_line}")
+        lines.append(f"觀望條件：在{_fp(put_wall)}~{_fp(call_wall)}無明確方向")
     lines.append("")
     lines.append("停損規則：")
     lines.append("空方停損：進場後100點（一口計=NT$20,000，請依帳戶規模調控）")
@@ -1277,15 +1427,6 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
             today_low=today_low,
             price=price,
         ))
-
-    # API 使用統計
-    try:
-        from ai_report_engine import get_api_stats
-        stats = get_api_stats()
-        lines.append("")
-        lines.append(f"今日 AI API：呼叫 {stats['calls']}次 | 使用 {stats['total_tokens']} tokens")
-    except Exception:
-        pass
 
     return "\n".join(lines)
 
