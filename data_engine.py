@@ -820,11 +820,14 @@ def get_realtime_tick(symbol: str = DEFAULT_FUTURES_SYMBOL) -> dict | None:
     if futures_tick:
         return futures_tick
 
-    print("⚠️ FinMind futures snapshot 失敗，fallback Fugle IX0001 加權指數")
+    print("⚠️ FinMind futures snapshot 失敗，fallback Fugle IX0001")
+    print("⚠️ 注意：IX0001 為加權指數，非台指期，點位可能有差距")
+    print("⚠️ 警報觸發點位以台指期為準，本次 fallback 僅供參考")
 
     backup_tick = get_fugle_index_backup_tick(symbol=BACKUP_INDEX_SYMBOL)
 
     if backup_tick:
+        backup_tick["tick_source"] = "FUGLE_IX0001_FALLBACK"
         return backup_tick
 
     return None

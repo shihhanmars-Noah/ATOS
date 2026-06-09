@@ -69,7 +69,9 @@ class AtosSentinel:
 
         self.state["event_mode"] = event_mode
         self.state["event_risk_mode"] = event_risk["mode"]
-        self.state["tick_source"] = tick.get("source")
+        # tick_source 欄位優先（fallback 時標注為 FUGLE_IX0001_FALLBACK），
+        # 其次用 source 欄位（FinMind 正常情況）
+        self.state["tick_source"] = tick.get("tick_source") or tick.get("source")
         self.state["tick_time"] = tick.get("time")
         self.state["is_realtime"] = tick.get("is_realtime", False)
 
