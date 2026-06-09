@@ -60,9 +60,30 @@ YAHOO_RSS_URLS = [
 ]
 
 NEWS_FRESH_WINDOW    = 30   # 分鐘，啟動時防炸版（_is_fresh）
-MAX_NEWS_AGE_MINUTES = 60   # 分鐘，每輪時效過濾上限
+MAX_NEWS_AGE_MINUTES = 120  # 分鐘，有時間戳的新聞有效期（120分鐘）
+                             # 無時間戳的新聞：直接放行，交由 Gemini 判斷
 
 COLLECTION_WINDOW_MINUTES = 5   # Level 3 收集窗口（分鐘）
+
+# Yahoo Finance RSS 前置過濾：跳過明顯的分析文 / 非即時訊息
+SKIP_PATTERNS = [
+    "Is ",
+    "A Good Stock",
+    "Best Stock",
+    "Analyst Report:",
+    "Dear ",
+    "Mark Your Calendar",
+    "ETF Rally",
+    " vs. ",
+    "Should You Buy",
+    "Here's Why",
+    "Worth Buying",
+    "Top Picks",
+    "Stock of the Week",
+    "Dividend Stock",
+    "Buffett",            # 長線分析文
+    "Warren Buffett",
+]
 
 # 持久化狀態檔
 NEWS_STATE_FILE = "news_engine_state.json"
@@ -156,39 +177,85 @@ def _is_fresh(pub_time_str: str) -> bool:
 
 def _is_news_fresh(news: dict) -> bool:
     """
-    判斷新聞是否在 MAX_NEWS_AGE_MINUTES（60分鐘）以內。
-    嘗試 date / pub_time / publish_time / time 多個欄位。
-    無法解析時間 → 視為舊聞（保守過濾）。
+    判斷新聞是否在 MAX_NEWS_AGE_MINUTES（120分鐘）以內。
+
+    時間欄位來源（依序嘗試）：
+        date / publish_time / pub_time / time / published / pubDate / pub_date
+
+    處理策略：
+    - 無時間戳：放行，交由 Gemini Tier 2 判斷（RSS 常見情況）
+    - 解析成功：超過 MAX_NEWS_AGE_MINUTES 則略過
+    - 解析失敗：放行，交由 Gemini 判斷（不因格式問題誤殺）
     """
-    time_str = (
+    import re as _re
+
+    news_time_str = (
         news.get("date") or
-        news.get("pub_time") or
         news.get("publish_time") or
+        news.get("pub_time") or
         news.get("time") or
+        news.get("published") or
+        news.get("pubDate") or
+        news.get("pub_date") or
         ""
     )
 
-    if not time_str:
-        print(f"⏸️ [news_engine] 無時間戳，略過：{news.get('title', '')[:40]}")
-        return False
+    title_short = news.get("title", "")[:40]
 
-    for fmt in (
-        "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d %H:%M", "%Y-%m-%d",
-        "%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S +0000",
-    ):
+    if not news_time_str:
+        # 無時間戳（RSS 常見）：放行，依賴 Gemini 過濾
+        return True
+
+    time_str = str(news_time_str).strip()
+
+    # 前處理：移除時區偏移（+0800、-0500）和 GMT 字串
+    clean_str = _re.sub(r"\s*[+-]\d{4}$", "", time_str).replace("GMT", "").strip()
+
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%a, %d %b %Y %H:%M:%S",   # RSS 標準（去除時區後）
+        "%d %b %Y %H:%M:%S",
+        "%d %b %Y %H:%M",
+    ]
+
+    news_dt = None
+    for fmt in formats:
         try:
-            news_dt = datetime.strptime(str(time_str)[:25], fmt[:25]).replace(tzinfo=None)
-            elapsed_min = (datetime.now() - news_dt).total_seconds() / 60
-            if elapsed_min > MAX_NEWS_AGE_MINUTES:
-                print(f"⏸️ [news_engine] 舊聞略過（{elapsed_min:.0f}分鐘前）：{news.get('title', '')[:40]}")
-                return False
-            return True
+            news_dt = datetime.strptime(clean_str[:25], fmt).replace(tzinfo=None)
+            break
         except Exception:
             continue
 
-    print(f"⏸️ [news_engine] 時間格式無法解析，略過：{news.get('title', '')[:40]}")
-    return False
+    # 若原始字串含時區資訊，嘗試帶時區解析後轉 UTC naive
+    if news_dt is None:
+        try:
+            from datetime import timezone
+            news_dt = datetime.strptime(time_str, "%a, %d %b %Y %H:%M:%S %z")
+            news_dt = news_dt.astimezone(timezone.utc).replace(tzinfo=None)
+        except Exception:
+            pass
+
+    if news_dt is None:
+        # 格式無法解析：放行，交由 Gemini 判斷
+        print(
+            f"⚠️ [news_engine] 時間格式無法解析，視為新聞繼續處理："
+            f"{time_str[:30]}"
+        )
+        return True
+
+    elapsed_min = (datetime.now() - news_dt).total_seconds() / 60
+
+    if elapsed_min > MAX_NEWS_AGE_MINUTES:
+        print(
+            f"⏸️ [news_engine] 舊聞略過（{elapsed_min:.0f}分鐘前）：{title_short}"
+        )
+        return False
+
+    return True
 
 
 def _get_window_key(dt: datetime = None) -> str:
@@ -200,6 +267,21 @@ def _get_window_key(dt: datetime = None) -> str:
         dt = datetime.now()
     floored = (dt.minute // 5) * 5
     return dt.strftime(f"%Y%m%d_%H{floored:02d}")
+
+
+# --------------------------------------------------
+# 前置過濾：排除分析文 / 非即時訊息
+# --------------------------------------------------
+
+def _is_actionable_news(title: str) -> bool:
+    """
+    排除 Yahoo Finance RSS 常見的分析文、評比文、非即時訊息。
+    命中任意 SKIP_PATTERNS 即回傳 False（跳過）。
+    """
+    for pattern in SKIP_PATTERNS:
+        if pattern in title:
+            return False
+    return True
 
 
 # --------------------------------------------------
@@ -434,6 +516,16 @@ def poll_news(chip_ctx: Optional[dict] = None) -> int:
 
     # ② 時效過濾：超過 MAX_NEWS_AGE_MINUTES 的新聞不處理
     fresh_items = [n for n in fresh_items if _is_news_fresh(n)]
+
+    if not fresh_items:
+        _flush_expired_windows()
+        return 0
+
+    # ②-B 分析文前置過濾（排除非即時訊息，主要針對 Yahoo RSS）
+    fresh_items = [
+        n for n in fresh_items
+        if _is_actionable_news(n.get("title", ""))
+    ]
 
     if not fresh_items:
         _flush_expired_windows()
