@@ -43,6 +43,7 @@ AI層        ai_report_engine.py        Gemini 報告生成 + 新聞主編審稿
             night_session_engine.py    夜盤收盤資料
             intraday_advice_engine.py  盤中建議文字
             transition_engine.py       開收盤過渡訊號
+            data_readiness.py          晚盤資料就緒輪詢（is_chip_data_ready / wait_until_ready）
 ```
 
 已刪除的廢棄檔案（請勿重建）：
@@ -83,10 +84,8 @@ Claude API 金鑰不在 .env，由 Claude Code 環境自動注入（`ANTHROPIC_A
 | 每 5 分鐘 | 新聞輪詢（AI 主編審稿） |
 | 13:50 | 午盤籌碼更新 |
 | 14:50 | 尾盤 Pivot 更新 |
-| 14:55 | 重置晚盤發送鎖 |
-| **15:05** | **晚盤複盤報告（Telegram）** |
-| **15:10** | **晚盤選股報告（Telegram）** |
-| 15:30 | 收盤後籌碼更新 |
+| **15:00** | **晚盤期貨報告輪詢開始（資料就緒即發，死線 16:00）** |
+| **15:30** | **晚盤選股報告輪詢開始（資料就緒即發，死線 18:00）** |
 
 ---
 

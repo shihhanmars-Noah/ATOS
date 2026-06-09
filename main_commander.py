@@ -554,7 +554,183 @@ class AtosCommander:
         每日 14:55 重置晚盤發送旗標，讓當天輪詢可以正常觸發。
         """
         self._evening_sent = False
-        print("✅ [evening] 晚盤報告發送旗標已重置")
+        try:
+            print("[evening] evening sent flag reset")
+        except Exception:
+            pass
+
+    # --------------------------------------------------
+    # Evening Futures Report — Polling Trigger (15:00)
+    # --------------------------------------------------
+
+    def _trigger_evening_futures_report(self):
+        """
+        晚盤期貨報告：等外資期貨口數和選擇權OI就緒才發。
+        強制死線：16:00
+        在排程執行緒中阻塞直到就緒或超時。
+        """
+        from data_readiness import wait_until_ready, is_chip_data_ready
+        from data_engine import get_finmind_api
+
+        api = get_finmind_api()
+        start_date = datetime.now().strftime('%Y-%m-%d')
+
+        def check_ready():
+            try:
+                futures_df = api.get_data(
+                    dataset='TaiwanFuturesInstitutionalInvestors',
+                    data_id='TX',
+                    start_date=start_date,
+                )
+                if not is_chip_data_ready(futures_df):
+                    try:
+                        print("[evening_futures] futures chip not ready yet")
+                    except Exception:
+                        pass
+                    return False
+
+                option_df = api.get_data(
+                    dataset='TaiwanOptionDaily',
+                    data_id='TXO',
+                    start_date=start_date,
+                )
+                if not is_chip_data_ready(option_df):
+                    try:
+                        print("[evening_futures] option OI not ready yet")
+                    except Exception:
+                        pass
+                    return False
+
+                return True
+            except Exception as e:
+                try:
+                    print(f"[evening_futures] readiness check error: {e}")
+                except Exception:
+                    pass
+                return False
+
+        is_ready = wait_until_ready(
+            check_func=check_ready,
+            label="evening_futures",
+            poll_interval_seconds=120,
+            deadline_time='16:00',
+        )
+
+        if not is_ready:
+            try:
+                print("[evening_futures] deadline reached, forcing chip cache update then send")
+            except Exception:
+                pass
+
+        # 更新 chip_cache（就緒或超時都更新，確保最新資料）
+        try:
+            from chip_data_engine import update_chip_cache
+            update_chip_cache()
+        except Exception as _e:
+            try:
+                print(f"[evening_futures] chip cache update error: {_e}")
+            except Exception:
+                pass
+
+        # 發送晚盤期貨報告
+        self.send_evening_report()
+
+    # --------------------------------------------------
+    # Evening Stock Report — Polling Trigger (15:30)
+    # --------------------------------------------------
+
+    def _trigger_evening_stock_report(self):
+        """
+        晚盤選股報告：等個股法人買賣超和外資期貨口數就緒才發。
+        強制死線：18:00
+        在排程執行緒中阻塞直到就緒或超時。
+        """
+        from data_readiness import wait_until_ready, is_chip_data_ready
+        from data_engine import get_finmind_api
+
+        # 防重複發送
+        state = load_state()
+        today = datetime.now().strftime('%Y-%m-%d')
+        if state.get('evening_stock_report_sent_date') == today:
+            try:
+                print("[evening_stock] already sent today, skip")
+            except Exception:
+                pass
+            return
+
+        api = get_finmind_api()
+        start_date = today
+
+        def check_ready():
+            try:
+                stock_chip_df = api.get_data(
+                    dataset='TaiwanStockInstitutionalInvestorsBuySell',
+                    start_date=start_date,
+                )
+                if not is_chip_data_ready(stock_chip_df):
+                    try:
+                        print("[evening_stock] stock chip data not ready yet")
+                    except Exception:
+                        pass
+                    return False
+
+                futures_df = api.get_data(
+                    dataset='TaiwanFuturesInstitutionalInvestors',
+                    data_id='TX',
+                    start_date=start_date,
+                )
+                if not is_chip_data_ready(futures_df):
+                    try:
+                        print("[evening_stock] futures chip not ready yet")
+                    except Exception:
+                        pass
+                    return False
+
+                return True
+            except Exception as e:
+                try:
+                    print(f"[evening_stock] readiness check error: {e}")
+                except Exception:
+                    pass
+                return False
+
+        is_ready = wait_until_ready(
+            check_func=check_ready,
+            label="evening_stock",
+            poll_interval_seconds=120,
+            deadline_time='18:00',
+        )
+
+        if not is_ready:
+            try:
+                print("[evening_stock] deadline reached, forcing send with possibly stale data")
+            except Exception:
+                pass
+
+        # 清除舊快取，確保使用今日資料
+        import os
+        if os.path.exists('stock_picks_cache.pkl'):
+            os.remove('stock_picks_cache.pkl')
+            try:
+                print("[evening_stock] cleared stale cache")
+            except Exception:
+                pass
+
+        # 發送晚盤選股報告
+        if send_stock_picks_report is not None:
+            send_stock_picks_report()
+        else:
+            send_to_telegram("evening stock report: send_stock_picks_report not available")
+            return
+
+        # 記錄已發送
+        state = load_state()
+        state['evening_stock_report_sent_date'] = today
+        save_state(state)
+        try:
+            print("[evening_stock] report sent and date recorded")
+        except Exception:
+            pass
 
     # --------------------------------------------------
     # Monitor
@@ -634,15 +810,12 @@ class AtosCommander:
         # 盤後 / 夜盤前資料更新
         schedule.every().day.at("13:50").do(self.refresh_chip)
         schedule.every().day.at("14:50").do(self.refresh_flip)
-        # 晚盤報告：14:55 重置旗標，每 2 分鐘輪詢資料就緒後發送
-        schedule.every().day.at("14:55").do(self.reset_evening_sent)
-        schedule.every(2).minutes.do(self.check_and_send_evening_report)
 
-        # 晚盤選股複盤報告
-        schedule.every().day.at("15:10").do(self.send_evening_stock_report)
+        # 晚盤期貨報告：15:00 開始輪詢，就緒即發，死線 16:00
+        schedule.every().day.at("15:00").do(self._trigger_evening_futures_report)
 
-        # 額外保險：15:30 再更新一次籌碼
-        schedule.every().day.at("15:30").do(self.refresh_chip)
+        # 晚盤選股報告：15:30 開始輪詢，就緒即發，死線 18:00
+        schedule.every().day.at("15:30").do(self._trigger_evening_stock_report)
 
         # 重大新聞輪詢（每 5 分鐘）
         schedule.every(5).minutes.do(self.poll_news)
@@ -650,7 +823,10 @@ class AtosCommander:
         # 週度績效報告（每週日 20:00）
         schedule.every().sunday.at("20:00").do(self.send_weekly_performance_report)
 
-        print("✅ ATOS schedule setup completed")
+        try:
+            print("ATOS schedule setup completed")
+        except Exception:
+            pass
 
     # --------------------------------------------------
     # Start

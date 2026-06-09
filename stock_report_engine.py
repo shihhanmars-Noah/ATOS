@@ -1094,6 +1094,12 @@ def build_legacy_stock_section(result: dict):
 
 
 @safe_execute
+def _is_evening_mode() -> bool:
+    """判斷現在是否為晚盤發送時段（15:30後）。"""
+    now = datetime.now()
+    return now.hour > 15 or (now.hour == 15 and now.minute >= 30)
+
+
 def send_stock_picks_report(
     candidate_limit: int = 30,
     top_a: int = 3,
@@ -1203,10 +1209,20 @@ def send_stock_picks_report(
         a_items = result.get("A", [])
         b_items = result.get("B", [])
 
+    # ── 早盤 / 晚盤模式 ──
+    if _is_evening_mode():
+        report_mode = "晚盤版（今日完整籌碼）"
+        data_note = ""
+    else:
+        report_mode = "早盤版（昨日籌碼）"
+        data_note = "籌碼資料為昨日，今日15:30晚盤版將更新"
+
     lines = []
 
     # ── 標頭 ──
-    lines.append(f"📈 個股觀察 {date_str}")
+    lines.append(f"📈 個股觀察 {date_str}（{report_mode}）")
+    if data_note:
+        lines.append(data_note)
     lines.append("")
 
     # ── 大盤環境 ──
