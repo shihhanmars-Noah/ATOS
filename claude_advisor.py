@@ -17,6 +17,20 @@ from risk_adjustment import apply_big_player_adjustments
 
 GEMINI_MODEL = "gemini-2.5-flash"
 CONFIDENCE_THRESHOLD = 3
+
+
+def _is_valid_level(price: float, level, pct: float = 0.05) -> bool:
+    """點位有效性驗證：與現價差距超過 pct 比例則視為過期。"""
+    if level is None:
+        return False
+    try:
+        lv = float(level)
+        pv = float(price)
+        if pv <= 0 or lv <= 0:
+            return False
+        return abs(lv - pv) / pv <= pct
+    except Exception:
+        return False
 COOLDOWN_SECONDS = 600  # 10 分鐘，同一事件同一方向不重複發指令
 GEMINI_RETRY_DELAY = 5  # 429 重試等待秒數
 
@@ -107,19 +121,30 @@ def _p(v) -> str:
         return "N/A"
 
 
+def _expired_p(v, expired_keys: set, key: str) -> str:
+    """格式化點位，若在過期集合中則標注（過期）。"""
+    if key in expired_keys:
+        return "N/A（點位過期）"
+    return _p(v)
+
+
 def _build_alert_text(ctx: dict) -> str:
     event = str(ctx.get("event", "UNKNOWN")).upper()
     label = _EVENT_LABELS.get(event, event)
     flip_val = ctx.get("flip") or ctx.get("mid_range")
+    _expired = ctx.get("_expired_levels", set())
     lines = [
         f"警報事件：{label}（{event}）",
         f"當前價格：{_p(ctx.get('price'))}",
-        f"中軸/mid_range：{_p(flip_val)}",
-        f"Pivot：{_p(ctx.get('pivot'))}",
-        f"R1：{_p(ctx.get('r1'))} / S1：{_p(ctx.get('s1'))}",
+        f"中軸/mid_range：{_expired_p(flip_val, _expired, 'flip')}",
+        f"Pivot：{_expired_p(ctx.get('pivot'), _expired, 'pivot')}",
+        f"R1：{_expired_p(ctx.get('r1'), _expired, 'r1')} / S1：{_expired_p(ctx.get('s1'), _expired, 's1')}",
         f"法人情緒：{ctx.get('sentiment', 'N/A')}",
         f"行為型態：{ctx.get('behavior', 'N/A')}",
     ]
+    # 若所有關鍵點位均過期，加入警示
+    if {'flip', 'pivot', 'r1', 's1'}.issubset(_expired):
+        lines.append("⚠️ 所有技術點位已過期，請以當前價格 ± ATR 自行判斷支撐壓力")
     if ctx.get("stop"):
         lines.append(f"規則引擎停損：{_p(ctx.get('stop'))}")
     if ctx.get("target"):
@@ -306,13 +331,71 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
 
     if any(_is_missing(alert_context.get(k)) for k in ("pivot", "r1", "s1", "mid_range")):
         try:
-            with open('chip_cache.json') as _f:
+            with open('chip_cache.json', encoding='utf-8') as _f:
                 _cc = json.load(_f)
             _tech = _cc.get('tech_levels', {})
             alert_context = dict(alert_context)
             for _key, _cache_key in (('pivot', 'pivot'), ('r1', 'r1'), ('s1', 's1'), ('mid_range', 'mid_range')):
                 if _is_missing(alert_context.get(_key)):
                     alert_context[_key] = _tech.get(_cache_key)
+        except Exception:
+            pass
+
+    # ── 點位有效性驗證：與現價差距 >5% 視為過期資料 ──
+    _expired_levels: set = set()
+    if price:
+        try:
+            _pv = float(price)
+            alert_context = dict(alert_context)
+            for _lk in ('flip', 'mid_range', 'pivot', 'r1', 's1'):
+                if not _is_valid_level(_pv, alert_context.get(_lk)):
+                    _expired_levels.add(_lk)
+                    alert_context[_lk] = None
+        except Exception:
+            pass
+    alert_context['_expired_levels'] = _expired_levels
+
+    # ── OI 框架有效性：超出 Call/Put wall 500點外則標記 ──
+    _oi_framework_valid = True
+    if price and chip_ctx:
+        try:
+            _cw = chip_ctx.get('call_wall')
+            _pw = chip_ctx.get('put_wall')
+            if _cw and _pw:
+                _pv = float(price)
+                if _pv > float(_cw) + 500 or _pv < float(_pw) - 500:
+                    _oi_framework_valid = False
+        except Exception:
+            pass
+
+    # ── 若 pivot/r1/s1 全部過期，從 chip_cache 重算替代框架 ──
+    if {'pivot', 'r1', 's1'}.issubset(_expired_levels):
+        try:
+            with open('chip_cache.json', encoding='utf-8') as _f:
+                _cc = json.load(_f)
+            _tech = _cc.get('tech_levels', {})
+            _ph = _tech.get('prev_high')
+            _pl = _tech.get('prev_low')
+            _pc = _tech.get('prev_close')
+            if _ph and _pl and _pc:
+                _npivot = round((_ph + _pl + _pc) / 3, 0)
+                _nr1    = round(2 * _npivot - float(_pl), 0)
+                _ns1    = round(2 * _npivot - float(_ph), 0)
+                alert_context['pivot']    = _npivot
+                alert_context['r1']       = _nr1
+                alert_context['s1']       = _ns1
+                alert_context['flip']     = _npivot
+                alert_context['mid_range'] = _npivot
+                # 從過期集合移除（現在有有效替代值了）
+                _expired_levels.discard('pivot')
+                _expired_levels.discard('r1')
+                _expired_levels.discard('s1')
+                _expired_levels.discard('flip')
+                _expired_levels.discard('mid_range')
+                try:
+                    print(f"[claude_advisor] All levels expired; rebuilt from chip_cache H/L/C: pivot={_npivot}")
+                except Exception:
+                    pass
         except Exception:
             pass
 

@@ -31,9 +31,96 @@ from target_engine import calculate_trade_plan
 from alert_engine_v2 import send_human_alert
 
 
+def _is_valid_level(price: float, level, pct: float = 0.05) -> bool:
+    """
+    點位有效性驗證：與現價差距超過 pct 比例則視為過期。
+
+    pct=0.05 = 5%，台指期 44000 點時約 2200 點門檻。
+    """
+    if level is None:
+        return False
+    try:
+        lv = float(level)
+        pv = float(price)
+        if pv <= 0 or lv <= 0:
+            return False
+        return abs(lv - pv) / pv <= pct
+    except Exception:
+        return False
+
+
 class AtosSentinel:
     def __init__(self):
         self.state = load_state()
+
+    # --------------------------------------------------
+    # Level Refresh from Cache
+    # --------------------------------------------------
+
+    def _refresh_levels_from_cache(self, current_price: float):
+        """
+        每輪監控開始時，從 chip_cache.json 刷新技術點位。
+
+        規則：
+        - flip（Active Pivot）過期（>5%）→ 從 chip_cache 重算
+        - pivot / r1 / s1 過期 → 從 chip_cache 補回
+        - call_wall / put_wall 每輪都同步（選擇權鏈每日更新）
+        """
+        try:
+            with open('chip_cache.json', encoding='utf-8') as _f:
+                _cc = json.load(_f)
+            _tech = _cc.get('tech_levels', {})
+            _oi   = _cc.get('option_oi', {})
+
+            # ── call_wall / put_wall 每輪同步 ──
+            _new_call = _oi.get('call_wall_strike')
+            _new_put  = _oi.get('put_wall_strike')
+            if _new_call:
+                self.state['call_wall'] = _new_call
+            if _new_put:
+                self.state['put_wall'] = _new_put
+
+            # ── pivot / r1 / s1：只在過期時補回 ──
+            for _key, _cache_key in (('pivot', 'pivot'), ('r1', 'r1'), ('s1', 's1')):
+                _cur = self.state.get(_key)
+                if not _is_valid_level(current_price, _cur, pct=0.05):
+                    _fresh = _tech.get(_cache_key)
+                    if _fresh is not None:
+                        self.state[_key] = _fresh
+                        try:
+                            print(f"[Monitor] {_key} refreshed: {_cur} -> {_fresh}")
+                        except Exception:
+                            pass
+
+            # ── flip（Active Pivot）：過期時從 chip_cache 重算 ──
+            _cur_flip = self.state.get('flip')
+            if not _is_valid_level(current_price, _cur_flip, pct=0.05):
+                _ph = _tech.get('prev_high')
+                _pl = _tech.get('prev_low')
+                _pc = _tech.get('prev_close')
+                if _ph and _pl and _pc:
+                    _sp = (_ph + _pl + _pc) / 3
+                    # Active Pivot 邏輯：超出牆區間改用區間中點
+                    _cw = self.state.get('call_wall') or _oi.get('call_wall_strike')
+                    _pw = self.state.get('put_wall') or _oi.get('put_wall_strike')
+                    _active = _sp
+                    if _cw and _pw:
+                        try:
+                            if _sp >= float(_cw) or _sp <= float(_pw):
+                                _active = (float(_cw) + float(_pw)) / 2
+                        except Exception:
+                            pass
+                    self.state['flip'] = round(_active, 1)
+                    try:
+                        print(f"[Monitor] flip refreshed: {_cur_flip} -> {self.state['flip']} (recalc from cache H/L/C)")
+                    except Exception:
+                        pass
+
+        except Exception as _e:
+            try:
+                print(f"[Monitor] _refresh_levels_from_cache error: {_e}")
+            except Exception:
+                pass
 
     # --------------------------------------------------
     # Main Monitor Loop
@@ -62,6 +149,9 @@ class AtosSentinel:
             return
 
         current_price = tick["price"]
+
+        # 每輪開始主動刷新技術點位（防止 state 中的過期點位影響後續判斷）
+        self._refresh_levels_from_cache(current_price)
 
         event_mode = get_event_mode()
         event_risk = get_event_risk_mode()
@@ -268,9 +358,13 @@ class AtosSentinel:
         # Flip 失效檢查：只在狀態首次失效時發一次
         # --------------------------------------------------
 
+        _flip_for_invalidation = self.state.get("flip", 0)
+        if not _is_valid_level(float(five_min_close) if five_min_close else 0.0, _flip_for_invalidation):
+            _flip_for_invalidation = 0  # 點位過期，停用 Flip 失效檢查
+
         invalidation = check_invalidation(
             five_min_close=five_min_close,
-            flip_level=self.state.get("flip", 0),
+            flip_level=_flip_for_invalidation,
             current_state=self.state.get("regime", "🟡 中性模式"),
         )
 
@@ -423,10 +517,21 @@ class AtosSentinel:
         """
 
         flip = self.state.get("flip", 0)
+        # 驗證 flip 有效性
+        _fp_f = float(five_min_close) if five_min_close else 0.0
+        if not _is_valid_level(_fp_f, flip):
+            flip = None
+
         levels = self.get_levels(snapshot)
 
         r1 = levels.get("R1")
         s1 = levels.get("S1")
+
+        # 驗證 r1/s1 有效性
+        if not _is_valid_level(_fp_f, r1):
+            r1 = None
+        if not _is_valid_level(_fp_f, s1):
+            s1 = None
 
         previous_close = self.state.get("previous_5min_close")
 
@@ -536,7 +641,7 @@ class AtosSentinel:
 
         if _is_missing(_pivot) or _is_missing(_r1) or _is_missing(_s1):
             try:
-                with open('chip_cache.json') as _f:
+                with open('chip_cache.json', encoding='utf-8') as _f:
                     _cc = json.load(_f)
                 _tech = _cc.get('tech_levels', {})
                 if _is_missing(_pivot):
@@ -548,10 +653,24 @@ class AtosSentinel:
             except Exception:
                 pass
 
+        # 過期驗證：與現價差距 >5% 視為過期資料，設為 None
+        _price_f = float(price) if price else 0.0
+        if _price_f > 0:
+            if not _is_valid_level(_price_f, _pivot):
+                _pivot = None
+            if not _is_valid_level(_price_f, _r1):
+                _r1 = None
+            if not _is_valid_level(_price_f, _s1):
+                _s1 = None
+
+        _flip_val = self.state.get("flip", 0)
+        if not _is_valid_level(_price_f, _flip_val):
+            _flip_val = None
+
         return {
             "event": event,
             "price": price,
-            "flip": self.state.get("flip", 0),
+            "flip": _flip_val,
 
             "pivot": _pivot,
             "r1": _r1,
