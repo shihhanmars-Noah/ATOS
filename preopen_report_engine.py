@@ -809,6 +809,27 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # ━━ 籌碼數據 ━━
     lines.append("━━ 籌碼數據 ━━")
+
+    # 資料新鮮度警告
+    chip_date = (chip_ctx.get("source_dates") or {}).get("futures")
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if chip_date and chip_date != today_str:
+        stale_note = f"⚠️ 日盤籌碼資料為 {chip_date}（昨日），今日13:50後更新"
+        try:
+            _state = load_state()
+            _prev_close = chip_ctx.get("prev_close") or 0
+            _snap_price = float(_state.get("price") or 0)
+            _night_move = abs(_snap_price - float(_prev_close)) if _prev_close and _snap_price else 0
+            if _night_move > 500:
+                stale_note += (
+                    f"\n⚠️ 昨夜盤波動 {_night_move:.0f}點，"
+                    f"今日OI框架（Call/Put wall）可能已失效，"
+                    f"建議以夜盤高低點為參考，等14:30後OI更新"
+                )
+        except Exception:
+            pass
+        lines.append(stale_note)
+
     lines.append(f"外資期貨：{fn_level} {fn:+,}口 | 1日變動 {fn_1d:+,}")
     lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億 | 5日累計 {spot_5d:+.1f}億")
     lines.append(f"C/P比：{call_put_ratio or 'N/A'} | Max Pain：{_fp(max_pain)}")
@@ -816,6 +837,40 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     for w in warnings:
         lines.append(str(w))
     lines.append("")
+
+    # ━━ 夜盤法人動向 ━━
+    foreign_ah_net   = chip_ctx.get("foreign_ah_net", 0)
+    foreign_ah_long  = chip_ctx.get("foreign_ah_long", 0)
+    foreign_ah_short = chip_ctx.get("foreign_ah_short", 0)
+    dealer_ah_net    = chip_ctx.get("dealer_ah_net", 0)
+    ah_date          = chip_ctx.get("ah_source_date") or ""
+
+    if ah_date:
+        lines.append("━━ 夜盤法人動向 ━━")
+
+        if foreign_ah_net > 0:
+            ah_direction = f"淨買 +{foreign_ah_net:,}口（多{foreign_ah_long:,}/空{foreign_ah_short:,}）"
+            ah_note = "外資夜盤回補，空單壓力略減"
+        elif foreign_ah_net < 0:
+            ah_direction = f"淨賣 {foreign_ah_net:,}口（多{foreign_ah_long:,}/空{foreign_ah_short:,}）"
+            ah_note = "外資夜盤加碼空單"
+        else:
+            ah_direction = f"無明顯方向（多{foreign_ah_long:,}/空{foreign_ah_short:,}）"
+            ah_note = ""
+
+        foreign_net_day = chip_ctx.get("foreign_net", 0)
+        estimated_net = foreign_net_day + foreign_ah_net
+
+        lines.append(f"外資夜盤（{ah_date}）：{ah_direction}")
+        lines.append(
+            f"估算今日開盤前部位：約 {estimated_net:+,}口"
+            f"（日盤 {foreign_net_day:+,} + 夜盤 {foreign_ah_net:+,}）"
+        )
+        if dealer_ah_net != 0:
+            lines.append(f"自營商夜盤：淨{'+' if dealer_ah_net >= 0 else ''}{dealer_ah_net:,}口")
+        if ah_note:
+            lines.append(f"→ {ah_note}")
+        lines.append("")
 
     # ━━ AI 矛盾分析 ━━
     lines.append("━━ AI 矛盾分析 ━━")

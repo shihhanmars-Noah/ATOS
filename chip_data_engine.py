@@ -554,6 +554,71 @@ def fetch_option_oi(reference_price: Optional[float] = None) -> Optional[dict]:
 # --------------------------------------------------
 
 @safe_execute
+def fetch_afterhours_institutional() -> Optional[dict]:
+    """
+    抓取夜盤三大法人成交資料（TaiwanFuturesInstitutionalInvestorsAfterHours）。
+    回傳外資和自營商的夜盤淨買賣口數（成交量，非未平倉）。
+    """
+    api = _get_api()
+
+    df = api.get_data(
+        dataset="TaiwanFuturesInstitutionalInvestorsAfterHours",
+        data_id="TX",
+        start_date=_start_date(3),
+    )
+
+    if df is None or df.empty:
+        print("⚠️ 夜盤法人資料無法取得")
+        return None
+
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"]).sort_values("date")
+
+    latest_date = df["date"].max()
+    df_latest = df[df["date"] == latest_date]
+
+    name_col = _find_col(df_latest, ["institutional_investors", "name", "investor_type"])
+    if not name_col:
+        print("⚠️ 夜盤法人：找不到身份別欄位")
+        return None
+
+    foreign_mask = df_latest[name_col].astype(str).str.contains(
+        "Foreign|外資", case=False, na=False
+    )
+    foreign_df = df_latest[foreign_mask]
+
+    dealer_mask = df_latest[name_col].astype(str).str.contains(
+        "Dealer|自營", case=False, na=False
+    )
+    dealer_df = df_latest[dealer_mask]
+
+    foreign_long  = _safe_int(foreign_df["long_deal_volume"].sum())  if not foreign_df.empty else 0
+    foreign_short = _safe_int(foreign_df["short_deal_volume"].sum()) if not foreign_df.empty else 0
+    foreign_ah_net = foreign_long - foreign_short
+
+    dealer_long  = _safe_int(dealer_df["long_deal_volume"].sum())  if not dealer_df.empty else 0
+    dealer_short = _safe_int(dealer_df["short_deal_volume"].sum()) if not dealer_df.empty else 0
+    dealer_ah_net = dealer_long - dealer_short
+
+    result = {
+        "ah_source_date":  str(latest_date.date()),
+        "foreign_ah_long":  foreign_long,
+        "foreign_ah_short": foreign_short,
+        "foreign_ah_net":   foreign_ah_net,
+        "dealer_ah_net":    dealer_ah_net,
+    }
+
+    print(
+        f"✅ 夜盤法人: date={latest_date.date()} "
+        f"外資淨{'+' if foreign_ah_net >= 0 else ''}{foreign_ah_net:,}口 "
+        f"自營商淨{'+' if dealer_ah_net >= 0 else ''}{dealer_ah_net:,}口"
+    )
+
+    return result
+
+
+@safe_execute
 def fetch_tech_levels() -> Optional[dict]:
     """
     計算上下限框架的技術層（層C）。
@@ -874,6 +939,7 @@ def calculate_sentiment_score(
     option_oi: dict,
     tech: dict,
     large_traders: Optional[dict] = None,
+    afterhours: Optional[dict] = None,
 ) -> dict:
     """
     六個分項加總得出 SentimentScore。
@@ -925,6 +991,22 @@ def calculate_sentiment_score(
         s2 = -1
     else:
         s2 = 0
+
+    # ---- S2 夜盤修正：若外資夜盤大量回補/加碼，微調 S2 ----
+    ah = afterhours or {}
+    foreign_ah_net = ah.get("foreign_ah_net", 0)
+    if foreign_ah_net > 3000:
+        s2 = min(s2 + 1, 1)
+        warnings.append(
+            f"📌 外資夜盤回補 +{foreign_ah_net:,}口，"
+            f"空方壓力可能減輕，注意日盤方向轉變"
+        )
+    elif foreign_ah_net < -3000:
+        s2 = max(s2 - 1, -1)
+        warnings.append(
+            f"⚠️ 外資夜盤加碼空單 {foreign_ah_net:,}口，"
+            f"空方壓力持續"
+        )
 
     # ---- S3：現貨同向確認 ----
     spot_bn = spot_chip.get("spot_foreign_net_buy_bn", 0.0)
@@ -1113,12 +1195,13 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
 
     print("🔄 開始更新 chip_cache.json v2...")
 
-    futures_chip = fetch_futures_institutional()
-    spot_chip = fetch_spot_institutional()
-    option_oi = fetch_option_oi(reference_price)
-    tech = fetch_tech_levels()
-    fear_greed = fetch_fear_greed()       # Backer+，失敗不影響主流程
-    large_traders = fetch_large_traders() # Backer+，失敗不影響主流程
+    futures_chip  = fetch_futures_institutional()
+    spot_chip     = fetch_spot_institutional()
+    option_oi     = fetch_option_oi(reference_price)
+    tech          = fetch_tech_levels()
+    afterhours    = fetch_afterhours_institutional()
+    fear_greed    = fetch_fear_greed()       # Backer+，失敗不影響主流程
+    large_traders = fetch_large_traders()    # Backer+，失敗不影響主流程
 
     # 任何一個主要資料集失敗都記錄但繼續
     if futures_chip is None:
@@ -1137,6 +1220,15 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
         print("⚠️ 技術層取得失敗，使用空值")
         tech = _empty_tech()
 
+    if afterhours is None:
+        afterhours = {
+            "ah_source_date":  None,
+            "foreign_ah_long":  0,
+            "foreign_ah_short": 0,
+            "foreign_ah_net":   0,
+            "dealer_ah_net":    0,
+        }
+
     if fear_greed is None:
         fear_greed = {"fg_source_date": None, "fear_greed": None, "fear_greed_emotion": None}
 
@@ -1148,9 +1240,9 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
             "market_oi": 0, "top5_long_pct": 0, "top5_short_pct": 0,
         }
 
-    # 計算 SentimentScore（加入大額交易人資料）
+    # 計算 SentimentScore（加入大額交易人 + 夜盤資料）
     sentiment = calculate_sentiment_score(
-        futures_chip, spot_chip, option_oi, tech, large_traders
+        futures_chip, spot_chip, option_oi, tech, large_traders, afterhours
     )
 
     # 計算外資成本估算
@@ -1169,10 +1261,11 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
         "meta": {
             "updated_at": datetime.now().isoformat(),
             "source_dates": {
-                "futures": futures_chip.get("source_date"),
-                "spot": spot_chip.get("spot_source_date"),
-                "option_oi": option_oi.get("oi_source_date"),
-                "tech": tech.get("tech_source_date"),
+                "futures":    futures_chip.get("source_date"),
+                "spot":       spot_chip.get("spot_source_date"),
+                "option_oi":  option_oi.get("oi_source_date"),
+                "tech":       tech.get("tech_source_date"),
+                "afterhours": afterhours.get("ah_source_date"),
             },
             "version": "v2.0",
             "threshold_note": "V1靜態門檻，待歷史百分位校準後升級",
@@ -1181,13 +1274,14 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
             **futures_chip,
             "spot_vs_futures_direction": spot_vs_futures,
         },
-        "spot_chip": spot_chip,
-        "option_oi": option_oi,
-        "tech_levels": tech,
-        "fear_greed": fear_greed,
-        "large_traders": large_traders,
+        "spot_chip":           spot_chip,
+        "option_oi":           option_oi,
+        "tech_levels":         tech,
+        "afterhours_chip":     afterhours,
+        "fear_greed":          fear_greed,
+        "large_traders":       large_traders,
         "foreign_cost_estimate": foreign_cost,
-        "sentiment": sentiment,
+        "sentiment":           sentiment,
     }
 
     try:
@@ -1229,13 +1323,14 @@ def build_chip_context() -> dict:
     except Exception:
         return {"error": "chip_cache.json 讀取失敗"}
 
-    fc = cache.get("futures_chip", {})
-    sc = cache.get("spot_chip", {})
-    oi = cache.get("option_oi", {})
+    fc   = cache.get("futures_chip", {})
+    sc   = cache.get("spot_chip", {})
+    oi   = cache.get("option_oi", {})
     tech = cache.get("tech_levels", {})
     sent = cache.get("sentiment", {})
     cost = cache.get("foreign_cost_estimate", {})
     meta = cache.get("meta", {})
+    ah   = cache.get("afterhours_chip", {})
 
     return {
         # 基本資訊
@@ -1306,11 +1401,18 @@ def build_chip_context() -> dict:
         "fear_greed_emotion": cache.get("fear_greed", {}).get("fear_greed_emotion"),
 
         # 大額交易人（Backer+）
-        "lt_top5_net": cache.get("large_traders", {}).get("top5_net"),
-        "lt_top5_net_chg": cache.get("large_traders", {}).get("top5_net_chg", 0),
-        "lt_top5_long_pct": cache.get("large_traders", {}).get("top5_long_pct"),
+        "lt_top5_net":       cache.get("large_traders", {}).get("top5_net"),
+        "lt_top5_net_chg":   cache.get("large_traders", {}).get("top5_net_chg", 0),
+        "lt_top5_long_pct":  cache.get("large_traders", {}).get("top5_long_pct"),
         "lt_top5_short_pct": cache.get("large_traders", {}).get("top5_short_pct"),
-        "lt_market_oi": cache.get("large_traders", {}).get("market_oi"),
+        "lt_market_oi":      cache.get("large_traders", {}).get("market_oi"),
+
+        # 夜盤法人（成交量方向，非未平倉）
+        "foreign_ah_net":   ah.get("foreign_ah_net", 0),
+        "foreign_ah_long":  ah.get("foreign_ah_long", 0),
+        "foreign_ah_short": ah.get("foreign_ah_short", 0),
+        "dealer_ah_net":    ah.get("dealer_ah_net", 0),
+        "ah_source_date":   ah.get("ah_source_date"),
     }
 
 
