@@ -1020,6 +1020,19 @@ def send_stock_picks_report(
     chip_source_date = source_dates.get("futures") or source_dates.get("spot") or "N/A"
     oi_source_date = source_dates.get("option_oi") or "N/A"
 
+    # 夜盤資料
+    try:
+        from night_session_engine import get_night_session_data
+        night_data = get_night_session_data()
+    except Exception:
+        night_data = {}
+    nd_close    = night_data.get("night_close", 0)
+    nd_high     = night_data.get("night_high", 0)
+    nd_low      = night_data.get("night_low", 0)
+    nd_chg      = night_data.get("night_chg", 0)
+    nd_chg_pct  = night_data.get("night_chg_pct", 0)
+    nd_big_move = night_data.get("is_big_move", False)
+
     # 大盤判斷
     market = get_market_bias_from_state()
     market_label = market.get("label", "N/A")
@@ -1068,11 +1081,23 @@ def send_stock_picks_report(
 
     # 標頭
     lines.append(f"📈 個股觀察 {date_str}")
+    _nd_line = (
+        f"台指夜盤：{nd_close:.0f}（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
+        if nd_close else "台指夜盤：資料取得中"
+    )
+    lines.append(_nd_line)
     lines.append(
         f"大盤：{market_label}｜台指情緒：{bias_label}({score_str})"
         f"｜Fear&Greed：{fear_greed} {fear_greed_emotion}"
     )
     lines.append("")
+
+    # 夜盤大波動提示
+    if nd_big_move and nd_close > 0:
+        lines.append(f"⚠️ 夜盤大幅波動（{nd_chg_pct:+.1f}%）")
+        lines.append("以下為「預備清單」，開盤跳空後進場點位需重新評估")
+        lines.append("建議等開盤第一根5分K確認方向後再決定是否操作")
+        lines.append("")
 
     # 偏空環境提示
     try:
@@ -1096,7 +1121,10 @@ def send_stock_picks_report(
 
     try:
         _ss2 = int(sentiment_score) if sentiment_score is not None else 0
-        if _ss2 <= -3:
+        if nd_big_move and nd_close > 0:
+            lines.append("🟢 A級（大盤方向確認後首選）")
+            lines.append("（今日夜盤大幅波動，進場點位需依開盤後實際點位調整）")
+        elif _ss2 <= -3:
             lines.append("🟢 A級（反彈首選）")
             lines.append("（偏空環境門檻：投信連買>=3天 + 距5MA<5% + 站在5MA上方）")
         else:
@@ -1161,8 +1189,15 @@ def send_stock_picks_report(
     lines.append("")
     lines.append("━━ 目前市場狀態 ━━")
 
+    # 夜盤區間（有資料才顯示）
+    if nd_close > 0:
+        lines.append(
+            f"台指夜盤：收{nd_close:.0f} 高{nd_high:.0f} 低{nd_low:.0f}"
+            f"（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
+        )
+
     notional_str = f"（NT${foreign_notional_bn}億）" if foreign_notional_bn is not None else ""
-    lines.append(f"外資期貨：{foreign_net_level} {foreign_net:+,}口{notional_str}")
+    lines.append(f"外資期貨：{foreign_net_level} {foreign_net:+,}口{notional_str}（{chip_source_date}籌碼）")
     lines.append(f"現貨外資：{spot_dir} {spot_val:+.1f}億｜5日累計 {spot_5d:+.1f}億")
     lines.append(f"Call wall：{call_wall}｜Put wall：{put_wall}")
 

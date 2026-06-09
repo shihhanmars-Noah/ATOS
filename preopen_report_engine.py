@@ -356,6 +356,13 @@ def build_preopen_payload() -> dict:
         previous_futures_close=close_price,
     )
 
+    # 夜盤高低收資料（從 TaiwanFuturesTick 計算）
+    try:
+        from night_session_engine import get_night_session_data
+        night_data = get_night_session_data()
+    except Exception:
+        night_data = {}
+
     return {
         "today": today,
         "now_time": now_time,
@@ -377,8 +384,9 @@ def build_preopen_payload() -> dict:
         "sentiment_info": sentiment_info,
         "chip_ctx": chip_ctx,
         "bias": bias,
-        "scenarios": scenarios,
+        "scenarios":          scenarios,
         "night_context_text": night_context_text,
+        "night_data":         night_data,
     }
 
 
@@ -630,6 +638,19 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     contract_date      = payload.get("contract_date", "N/A")
     days_to_settlement = payload.get("days_to_settlement", 99)
 
+    # 夜盤資料
+    night_data     = payload.get("night_data") or {}
+    night_open     = night_data.get("night_open", 0)
+    night_close    = night_data.get("night_close", 0)
+    night_high     = night_data.get("night_high", 0)
+    night_low      = night_data.get("night_low", 0)
+    night_chg      = night_data.get("night_chg", 0)
+    night_chg_pct  = night_data.get("night_chg_pct", 0)
+    night_range_pt = night_data.get("night_range", 0)
+    vs_day_chg     = night_data.get("vs_day_chg", 0)
+    is_big_move    = night_data.get("is_big_move", False)
+    night_date_str = night_data.get("data_date", "")
+
     chip_ctx = payload.get("chip_ctx") or {}
 
     fn = chip_ctx.get("foreign_net", 0)
@@ -801,7 +822,22 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # ━━ 今天等什麼 ━━
     lines.append("━━ 今天等什麼 ━━")
-    if not oi_framework_valid:
+    if not oi_framework_valid and night_high > 0:
+        # 有夜盤資料 → 改用夜盤框架
+        _nh_str  = f"{night_high:.0f}"
+        _nl_str  = f"{night_low:.0f}"
+        _nc_str  = f"{night_close:.0f}"
+        _nd_label = f"（{night_date_str}）" if night_date_str else ""
+        lines.append(
+            f"⚠️ 昨日OI框架失效，改用夜盤收盤框架{_nd_label}\n"
+            f"夜盤區間：{_nl_str} ～ {_nh_str}（寬度{night_range_pt:.0f}點）\n"
+            f"等一（多方）：站上夜盤高點 {_nh_str} 且5分K確認量能放大 → 追多\n"
+            f"等二（空方）：跌破夜盤低點 {_nl_str} 且5分K確認 → 偏空\n"
+            f"等三（觀望）：在 {_nl_str}～{_nh_str} 之間震盪 → 不做方向單\n"
+            f"等四（換框架）：等14:30選擇權OI更新 → 晚盤報告給出新Call/Put wall"
+        )
+    elif not oi_framework_valid:
+        # 無夜盤資料 → 純觀望指示
         lines.append(
             "⚠️ 昨日OI框架失效，今日無有效Call/Put wall\n"
             "等一：觀察開盤第一根5分K方向和量能\n"
@@ -815,7 +851,22 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # ━━ 進場怎麼做 ━━
     lines.append("━━ 進場怎麼做 ━━")
-    if not oi_framework_valid:
+    if not oi_framework_valid and night_high > 0:
+        _nh = int(night_high)
+        _nl = int(night_low)
+        _nc = int(night_close)
+        lines.append(f"多方：站上夜盤高點 {_nh} 且5分K確認+量能")
+        lines.append(f"  停損：夜盤低點下方100點（{_nl - 100}）（一口計=NT$20,000）")
+        lines.append(f"  目標一：{_nh + 300}｜目標二：{_nh + 600}（無OI牆參考，依動能延伸）")
+        lines.append("")
+        lines.append(f"空方：跌破夜盤低點 {_nl} 且5分K確認")
+        lines.append(f"  停損：夜盤高點上方100點（{_nh + 100}）（一口計=NT$20,000）")
+        lines.append(f"  目標一：{_nl - 300}｜目標二：{_nl - 600}")
+        lines.append("")
+        lines.append("⚠️ 14:30後OI更新，晚盤報告給出新Call/Put wall點位")
+        if atr_note:
+            lines.append(atr_note)
+    elif not oi_framework_valid:
         lines.append("今日OI框架失效期間，不設定進場條件")
         lines.append("14:30後OI更新，晚盤報告會給出新框架")
     else:
