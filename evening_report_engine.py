@@ -234,6 +234,30 @@ def get_day_session_context(state: dict) -> dict:
         except Exception:
             pass
 
+    # ── H/L/C 數學一致性驗證：收盤必須在高低點之間 ──
+    try:
+        _pv = float(price) if price else 0
+        _hv = float(today_high) if today_high else 0
+        _lv = float(today_low) if today_low else 0
+
+        # 收盤不能高於最高點
+        if _hv > 0 and _pv > _hv:
+            try:
+                print(f"[EVENING] close({_pv}) > high({_hv}), adjusting high to close")
+            except Exception:
+                pass
+            today_high = _pv
+
+        # 收盤不能低於最低點
+        if _lv > 0 and _pv < _lv:
+            try:
+                print(f"[EVENING] close({_pv}) < low({_lv}), adjusting low to close")
+            except Exception:
+                pass
+            today_low = _pv
+    except Exception:
+        pass
+
     tick_source = (
         state.get("day_session_source")
         or state.get("tick_source")
@@ -1292,8 +1316,32 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
         _is_big_move_up = False
         _is_big_move_dn = False
 
-    # ── AI 背景注入：大波動時補充今日行情背景 ──
+    # ── AI 背景注入：大波動時補充今日行情背景 + 方向約束 ──
     _chip_ctx_ai = dict(chip_ctx)
+    try:
+        if day_chg > 500:
+            _direction_constraint = (
+                f"今日大漲{day_chg:+.0f}點，收在高點附近，"
+                f"夜盤策略以順勢多方為主。"
+                f"你的解讀必須服務於這個方向："
+                f"說明為什麼多方仍有優勢，以及什麼情況下多方會失守。"
+                f"不要說「以觀察為主」或「謹慎操作」，"
+                f"這會和操作策略矛盾。"
+                f"說出今晚最重要的一個多方風險點即可。"
+            )
+        elif day_chg < -500:
+            _direction_constraint = (
+                f"今日大跌{day_chg:+.0f}點，收在低點附近，"
+                f"夜盤策略以順勢空方為主。"
+                f"你的解讀必須服務於這個方向。"
+                f"不要說「以觀察為主」，說出今晚最重要的一個空方風險點。"
+            )
+        else:
+            _direction_constraint = "今日盤面中性，解讀需說明多空雙方的關鍵條件。"
+        _chip_ctx_ai["_direction_constraint"] = _direction_constraint
+    except Exception:
+        pass
+
     if abs(day_chg) > 500:
         try:
             _close_pos = (
@@ -1346,26 +1394,40 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     # ━━ 夜盤怎麼做 ━━
     lines.append("━━ 夜盤怎麼做 ━━")
     if _is_big_move_up:
-        # 大漲收高：順勢多方策略
+        # 大漲收高：順勢多方策略（含正確的分層停損）
         try:
-            _next_round = int(round(price_f / 500 + 1) * 500)
+            _tp2_main = int(round((price_f + 500) / 500) * 500)  # 下一個整數關卡
         except Exception:
-            _next_round = int(price_f) + 350
+            _tp2_main = int(price_f) + 500
+        _entry_main      = price_f
+        _sl_main         = price_f - 100
+        _tp1_main        = price_f + 300
+        _entry_pullback  = price_f - 300
+        _sl_pullback     = _entry_pullback - 100   # 進場點下方100點
+        _tp1_pullback    = price_f                  # 目標回到收盤
+        _tp2_pullback    = price_f + 200
+        _entry_short     = _entry_pullback
+        _sl_short        = _entry_pullback + 100    # 進場點上方100點
+        _tp1_short       = _entry_pullback - 300
+
         lines.append(f"今日大漲{day_chg:+.0f}點，收在高點附近，以順勢多方為主")
         lines.append("")
         lines.append("做多條件：")
-        lines.append(f"  主線：開盤守穩 {_fp(price_f)}，5分K確認 → 順勢追多")
-        lines.append(f"  回測：拉回到 {_fp(price_f - 300)} 附近止跌 → 逢低做多")
-        lines.append(f"  停損：{_fp(price_f - 100)}（進場後100點）")
-        lines.append(f"  目標：{_fp(price_f + 300)} → {_fp(_next_round)}（整數關卡）")
+        lines.append(f"主線：開盤守穩 {_fp(_entry_main)} 且5分K確認")
+        lines.append(f"  停損：{_fp(_sl_main)}（進場後100點）（一口計=NT$20,000）")
+        lines.append(f"  目標：{_fp(_tp1_main)} → {_fp(_tp2_main)}（整數關卡）")
         lines.append("")
-        lines.append("做空條件（逆勢，極輕倉）：")
-        lines.append(f"  長黑K跌破 {_fp(price_f - 300)} 且站不回 → 極短空")
-        lines.append(f"  停損：{_fp(price_f - 200)}")
-        lines.append(f"  目標：{_fp(price_f - 600)}（尋找缺口支撐）")
+        lines.append(f"回測低接：拉回到 {_fp(_entry_pullback)} 附近止跌")
+        lines.append(f"  停損：{_fp(_sl_pullback)}（進場點下方100點）")
+        lines.append(f"  目標：{_fp(_tp1_pullback)} → {_fp(_tp2_pullback)}")
+        lines.append("")
+        lines.append("做空條件（逆勢極輕倉）：")
+        lines.append(f"長黑K跌破 {_fp(_entry_short)} 且站不回")
+        lines.append(f"  停損：{_fp(_sl_short)}（進場點上方100點）")
+        lines.append(f"  目標：{_fp(_tp1_short)}（尋找缺口支撐）")
         lines.append("")
         lines.append("觀望條件：")
-        lines.append(f"  在 {_fp(price_f - 300)}～{_fp(price_f + 100)} 之間震盪 → 等方向")
+        lines.append(f"在 {_fp(_entry_pullback)}～{_fp(price_f)} 之間無量震盪 → 不做")
     elif _is_big_move_dn:
         # 大跌收低：順勢空方策略
         lines.append(f"今日大跌{abs(day_chg):.0f}點，收在低點附近，以順勢空方為主")

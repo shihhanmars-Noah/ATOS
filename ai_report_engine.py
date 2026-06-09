@@ -719,6 +719,11 @@ def generate_evening_guidance(
         "請只說今日籌碼與盤面中最重要的一個矛盾訊號或陷阱結構（4-5行，不重複報告已有的操作條件）："
     )
 
+    # 方向約束：從 chip_ctx 注入，確保 AI 解讀與報告策略方向一致
+    _direction_constraint = ctx.get("_direction_constraint", "")
+    if _direction_constraint:
+        user_prompt = _direction_constraint + "\n\n" + user_prompt
+
     full_prompt = f"{_EVENING_GUIDANCE_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
