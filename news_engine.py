@@ -451,6 +451,9 @@ def _fetch_finmind_news(days_back: int = 1) -> list[dict]:
     return items
 
 
+MAX_RSS_ITEMS = 20  # 每個 RSS 來源只取最新 N 篇，避免處理幾個月前的舊文章
+
+
 @safe_execute
 def _fetch_yahoo_rss() -> list[dict]:
     """從 Yahoo Finance RSS 抓取國際市場新聞。"""
@@ -465,10 +468,30 @@ def _fetch_yahoo_rss() -> list[dict]:
 
             root = ET.fromstring(xml_data)
 
-            for item_el in root.findall(".//item"):
+            raw_items = root.findall(".//item")
+            # 只取最新 MAX_RSS_ITEMS 篇，RSS 通常已按時間降序排列
+            raw_items = raw_items[:MAX_RSS_ITEMS]
+
+            for item_el in raw_items:
                 def _text(tag):
                     el = item_el.find(tag)
                     return el.text.strip() if el is not None and el.text else ""
+
+                pub_time = _text("pubDate")
+
+                # 24 小時硬過濾：有時間戳才過濾，無時間戳讓後續 Gemini 判斷
+                if pub_time:
+                    try:
+                        from dateutil import parser as _dateutil_parser
+                        from datetime import timezone as _tz
+                        _dt = _dateutil_parser.parse(str(pub_time))
+                        if _dt.tzinfo:
+                            _dt = _dt.astimezone(_tz.utc).replace(tzinfo=None)
+                        _elapsed_h = (datetime.now() - _dt).total_seconds() / 3600
+                        if _elapsed_h > 24:
+                            continue  # 超過 24 小時直接跳過
+                    except Exception:
+                        pass  # 解析失敗繼續處理
 
                 items.append({
                     "source":   "Yahoo Finance",
@@ -476,7 +499,7 @@ def _fetch_yahoo_rss() -> list[dict]:
                     "title":    _text("title"),
                     "content":  _text("description"),
                     "url":      _text("link"),
-                    "pub_time": _text("pubDate"),
+                    "pub_time": pub_time,
                 })
         except Exception:
             pass

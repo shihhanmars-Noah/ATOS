@@ -373,13 +373,14 @@ def clean_txf_tick_cache(rows: list[dict]) -> list[dict]:
             seen_keys.add(key)
 
             cleaned.append({
-                "datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
-                "symbol": row.get("symbol", DEFAULT_FUTURES_SYMBOL),
-                "futures_id": row.get("futures_id"),
-                "price": round(float(price), 1),
-                "volume": safe_int(row.get("volume")),
+                "datetime":    dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "symbol":      row.get("symbol", DEFAULT_FUTURES_SYMBOL),
+                "futures_id":  row.get("futures_id"),
+                "price":       round(float(price), 1),
+                "volume":      safe_int(row.get("volume")),
                 "total_volume": safe_int(row.get("total_volume")),
-                "source": row.get("source", "FINMIND_FUTURES_SNAPSHOT"),
+                "source":      row.get("source", "FINMIND_FUTURES_SNAPSHOT"),
+                "is_realtime": bool(row.get("is_realtime", False)),
             })
 
         except Exception:
@@ -392,8 +393,11 @@ def clean_txf_tick_cache(rows: list[dict]) -> list[dict]:
 
 def append_txf_tick_cache(tick: dict) -> None:
     """
-    只有真正 realtime 的 TXF snapshot 才寫入 cache。
-    非即時、Fugle 備援、無效價都不寫。
+    FinMind snapshot tick 寫入 cache 規則：
+    - 即時 tick（is_realtime=True）：無條件寫入
+    - 非即時 tick：只在今日日盤時段（DAY_SESSION_START~DAY_SESSION_END）內寫入，
+      確保 5分K 能覆蓋完整日盤，即使 snapshot 偶爾延遲超過 90s
+    - Fugle 備援（source != FINMIND_FUTURES_SNAPSHOT）：永遠不寫
     """
 
     if not tick:
@@ -402,13 +406,25 @@ def append_txf_tick_cache(tick: dict) -> None:
     if tick.get("source") != "FINMIND_FUTURES_SNAPSHOT":
         return
 
-    if not tick.get("is_realtime"):
-        return
-
     price = tick.get("price")
-
     if not is_valid_price(price):
         return
+
+    is_rt = bool(tick.get("is_realtime"))
+
+    if not is_rt:
+        # 非即時：只允許今日日盤時段內的 tick 寫入（補 5分K 缺口用）
+        try:
+            dt_raw = tick.get("raw_date") or tick.get("datetime") or datetime.now()
+            dt_chk = parse_any_datetime(dt_raw)
+            t_str  = dt_chk.strftime("%H:%M")
+            today  = datetime.now().date()
+            is_today = dt_chk.date() == today
+            in_day_session = DAY_SESSION_START <= t_str <= DAY_SESSION_END
+            if not (is_today and in_day_session):
+                return  # 非今日日盤的非即時 tick 不寫入
+        except Exception:
+            return
 
     dt_raw = tick.get("raw_date") or tick.get("datetime") or datetime.now()
     dt = parse_any_datetime(dt_raw)
@@ -421,6 +437,7 @@ def append_txf_tick_cache(tick: dict) -> None:
         "volume": safe_int(tick.get("volume")),
         "total_volume": safe_int(tick.get("total_volume")),
         "source": "FINMIND_FUTURES_SNAPSHOT",
+        "is_realtime": is_rt,
     }
 
     rows = load_txf_tick_cache()
@@ -461,6 +478,109 @@ def txf_tick_cache_to_dataframe() -> pd.DataFrame | None:
         return None
 
     return df.sort_values("datetime")
+
+
+@safe_execute
+def backfill_day_session_ticks(target_date: str | None = None) -> int:
+    """
+    收盤後用 FinMind TaiwanFuturesTick 歷史 API 補齊今日日盤快取缺口。
+
+    流程：
+    1. 確認今日日盤 (08:45-13:45) 在快取中的最後時間
+    2. 若有缺口，用 TaiwanFuturesTick 抓補
+    3. 只補 TX 主力合約，已有資料的秒不重複
+
+    Returns: 補入的 tick 筆數
+    """
+    try:
+        today = target_date or datetime.now().strftime("%Y-%m-%d")
+
+        api = get_finmind_api()
+        df_hist = api.taiwan_futures_tick(
+            futures_id="TX",
+            date=today,
+        )
+
+        if df_hist is None or df_hist.empty:
+            print(f"⚠️ backfill: TaiwanFuturesTick {today} 無資料")
+            return 0
+
+        # 確認欄位
+        time_col  = "Time"  if "Time"  in df_hist.columns else "time"
+        price_col = "price" if "price" in df_hist.columns else "close"
+        vol_col   = "volume" if "volume" in df_hist.columns else "Volume"
+
+        if price_col not in df_hist.columns:
+            print(f"⚠️ backfill: 找不到價格欄位，現有：{df_hist.columns.tolist()}")
+            return 0
+
+        # 篩選日盤時段
+        df_hist[time_col] = df_hist[time_col].astype(str)
+        df_day = df_hist[
+            (df_hist[time_col] >= "08:45:00") &
+            (df_hist[time_col] <= "13:45:59")
+        ].copy()
+
+        if df_day.empty:
+            print(f"⚠️ backfill: {today} 日盤時段無歷史 tick")
+            return 0
+
+        # 目前快取中已有的 datetime set（秒精度去重）
+        existing_rows = load_txf_tick_cache()
+        existing_dts = {
+            r["datetime"]
+            for r in existing_rows
+            if r.get("datetime", "").startswith(today)
+        }
+
+        added = 0
+        new_rows = list(existing_rows)
+
+        for _, row in df_day.iterrows():
+            try:
+                raw_price = float(row[price_col])
+                if not is_valid_price(raw_price):
+                    continue
+
+                t_str = str(row[time_col])
+                dt_str = f"{today} {t_str}"
+                if len(dt_str) < 19:
+                    dt_str = dt_str[:19]
+
+                if dt_str in existing_dts:
+                    continue  # 已有，跳過
+
+                # 確認合約 futures_id
+                fid = str(row.get("futures_id", row.get("FuturesID", "TX")))
+
+                new_rows.append({
+                    "datetime":    dt_str,
+                    "symbol":      "TXF",
+                    "futures_id":  fid,
+                    "price":       round(raw_price, 1),
+                    "volume":      safe_int(row.get(vol_col, 0)),
+                    "total_volume": 0,
+                    "source":      "FINMIND_FUTURES_TICK_BACKFILL",
+                    "is_realtime": False,
+                })
+                existing_dts.add(dt_str)
+                added += 1
+
+            except Exception:
+                continue
+
+        if added > 0:
+            new_rows = clean_txf_tick_cache(new_rows)
+            save_txf_tick_cache(new_rows)
+            print(f"✅ backfill: 補入 {added} 筆日盤 tick（{today}）")
+        else:
+            print(f"[backfill] {today} 日盤 tick 已完整，無需補充")
+
+        return added
+
+    except Exception as e:
+        print(f"⚠️ backfill_day_session_ticks failed: {e}")
+        return 0
 
 
 # --------------------------------------------------

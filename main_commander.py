@@ -17,6 +17,7 @@ from data_engine import (
     get_flip_level,
     get_dynamic_resistance_support,
     get_institutional_sentiment,
+    backfill_day_session_ticks,
 )
 
 from monitor_engine import AtosSentinel
@@ -970,6 +971,8 @@ class AtosCommander:
 
         # 盤後 / 夜盤前資料更新
         schedule.every().day.at("13:50").do(self.refresh_chip)
+        # 14:47 先補齊今日日盤 5分K 快取缺口，再給 14:50 refresh_flip 使用
+        schedule.every().day.at("14:47").do(backfill_day_session_ticks)
         schedule.every().day.at("14:50").do(self.refresh_flip)
 
         # 晚盤期貨報告：15:00 開始輪詢，就緒即發，死線 16:00
