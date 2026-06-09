@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 SETTLEMENT_FILE = "settlement_cache.json"
 
@@ -87,12 +87,10 @@ def is_settlement_day(target_date: str | None = None) -> bool:
     return get_settlement_type(target_date) is not None
 
 
-def get_days_to_settlement() -> int:
+def get_next_settlement_date() -> date | None:
     """
-    計算距下一個結算日的天數。
-
-    Returns:
-        距下一個結算日的天數（整數，當天算0）；找不到結算日時回傳 99
+    回傳下一個結算日的 date 物件；找不到時回傳 None。
+    優先從快取讀取，快取為空時自動用 compute_settlement_dates() 計算。
     """
     today = date.today()
     cache = load_settlement_cache()
@@ -107,9 +105,59 @@ def get_days_to_settlement() -> int:
             pass
 
     if not all_dates:
-        return 99
+        # 快取為空，自動計算台指期月結算日（每月第三個星期三）
+        for d_str in compute_settlement_dates(months_ahead=3):
+            try:
+                d = date.fromisoformat(d_str)
+                if d >= today:
+                    all_dates.append(d)
+            except Exception:
+                pass
 
-    return (min(all_dates) - today).days
+    return min(all_dates) if all_dates else None
+
+
+def get_days_to_settlement() -> int:
+    """
+    計算距下一個結算日的天數。
+
+    Returns:
+        距下一個結算日的天數（整數，當天算0）；找不到結算日時回傳 99
+    """
+    next_d = get_next_settlement_date()
+    if next_d is None:
+        return 99
+    return (next_d - date.today()).days
+
+
+def compute_settlement_dates(months_ahead: int = 3) -> list[str]:
+    """
+    自動計算台指期月結算日（每月第三個星期三）。
+    回傳未來 months_ahead 個月的結算日，格式 YYYY-MM-DD。
+    """
+    results = []
+    today = date.today()
+    year, month = today.year, today.month
+
+    for _ in range(months_ahead + 1):  # 多算一個月確保含當月
+        # 找當月第一天
+        first = date(year, month, 1)
+        # 當月第一個星期三（weekday 2）
+        days_to_wed = (2 - first.weekday()) % 7
+        first_wed = first + timedelta(days=days_to_wed)
+        # 第三個星期三
+        third_wed = first_wed + timedelta(weeks=2)
+        d_str = third_wed.strftime("%Y-%m-%d")
+        if third_wed >= today:
+            results.append(d_str)
+        # 下一個月
+        if month == 12:
+            year += 1
+            month = 1
+        else:
+            month += 1
+
+    return sorted(results)
 
 
 def update_settlement_cache(fetch_func) -> bool:

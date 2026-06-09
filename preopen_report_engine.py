@@ -743,9 +743,44 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
         except Exception:
             pass
 
+    # ── OI 框架有效性檢查 ──────────────────────────────────────────────
+    try:
+        _state_snap = load_state()
+        _snap_price  = float(_state_snap.get("price") or 0)
+    except Exception:
+        _snap_price = 0
+    _cw_f = float(call_wall) if call_wall else 0
+    _pw_f = float(put_wall)  if put_wall  else 0
+    _oi_chip_date = (chip_ctx.get("source_dates") or {}).get("option_oi", "")
+    _today_str    = datetime.now().strftime("%Y-%m-%d")
+
+    oi_framework_valid = True
+    oi_warning = ""
+
+    if _oi_chip_date and _oi_chip_date != _today_str and _snap_price > 0:
+        if _cw_f > 0 and _snap_price > _cw_f + 500:
+            oi_framework_valid = False
+            oi_warning = (
+                f"🚨 OI框架失效：現價{_snap_price:.0f}已高於"
+                f"Call wall {_cw_f:.0f}（+{_snap_price - _cw_f:.0f}點）\n"
+                f"昨日框架不適用今日操作，等14:30 OI更新後再建立新框架\n"
+                f"今日不使用Call wall/Put wall點位操作"
+            )
+        elif _pw_f > 0 and _snap_price < _pw_f - 500:
+            oi_framework_valid = False
+            oi_warning = (
+                f"🚨 OI框架失效：現價{_snap_price:.0f}已低於"
+                f"Put wall {_pw_f:.0f}（-{_pw_f - _snap_price:.0f}點）\n"
+                f"昨日框架不適用今日操作，等14:30 OI更新後再建立新框架"
+            )
+    # ── OI 框架有效性檢查結束 ──────────────────────────────────────────
+
     lines = []
 
     lines.append(f"🛡️ ATOS 盤前 {today} {now_time}")
+    if not oi_framework_valid:
+        lines.append("")
+        lines.append(oi_warning)
     lines.append("")
 
     # ━━ 今天的結構 ━━
@@ -766,32 +801,45 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
 
     # ━━ 今天等什麼 ━━
     lines.append("━━ 今天等什麼 ━━")
-    lines.append(scenario_wait)
+    if not oi_framework_valid:
+        lines.append(
+            "⚠️ 昨日OI框架失效，今日無有效Call/Put wall\n"
+            "等一：觀察開盤第一根5分K方向和量能\n"
+            "等二：等13:50外資口數更新確認方向\n"
+            "等三：等14:30選擇權OI更新建立新框架\n"
+            "在新框架建立前，不做方向單"
+        )
+    else:
+        lines.append(scenario_wait)
     lines.append("")
 
     # ━━ 進場怎麼做 ━━
     lines.append("━━ 進場怎麼做 ━━")
-    lines.append(f"空方（等一）：")
-    lines.append(f"  進場：Call wall 附近5分K量縮確認轉弱")
-    lines.append(f"  停損：Call wall 上方100點（{cw_stop}）（一口計=NT$20,000，請依帳戶規模調控）")
-    if atr_note:
-        lines.append(atr_note)
-    lines.append(f"  目標：Pivot {_fp(active_pivot)}{pivot_note} → Put wall {_fp(put_wall)}")
-    lines.append("")
-    lines.append(f"空方（等二）：")
-    lines.append(f"  進場：跌破{_fp(put_wall)}且下一根5分K確認")
-    lines.append(f"  （若破線太快現價離Put wall已超過50點，放棄追單，改等反彈測試不破進場）")
-    lines.append(f"  停損：{pw_stop}（一口計=NT$20,000）")
-    if atr_note:
-        lines.append(atr_note)
-    lines.append(f"  目標：{pw_t1} → {pw_t2}")
-    lines.append("")
-    lines.append(f"多方（等三）：")
-    lines.append(f"  進場：突破{_fp(call_wall)}且下一根5分K確認+量能放大")
-    lines.append(f"  停損：{cw_stop_short}（一口計=NT$20,000）")
-    if atr_note:
-        lines.append(atr_note)
-    lines.append(f"  目標：{cw_t1}")
+    if not oi_framework_valid:
+        lines.append("今日OI框架失效期間，不設定進場條件")
+        lines.append("14:30後OI更新，晚盤報告會給出新框架")
+    else:
+        lines.append(f"空方（等一）：")
+        lines.append(f"  進場：Call wall 附近5分K量縮確認轉弱")
+        lines.append(f"  停損：Call wall 上方100點（{cw_stop}）（一口計=NT$20,000，請依帳戶規模調控）")
+        if atr_note:
+            lines.append(atr_note)
+        lines.append(f"  目標：Pivot {_fp(active_pivot)}{pivot_note} → Put wall {_fp(put_wall)}")
+        lines.append("")
+        lines.append(f"空方（等二）：")
+        lines.append(f"  進場：跌破{_fp(put_wall)}且下一根5分K確認")
+        lines.append(f"  （若破線太快現價離Put wall已超過50點，放棄追單，改等反彈測試不破進場）")
+        lines.append(f"  停損：{pw_stop}（一口計=NT$20,000）")
+        if atr_note:
+            lines.append(atr_note)
+        lines.append(f"  目標：{pw_t1} → {pw_t2}")
+        lines.append("")
+        lines.append(f"多方（等三）：")
+        lines.append(f"  進場：突破{_fp(call_wall)}且下一根5分K確認+量能放大")
+        lines.append(f"  停損：{cw_stop_short}（一口計=NT$20,000）")
+        if atr_note:
+            lines.append(atr_note)
+        lines.append(f"  目標：{cw_t1}")
     lines.append("")
 
     # ━━ 今天完全不做 ━━
@@ -800,6 +848,8 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
     lines.append(f"✗ 在 Pivot {_fp(active_pivot)}{pivot_note} 附近無方向硬猜")
     lines.append("✗ 外資空單持續增加時追多")
     lines.append("✗ 低流動性時段（11:30-13:00）的突破訊號")
+    if not oi_framework_valid:
+        lines.append("✗ 用昨日Call wall/Put wall點位操作")
     lines.append("")
 
     # ━━ 關鍵價位 ━━

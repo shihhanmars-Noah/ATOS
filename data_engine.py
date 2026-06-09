@@ -1173,11 +1173,24 @@ def validate_price_data(calculated_close: float, state: dict) -> bool:
     """
     驗證計算出的收盤價與即時快照價格是否合理。
     若誤差超過 300 點，視為數據污染。
+
+    注意：盤中（09:00-13:45）日K close 是昨日收盤，
+    即時快照是今日盤中價，兩者本來就可以差數百點，
+    因此盤中時段不做驗證，只在盤前/盤後時段驗證。
     """
     snapshot_price = state.get("price")
     if not snapshot_price:
         return True  # 無快照無法驗證，放行
     try:
+        # 盤中時段（09:00~13:45）跳過驗證
+        now_h = datetime.now().hour
+        now_m = datetime.now().minute
+        now_minutes = now_h * 60 + now_m
+        OPEN_MINUTES  = 9 * 60       # 09:00
+        CLOSE_MINUTES = 13 * 60 + 45 # 13:45
+        if OPEN_MINUTES <= now_minutes <= CLOSE_MINUTES:
+            return True
+
         diff = abs(float(calculated_close) - float(snapshot_price))
         if diff > 300:
             print(

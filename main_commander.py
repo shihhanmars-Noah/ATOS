@@ -125,9 +125,11 @@ class AtosCommander:
             return
 
         def fetch_func():
+            from settlement_engine import compute_settlement_dates
+            monthly = compute_settlement_dates(months_ahead=3)
             return {
                 "weekly_settlement": [],
-                "monthly_settlement": [],
+                "monthly_settlement": monthly,
             }
 
         update_settlement_cache(fetch_func)
