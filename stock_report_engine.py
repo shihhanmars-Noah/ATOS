@@ -19,6 +19,94 @@ from persistent_state import load_state
 
 CACHE_FILE = "stock_picks_cache.pkl"
 
+# --------------------------------------------------
+# 個股防禦 / 攻擊屬性分類
+# --------------------------------------------------
+
+DEFENSIVE_STOCKS = {
+    "2412",  # 中華電
+    "2882",  # 國泰金
+    "2881",  # 富邦金
+    "2883",  # 開發金
+    "2884",  # 玉山金
+    "2885",  # 元大金
+    "2886",  # 兆豐金
+    "2887",  # 台新金
+    "2888",  # 新光金
+    "2891",  # 中信金
+    "2892",  # 第一金
+    "5880",  # 合庫金
+    "2409",  # 友達
+    "2408",  # 南亞科
+    "4904",  # 遠傳
+    "2303",  # 聯電
+    "1303",  # 南亞
+    "1301",  # 台塑
+    "1326",  # 台化
+    "2002",  # 中鋼
+}
+
+AGGRESSIVE_STOCKS = {
+    "2330",  # 台積電
+    "2317",  # 鴻海
+    "2454",  # 聯發科
+    "3711",  # 日月光投控
+    "2379",  # 瑞昱
+    "2308",  # 台達電
+    "3034",  # 聯詠
+    "2357",  # 華碩
+    "2382",  # 廣達
+    "2395",  # 研華
+    "3008",  # 大立光
+    "6505",  # 台塑化
+    "2474",  # 可成
+    "4938",  # 和碩
+    "2301",  # 光寶科
+}
+
+
+def _classify_stock_type(stock_id: str) -> str:
+    """
+    判斷個股屬性：DEFENSIVE / AGGRESSIVE / NEUTRAL
+    """
+    sid = str(stock_id)
+    if sid in DEFENSIVE_STOCKS:
+        return "DEFENSIVE"
+    if sid in AGGRESSIVE_STOCKS:
+        return "AGGRESSIVE"
+    return "NEUTRAL"
+
+
+# --------------------------------------------------
+# 動態標注說明
+# --------------------------------------------------
+
+def _get_stock_note(item: dict, is_big_move: bool, night_chg: float, sentiment_score) -> str:
+    """
+    依市場環境和個股屬性產生標注說明（附加在個股行末）。
+    """
+    stock_type = item.get("stock_type", "NEUTRAL")
+    try:
+        ss = int(sentiment_score) if sentiment_score is not None else 0
+    except Exception:
+        ss = 0
+
+    is_bear = ss <= -3
+    note_parts = []
+
+    if stock_type == "DEFENSIVE":
+        if is_bear or (is_big_move and night_chg < 0):
+            note_parts.append("🛡️防禦型，偏空環境相對抗跌")
+        else:
+            note_parts.append("🛡️防禦型")
+    elif stock_type == "AGGRESSIVE":
+        if is_bear or (is_big_move and night_chg < 0):
+            note_parts.append("🚀攻擊型，偏空環境波動較大")
+        else:
+            note_parts.append("🚀攻擊型")
+
+    return "｜".join(note_parts)
+
 
 # --------------------------------------------------
 # Cache
@@ -32,6 +120,7 @@ def save_to_cache(data):
     try:
         cache_data = {
             "timestamp": datetime.now(),
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "data": data,
         }
 
@@ -47,6 +136,7 @@ def save_to_cache(data):
 def load_from_cache():
     """
     從 Pickle 檔案載入快取資料。
+    每日強制重新抓取：若快取的 generated_at 日期 != 今天，視為過時，回傳 None。
     """
 
     if not os.path.exists(CACHE_FILE):
@@ -55,6 +145,13 @@ def load_from_cache():
     try:
         with open(CACHE_FILE, "rb") as f:
             cache_data = pickle.load(f)
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        generated_at = cache_data.get("generated_at", "")
+        # 日期不同 → 強制過期，讓主流程重新抓取
+        if str(generated_at)[:10] != today_str:
+            print(f"⚠️ [Cache] 快取日期 {generated_at[:10]} != 今日 {today_str}，強制重新抓取")
+            return None
 
         cache_age = datetime.now() - cache_data["timestamp"]
         data = cache_data["data"]
@@ -797,6 +894,7 @@ def build_stock_watchlist(
                 "tech": tech,
                 "scores": scores,
                 "market": market,
+                "stock_type": _classify_stock_type(stock_id),
                 "is_cache": False,
                 "cache_age_hours": 0,
             }
@@ -1114,15 +1212,16 @@ def send_stock_picks_report(
     # ── 大盤環境 ──
     lines.append("━━ 大盤環境 ━━")
     if nd_close > 0:
-        lines.append(f"台指夜盤：{int(nd_close)}")
+        lines.append(
+            f"台指夜盤：{nd_close:.0f}"
+            f"（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
+        )
         if nd_day_close > 0:
-            lines.append(
-                f"（昨日日盤 {int(nd_day_close)}，"
-                f"夜盤 {nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
-            )
-        lines.append(f"夜盤區間：{int(nd_low)} ～ {int(nd_high)}")
+            lines.append(f"昨日日盤：{nd_day_close:.0f}，夜盤區間 {nd_low:.0f} ～ {nd_high:.0f}")
+        else:
+            lines.append(f"夜盤區間：{nd_low:.0f} ～ {nd_high:.0f}")
     else:
-        lines.append("台指夜盤：資料取得中")
+        lines.append("台指夜盤：尚無資料（夜盤尚未開始或資料未更新）")
 
     if foreign_ah_net != 0:
         ah_dir_word = "買" if foreign_ah_net > 0 else "賣"
@@ -1168,6 +1267,13 @@ def send_stock_picks_report(
         lines.append("夜盤大跌後開盤風險高，今日以觀察為主")
         lines.append("")
 
+    # ── 是否為偏空+大波動組合（決定是否改用分組顯示）──
+    try:
+        _ss_val = int(sentiment_score) if sentiment_score is not None else 0
+    except Exception:
+        _ss_val = 0
+    _is_bear_bigmove = (nd_big_move and nd_close > 0) or (_ss_val <= -3)
+
     # ── A 級 — 批次 AI 點評 ──
     batch_commentaries: dict = {}
     if a_items:
@@ -1177,84 +1283,126 @@ def send_stock_picks_report(
         except Exception:
             pass
 
-    # A 級標題
-    try:
-        _ss2 = int(sentiment_score) if sentiment_score is not None else 0
+    def _render_stock_item_a(item):
+        """格式化單一 A 級個股（含 AI 點評 + 屬性標注 + 技術數據日期）"""
+        stock_id   = item.get("id") or item.get("stock_id", "N/A")
+        tech       = item.get("tech", {}) or {}
+        chip       = item.get("chip", {}) or {}
+        close      = tech.get("close", "N/A")
+        ma5        = tech.get("ma5", "N/A")
+        consecutive= chip.get("consecutive_trust_buy_days", 0)
+        vol_ratio  = tech.get("volume_ratio", "N/A")
+        item_date  = chip.get("date") or chip_source_date
+        note       = _get_stock_note(item, nd_big_move, nd_chg, sentiment_score)
+        note_str   = f"｜{note}" if note else ""
+        lines.append(
+            f"{stock_id}｜{close}｜5MA {ma5}"
+            f"｜投信連買{consecutive}日｜量比{vol_ratio}{note_str}"
+        )
+        lines.append(_stock_position_desc(item))
+        commentary = batch_commentaries.get(str(stock_id), "")
+        if commentary:
+            lines.append(f"AI點評：{commentary}")
+        lines.append(f"（技術數據：{item_date}，今日開盤後點位不同）")
+
+    def _render_stock_item_b(item):
+        """格式化單一 B 級個股（含屬性標注 + 技術數據日期）"""
+        stock_id   = item.get("id") or item.get("stock_id", "N/A")
+        tech       = item.get("tech", {}) or {}
+        chip       = item.get("chip", {}) or {}
+        close      = tech.get("close", "N/A")
+        dist       = tech.get("distance_to_ma5")
+        dist_str   = f"{dist:+.2f}%" if dist is not None else "N/A"
+        position_word = "站在5MA上方" if tech.get("above_ma5") else "低於5MA下方"
+        _vr = tech.get("volume_ratio")
+        if _vr is None:
+            vol_desc = "量能資料不足"
+        elif _vr > 2.5:
+            vol_desc = "明顯放量"
+        elif _vr > 1.5:
+            vol_desc = "溫和放量"
+        elif _vr < 0.8:
+            vol_desc = "量縮"
+        else:
+            vol_desc = "量能正常"
+        item_date = chip.get("date") or chip_source_date
+        note      = _get_stock_note(item, nd_big_move, nd_chg, sentiment_score)
+        note_str  = f"｜{note}" if note else ""
+        lines.append(
+            f"{stock_id}｜{close}｜距5MA {dist_str}，"
+            f"{position_word}，{vol_desc}{note_str}"
+            f"（{item_date}）"
+        )
+
+    if _is_bear_bigmove:
+        # ── 偏空+大波動：改用防禦/攻擊分組顯示 ──
+        _all_ab = list(a_items) + list(b_items)
+        _def_items  = [x for x in _all_ab if x.get("stock_type") == "DEFENSIVE"]
+        _agg_items  = [x for x in _all_ab if x.get("stock_type") == "AGGRESSIVE"]
+        _neu_items  = [x for x in _all_ab if x.get("stock_type") == "NEUTRAL"]
+
+        # A級標題說明
         if nd_big_move and nd_close > 0:
             lines.append("🟢 A級（方向確認後首選）")
             lines.append("（今日夜盤大幅波動，進場點位需依開盤後實際點位調整）")
-        elif _ss2 <= -3:
+        else:
             lines.append("🟢 A級（反彈首選）")
             lines.append("（偏空環境門檻：投信連買>=3天 + 距5MA<5% + 站在5MA上方）")
+        lines.append("")
+
+        lines.append("🛡️ 防禦型個股（偏空環境相對抗跌）")
+        if _def_items:
+            for item in _def_items:
+                _grade = item.get("grade", "B")
+                _grade_tag = f"[{_grade}]"
+                item_copy = dict(item)  # 不修改原始 item
+                if _grade == "A":
+                    _render_stock_item_a(item_copy)
+                else:
+                    _render_stock_item_b(item_copy)
         else:
-            lines.append("🟢 A級優先觀察")
-    except Exception:
+            lines.append("今日無防禦型個股入選")
+        lines.append("")
+
+        lines.append("🚀 攻擊型個股（波動較大，偏空環境謹慎）")
+        if _agg_items:
+            for item in _agg_items:
+                _grade = item.get("grade", "B")
+                if _grade == "A":
+                    _render_stock_item_a(item)
+                else:
+                    _render_stock_item_b(item)
+        else:
+            lines.append("今日無攻擊型個股入選")
+        lines.append("")
+
+        if _neu_items:
+            lines.append("📋 其他個股")
+            for item in _neu_items:
+                _grade = item.get("grade", "B")
+                if _grade == "A":
+                    _render_stock_item_a(item)
+                else:
+                    _render_stock_item_b(item)
+            lines.append("")
+
+    else:
+        # ── 正常環境：傳統 A/B 分級顯示 ──
         lines.append("🟢 A級優先觀察")
-
-    if not a_items:
-        lines.append("今日無A級標的")
-    else:
-        for item in a_items:
-            stock_id   = item.get("id") or item.get("stock_id", "N/A")
-            tech       = item.get("tech", {}) or {}
-            chip       = item.get("chip", {}) or {}
-            close      = tech.get("close", "N/A")
-            ma5        = tech.get("ma5", "N/A")
-            consecutive= chip.get("consecutive_trust_buy_days", 0)
-            vol_ratio  = tech.get("volume_ratio", "N/A")
-            item_date  = chip.get("date", chip_source_date)
-            lines.append(
-                f"{stock_id}｜{close}｜5MA {ma5}"
-                f"｜投信連買{consecutive}日｜量比{vol_ratio}"
-            )
-            lines.append(_stock_position_desc(item))
-            commentary = batch_commentaries.get(str(stock_id), "")
-            if commentary:
-                lines.append(f"AI點評：{commentary}")
-            lines.append(f"（技術數據：{item_date}，今日開盤後點位不同）")
-    lines.append("")
-
-    # ── B 級標題 ──
-    try:
-        _ss3 = int(sentiment_score) if sentiment_score is not None else 0
-        if nd_big_move and nd_close > 0:
-            lines.append("🟡 B級（次選觀察，今日跳空開盤請重新評估進場點位）")
-        elif _ss3 <= -3:
-            lines.append("🟡 B級（次選觀察，不建議主動進場）")
+        if not a_items:
+            lines.append("今日無A級標的")
         else:
-            lines.append("🟡 B級觀察（不主動進場）")
-    except Exception:
-        lines.append("🟡 B級觀察（不主動進場）")
+            for item in a_items:
+                _render_stock_item_a(item)
+        lines.append("")
 
-    if not b_items:
-        lines.append("今日無B級標的")
-    else:
-        for item in b_items:
-            stock_id   = item.get("id") or item.get("stock_id", "N/A")
-            tech       = item.get("tech", {}) or {}
-            chip       = item.get("chip", {}) or {}
-            close      = tech.get("close", "N/A")
-            dist       = tech.get("distance_to_ma5")
-            dist_str   = f"{dist:+.2f}%" if dist is not None else "N/A"
-            position_word = "站在5MA上方" if tech.get("above_ma5") else "低於5MA下方"
-            _vr = tech.get("volume_ratio")
-            if _vr is None:
-                vol_desc = "量能資料不足"
-            elif _vr > 2.5:
-                vol_desc = "明顯放量"
-            elif _vr > 1.5:
-                vol_desc = "溫和放量"
-            elif _vr < 0.8:
-                vol_desc = "量縮"
-            else:
-                vol_desc = "量能正常"
-            item_date = chip.get("date", chip_source_date)
-            lines.append(
-                f"{stock_id}｜{close}｜距5MA {dist_str}，"
-                f"{position_word}，{vol_desc}"
-                f"（{item_date}）"
-            )
-    lines.append("")
+        lines.append("🟡 B級觀察（不主動進場）")
+        if not b_items:
+            lines.append("今日無B級標的")
+        else:
+            for item in b_items:
+                _render_stock_item_b(item)
+        lines.append("")
 
     # ── 目前市場狀態 ──
     lines.append("━━ 目前市場狀態 ━━")
