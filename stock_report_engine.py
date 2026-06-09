@@ -957,8 +957,11 @@ def build_stock_watchlist(
         return result
 
     except Exception as e:
-        print(f"📡 [API Error] 個股篩選失敗: {e}")
-        print("🛡️ [System] 嘗試讀取個股快取...")
+        try:
+            print(f"[API Error] individual stock filter failed: {e}")
+            print("[System] attempting to load stock picks cache...")
+        except Exception:
+            pass
 
         cached = load_from_cache()
 
@@ -1124,6 +1127,36 @@ def send_stock_picks_report(
     chip_source_date = source_dates.get("futures") or source_dates.get("spot") or "N/A"
     oi_source_date   = source_dates.get("option_oi") or "N/A"
 
+    # ── 即時狀態（夜盤現價 + 今日日盤高低收）──
+    try:
+        from persistent_state import load_state as _load_st
+        _state = _load_st()
+    except Exception:
+        _state = {}
+    current_price   = _state.get("price") or _state.get("day_session_close")
+    tick_source     = _state.get("tick_source", "")
+    day_session_high = _state.get("day_session_high") or _state.get("today_high")
+    day_session_low  = _state.get("day_session_low")  or _state.get("today_low")
+    day_session_close= _state.get("day_session_close") or _state.get("price")
+
+    # ── 籌碼資料日期標注 ──
+    chip_date_futures = source_dates.get("futures", "")
+    chip_date_spot    = source_dates.get("spot",    "")
+
+    if chip_date_futures == today_str:
+        futures_note = "（今日更新）"
+    elif chip_date_futures:
+        futures_note = f"（{chip_date_futures}，昨日）"
+    else:
+        futures_note = ""
+
+    if chip_date_spot == today_str:
+        spot_note = "（今日更新）"
+    elif chip_date_spot:
+        spot_note = f"（{chip_date_spot}，昨日）"
+    else:
+        spot_note = "（昨日）"
+
     # ── 夜盤資料 ──
     try:
         from night_session_engine import get_night_session_data
@@ -1156,10 +1189,12 @@ def send_stock_picks_report(
     pivot               = chip_ctx.get("pivot")
     call_put_ratio      = chip_ctx.get("call_put_ratio")
 
+    # foreign_net = 今日日盤最終部位；foreign_ah_net = 夜盤動向
+    foreign_net_final = foreign_net          # 日盤最終（今日或昨日）
     try:
-        estimated_net = int(foreign_net) + int(foreign_ah_net)
+        estimated_net = int(foreign_net_final) + int(foreign_ah_net)
     except Exception:
-        estimated_net = foreign_net
+        estimated_net = foreign_net_final
 
     pos_label   = _price_position_label(price_position_pct)
     score_str   = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
@@ -1210,12 +1245,22 @@ def send_stock_picks_report(
         b_items = result.get("B", [])
 
     # ── 早盤 / 晚盤模式 ──
-    if _is_evening_mode():
-        report_mode = "晚盤版（今日完整籌碼）"
+    _evening = _is_evening_mode()
+    if _evening:
+        report_mode = "晚盤完整籌碼版"
         data_note = ""
     else:
         report_mode = "早盤版（昨日籌碼）"
         data_note = "籌碼資料為昨日，今日15:30晚盤版將更新"
+
+    # ── 夜盤現價文字（晚盤模式）──
+    night_price_text = ""
+    if _evening and current_price:
+        try:
+            _src = f"，{tick_source}" if tick_source else ""
+            night_price_text = f"台指當前現價：{float(current_price):.0f}（夜盤進行中{_src}）"
+        except Exception:
+            pass
 
     lines = []
 
@@ -1226,29 +1271,51 @@ def send_stock_picks_report(
     lines.append("")
 
     # ── 大盤環境 ──
-    lines.append("━━ 大盤環境 ━━")
-    if nd_close > 0:
-        lines.append(
-            f"台指夜盤：{nd_close:.0f}"
-            f"（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
-        )
-        if nd_day_close > 0:
-            lines.append(f"昨日日盤：{nd_day_close:.0f}，夜盤區間 {nd_low:.0f} ～ {nd_high:.0f}")
-        else:
-            lines.append(f"夜盤區間：{nd_low:.0f} ～ {nd_high:.0f}")
+    if _evening:
+        lines.append("━━ 今日完整大盤環境 ━━")
+        if night_price_text:
+            lines.append(night_price_text)
+        # 今日日盤 H/L/C
+        _dh = f"{float(day_session_high):.0f}" if day_session_high else "N/A"
+        _dl = f"{float(day_session_low):.0f}"  if day_session_low  else "N/A"
+        _dc = f"{float(day_session_close):.0f}"if day_session_close else "N/A"
+        lines.append(f"今日日盤：H {_dh} / L {_dl} / C {_dc}")
+        # 外資期貨（分層）
+        lines.append(f"外資期貨今日最終：{foreign_net_final:+,}口{futures_note}")
+        if foreign_ah_net != 0:
+            ah_dir = "回補" if foreign_ah_net > 0 else "加碼"
+            lines.append(f"外資夜盤動向：{ah_dir} {foreign_ah_net:+,}口（今日夜盤）")
+        lines.append(f"估算當下部位：約 {estimated_net:+,}口")
+        # 現貨外資
+        _spot_dir_e = "買超" if float(spot_val or 0) > 0 else "賣超"
+        lines.append(f"現貨外資：{_spot_dir_e} {abs(float(spot_val or 0)):.1f}億{spot_note}")
+        lines.append(f"選擇權：Call wall {call_wall}｜Put wall {put_wall}")
+        lines.append(f"情緒總分：{score_str}｜{bias_label}")
+        lines.append(f"Fear&Greed：{fear_greed} {fear_greed_emotion}")
+        lines.append(f"結算：{days_settle}天後")
     else:
-        lines.append("台指夜盤：尚無資料（夜盤尚未開始或資料未更新）")
-
-    if foreign_ah_net != 0:
-        ah_dir_word = "買" if foreign_ah_net > 0 else "賣"
-        lines.append(f"外資夜盤：淨{ah_dir_word} {foreign_ah_net:+,}口")
-    lines.append(f"外資估算部位：約 {estimated_net:+,}口")
-    lines.append(
-        f"台指情緒：{bias_label}({score_str})"
-        f"（昨日，今日13:50更新）"
-    )
-    lines.append(f"Fear&Greed：{fear_greed} {fear_greed_emotion}")
-    lines.append(f"結算：{days_settle}天後")
+        lines.append("━━ 大盤環境 ━━")
+        if nd_close > 0:
+            lines.append(
+                f"台指夜盤：{nd_close:.0f}"
+                f"（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
+            )
+            if nd_day_close > 0:
+                lines.append(f"昨日日盤：{nd_day_close:.0f}，夜盤區間 {nd_low:.0f} ～ {nd_high:.0f}")
+            else:
+                lines.append(f"夜盤區間：{nd_low:.0f} ～ {nd_high:.0f}")
+        else:
+            lines.append("台指夜盤：尚無資料（夜盤尚未開始或資料未更新）")
+        if foreign_ah_net != 0:
+            ah_dir_word = "買" if foreign_ah_net > 0 else "賣"
+            lines.append(f"外資夜盤：淨{ah_dir_word} {foreign_ah_net:+,}口")
+        lines.append(f"外資估算部位：約 {estimated_net:+,}口")
+        lines.append(
+            f"台指情緒：{bias_label}({score_str})"
+            f"（昨日，今日13:50更新）"
+        )
+        lines.append(f"Fear&Greed：{fear_greed} {fear_greed_emotion}")
+        lines.append(f"結算：{days_settle}天後")
     lines.append("")
 
     # ── 夜盤大波動警示 ──
@@ -1423,9 +1490,9 @@ def send_stock_picks_report(
     # ── 目前市場狀態 ──
     lines.append("━━ 目前市場狀態 ━━")
     lines.append(
-        f"外資期貨：{foreign_net_level} {estimated_net:+,}口（估算含夜盤）"
+        f"外資期貨：{foreign_net_level} {estimated_net:+,}口（估算含夜盤）{futures_note}"
     )
-    lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億（昨日）")
+    lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億{spot_note}")
 
     if oi_invalid:
         lines.append(
@@ -1435,14 +1502,29 @@ def send_stock_picks_report(
     else:
         lines.append(f"Call wall：{call_wall}｜Put wall：{put_wall}")
 
-    mp_label = "失效" if oi_invalid else _max_pain_label(max_pain, pivot)
-    lines.append(f"Max Pain：{max_pain}（{mp_label}）")
-
-    if max_pain is not None and pivot is not None and not oi_invalid:
+    # Max Pain 有效性：若距現價 > 5% 則標注失效
+    _mp_invalid = False
+    _mp_ref_price = current_price or pivot
+    if max_pain is not None and _mp_ref_price is not None and not oi_invalid:
         try:
-            if float(max_pain) < float(pivot):
+            _mp_dist_pct = abs(float(max_pain) - float(_mp_ref_price)) / float(_mp_ref_price)
+            if _mp_dist_pct > 0.05:
+                _mp_invalid = True
+        except Exception:
+            pass
+
+    if oi_invalid or _mp_invalid:
+        _mp_reason = "OI失效" if oi_invalid else "大波動後OI結構已重組，舊Max Pain參考性降低"
+        lines.append(f"Max Pain：{max_pain}（{_mp_reason}）")
+    else:
+        mp_label = _max_pain_label(max_pain, _mp_ref_price)
+        lines.append(f"Max Pain：{max_pain}（{mp_label}）")
+
+    if max_pain is not None and _mp_ref_price is not None and not oi_invalid and not _mp_invalid:
+        try:
+            if float(max_pain) < float(_mp_ref_price):
                 lines.append(
-                    f"⚠️ Max Pain {max_pain} 低於現價，大戶希望往下結算，個股多方需謹慎"
+                    f"大戶希望往下結算至 {max_pain}，個股多方需謹慎"
                 )
         except Exception:
             pass
@@ -1452,20 +1534,49 @@ def send_stock_picks_report(
     # ── AI 市場解讀 ──
     try:
         _ai_chip = dict(chip_ctx)
-        # 注入夜盤背景讓 AI 有更好的上下文
-        _ai_chip["_night_context"] = (
-            f"夜盤{nd_chg:+.0f}點，外資估算{estimated_net:+,}口，"
-            f"結算{days_settle}天，C/P比{call_put_ratio}"
-        )
-        if nd_big_move:
-            _ai_chip["_analysis_request"] = (
-                f"昨夜盤大幅波動{nd_chg:+.0f}點，請說明對個股操作的影響"
+        if _evening:
+            # 晚盤模式：注入完整今日籌碼上下文
+            _ai_chip["_report_mode"] = "晚盤完整籌碼版"
+            _ai_chip["_futures_note"] = futures_note
+            _ai_chip["_spot_note"] = spot_note
+            _ai_chip["_today_hl"] = (
+                f"今日日盤 H={day_session_high or 'N/A'} "
+                f"L={day_session_low or 'N/A'} "
+                f"C={day_session_close or 'N/A'}"
             )
-        if foreign_ah_net != 0:
-            _ai_chip["_ah_note"] = (
-                f"外資夜盤已{'回補' if foreign_ah_net > 0 else '加碼'}"
-                f"{foreign_ah_net:+,}口，估算部位{estimated_net:+,}口"
+            if night_price_text:
+                _ai_chip["_night_price"] = night_price_text
+            # 外資期現貨方向是否一致
+            try:
+                _fut_bull = int(foreign_net_final) > 0
+                _spt_bull = float(spot_val) > 0
+                if _fut_bull == _spt_bull:
+                    _ai_chip["_divergence"] = "外資期現貨方向一致，訊號較可靠"
+                else:
+                    _ai_chip["_divergence"] = (
+                        f"外資期貨{'多' if _fut_bull else '空'}、"
+                        f"現貨{'買超' if _spt_bull else '賣超'}，"
+                        "期現背離，請說明可能原因與個股影響"
+                    )
+            except Exception:
+                pass
+            if _mp_invalid:
+                _ai_chip["_mp_note"] = "Max Pain已失效（大波動後OI結構重組），勿依賴此水位"
+        else:
+            # 早盤模式：注入夜盤背景
+            _ai_chip["_night_context"] = (
+                f"夜盤{nd_chg:+.0f}點，外資估算{estimated_net:+,}口，"
+                f"結算{days_settle}天，C/P比{call_put_ratio}"
             )
+            if nd_big_move:
+                _ai_chip["_analysis_request"] = (
+                    f"昨夜盤大幅波動{nd_chg:+.0f}點，請說明對個股操作的影響"
+                )
+            if foreign_ah_net != 0:
+                _ai_chip["_ah_note"] = (
+                    f"外資夜盤已{'回補' if foreign_ah_net > 0 else '加碼'}"
+                    f"{foreign_ah_net:+,}口，估算部位{estimated_net:+,}口"
+                )
         market_commentary = _get_market_ai_commentary(_ai_chip)
     except Exception:
         market_commentary = ""

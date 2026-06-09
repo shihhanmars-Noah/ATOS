@@ -14,7 +14,10 @@ def safe_execute(func):
             return func(*args, **kwargs)
         except Exception as e:
             # 這裡我們換一個絕對獨一無二的識別頭
-            error_msg = f"🛡️ [ATOS_FINAL_V3] 異常發生：{func.__name__} -> {str(e)}"
-            print(error_msg)
+            error_msg = f"[ATOS] {func.__name__} error: {str(e)}"
+            try:
+                print(error_msg)
+            except Exception:
+                pass
             return None
     return wrapper
