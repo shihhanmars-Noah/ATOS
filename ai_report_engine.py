@@ -392,8 +392,11 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
     text = _call_gemini_with_retry(client, full_prompt, max_output_tokens=800)
     if text is None:
         return None
-    print(f"✅ [ai_report_engine] {report_type} 完成（{len(text)} 字）")
-    return text
+    try:
+        print(f"[ai_report_engine] {report_type} done ({len(text)} chars)")
+    except Exception:
+        pass
+    return _check_ai_quality(text)
 
 
 # --------------------------------------------------
@@ -626,23 +629,76 @@ def generate_preopen_guidance(chip_ctx: Optional[dict], bias_label: str) -> Opti
 # 晚盤解讀（EVENING_GUIDANCE）
 # --------------------------------------------------
 
-_EVENING_GUIDANCE_SYSTEM = """你是 ATOS 晚盤複盤分析引擎。
+_EVENING_GUIDANCE_SYSTEM = """你是台指期和台股的專業籌碼分析師。
 
-你的唯一任務：用4-5行點出今日籌碼與盤面中最重要的一個「矛盾訊號」或「結構特徵」，
-讓交易員明白夜盤最需要警惕的陷阱是什麼。
+籌碼解讀鐵律（必須遵守）：
+
+1. 現期背離的正確解讀：
+   若「現貨外資大賣」但「台指期大漲」，
+   正確解讀是「內資主力/國家隊護盤軋空」，
+   絕對不可以說「多方力道來自散戶」。
+   散戶資金分散且恐慌，無法推動台指期大漲。
+
+2. C/P ratio < 0.6 的正確解讀：
+   散戶大量買Put = 散戶在避險/看空，
+   不代表散戶在拉抬指數。
+   C/P偏低反而是軋空的燃料（空方部位過多）。
+
+3. Fear & Greed 偏低（< 50）時：
+   散戶情緒恐慌，不可能是指數上漲的主力。
+   指數上漲必然是大戶/主力在推動。
+
+4. 外資現貨賣超但期貨大漲：
+   正確說法：「內資主力（投信/官股/選擇權莊家）聯手軋壓外資期貨空單，外資被迫回補」
+   錯誤說法：「散戶買盤支撐」「市場散戶樂觀」
+
+5. 你的解讀要告訴交易員：
+   - 今日主導力量是誰（內資/外資/主力）
+   - 這個力量今晚是否會持續
+   - 什麼訊號代表力量轉變
 
 絕對禁止事項：
-1. 禁止重複報告中已有的做多/做空/觀望條件（Call wall、Put wall點位已在報告本文列明）
-2. 禁止僅憑收盤位於Pivot上方就說「日盤偏多」——必須同時考慮假突破、現貨大賣等負面訊號
-3. 禁止自創點位數字，只能引用輸入中的點位
-4. 不說「建議做多/做空」，描述矛盾結構和陷阱
-5. 純文字，不用 Markdown，使用繁體中文
+- 禁止重複報告中已有的做多/做空/觀望條件（Call wall、Put wall點位已在報告本文列明）
+- 禁止僅憑收盤位於Pivot上方就說「日盤偏多」——必須同時考慮假突破、現貨大賣等負面訊號
+- 禁止自創點位數字，只能引用輸入中的點位
+- 不說「建議做多/做空」，描述矛盾結構和陷阱
 
-判斷準則（優先順序）：
-- 若 Call wall 出現假突破 → 這是上方主力防守極重的訊號，必須提及
-- 若現貨外資賣超 > 200億 → 屬於重大異動，必須特別描述其含義
-- 若期貨回補但現貨大賣 → 這是「現期背離」矛盾，是今日最大陷阱
-- 若 C/P Ratio < 0.5 → 散戶過度追空，軋空風險"""
+分析風格：客觀、精準、直接，不說廢話。
+輸出語言：繁體中文，4-5行。"""
+
+
+# --------------------------------------------------
+# AI 解讀品質檢查
+# --------------------------------------------------
+
+_BAD_PHRASES = [
+    "散戶買盤",
+    "散戶支撐",
+    "散戶樂觀",
+    "散戶推動",
+    "散戶追多",
+    "多方來自散戶",
+    "散戶信心",
+    "散戶積極",
+]
+
+
+def _check_ai_quality(text: str) -> str:
+    """
+    檢查 AI 解讀是否包含已知錯誤用語。
+    若命中，在末尾附加系統警告，不修改原文。
+    """
+    if not text:
+        return text
+    for phrase in _BAD_PHRASES:
+        if phrase in text:
+            try:
+                print(f"[ai_report_engine] AI output contains bad phrase: {phrase!r}")
+            except Exception:
+                pass
+            text = text + "\n（系統提示：以上解讀含主觀臆測，請以籌碼數據為準）"
+            break
+    return text
 
 
 @safe_execute
@@ -708,7 +764,47 @@ def generate_evening_guidance(
         except Exception:
             pass
 
+    # ── 今日籌碼背景區塊（給 AI 明確的事實框架，防止誤判主力行為）──
+    _day_chg = ctx.get("_day_chg", 0) or 0
+    _day_chg_pct = ctx.get("_day_chg_pct", 0) or 0
+    _prev_net = int(fn or 0) - int(fn_1d or 0)
+    _spot_bn = 0.0
+    try:
+        _spot_bn = float(spot) if spot else 0.0
+    except Exception:
+        pass
+    _fg = ctx.get("fear_greed_index") or ctx.get("fear_greed") or "N/A"
+    try:
+        _fg_f = float(_fg)
+        _fg_label = "恐慌" if _fg_f < 40 else "中性" if _fg_f < 60 else "貪婪"
+    except Exception:
+        _fg_label = "N/A"
+    try:
+        _cp_f = float(cp) if cp and cp != "N/A" else 1.0
+        _cp_label = "散戶大量買Put避險" if _cp_f < 0.6 else "散戶中性"
+    except Exception:
+        _cp_label = "N/A"
+    if _spot_bn < -200 and _day_chg > 300:
+        _divergence = "⚠️ 現期背離：現貨賣超但期貨上漲，內資主力軋空格局"
+    elif _spot_bn > 200 and _day_chg < -300:
+        _divergence = "⚠️ 現期背離：現貨買超但期貨下跌，主力出貨格局"
+    else:
+        _divergence = "現期同向，方向一致"
+
+    chip_context_block = (
+        "今日籌碼背景（請依此解讀，不要自行臆測）：\n"
+        f"- 外資期貨：今日{'回補' if (fn_1d or 0) > 0 else '加碼'}"
+        f" {abs(int(fn_1d or 0)):,}口\n"
+        f"  （昨日 {_prev_net:+,} → 今日 {int(fn or 0):+,}）\n"
+        f"- 現貨外資：{'買超' if _spot_bn > 0 else '賣超'} {abs(_spot_bn):.1f}億\n"
+        + (f"- 大盤漲跌：{_day_chg:+.0f}點（{_day_chg_pct:+.1f}%）\n" if _day_chg != 0 else "")
+        + f"- C/P ratio：{cp}（{_cp_label}）\n"
+        f"- Fear & Greed：{_fg}（{_fg_label}）\n\n"
+        f"現期背離判斷：{_divergence}"
+    )
+
     user_prompt = (
+        chip_context_block + "\n\n"
         f"=== 今日盤面事實（必須以此為準，不得推翻）===\n"
         + "\n".join(facts) + "\n\n"
         f"=== 籌碼數據 ===\n"
@@ -730,8 +826,11 @@ def generate_evening_guidance(
     text = _call_gemini_with_retry(client, full_prompt, max_output_tokens=400)
     if text is None:
         return None
-    print(f"✅ [ai_report_engine] 晚盤解讀完成（{len(text)} 字）")
-    return text
+    try:
+        print(f"[ai_report_engine] evening guidance done ({len(text)} chars)")
+    except Exception:
+        pass
+    return _check_ai_quality(text)
 
 
 # --------------------------------------------------

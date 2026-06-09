@@ -1342,6 +1342,13 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
     except Exception:
         pass
 
+    # 注入漲跌幅供 AI 函式使用
+    try:
+        _chip_ctx_ai["_day_chg"] = day_chg
+        _chip_ctx_ai["_day_chg_pct"] = day_chg_pct
+    except Exception:
+        pass
+
     if abs(day_chg) > 500:
         try:
             _close_pos = (
