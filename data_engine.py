@@ -1309,34 +1309,46 @@ def get_latest_close_from_history(df_5min: pd.DataFrame) -> float | None:
 def validate_price_data(calculated_close: float, state: dict) -> bool:
     """
     驗證計算出的收盤價與即時快照價格是否合理。
-    若誤差超過 300 點，視為數據污染。
 
-    注意：盤中（09:00-13:45）日K close 是昨日收盤，
-    即時快照是今日盤中價，兩者本來就可以差數百點，
-    因此盤中時段不做驗證，只在盤前/盤後時段驗證。
+    門檻：動態 3%（絕對上限 1000 點），避免固定 300 點在極端行情誤觸發。
+
+    盤中（08:45-13:45）：
+      日K 是昨日收盤，即時快照是今日盤中價，本來就會有差距，
+      因此盤中時段直接放行，不做污染判斷。
+
+    盤外：
+      差距超過 min(3%, 1000點) 才視為污染，印警報並回傳 False。
     """
     snapshot_price = state.get("price")
     if not snapshot_price:
         return True  # 無快照無法驗證，放行
+
     try:
-        # 盤中時段（09:00~13:45）跳過驗證
-        now_h = datetime.now().hour
-        now_m = datetime.now().minute
-        now_minutes = now_h * 60 + now_m
-        OPEN_MINUTES  = 9 * 60       # 09:00
-        CLOSE_MINUTES = 13 * 60 + 45 # 13:45
+        now_minutes = datetime.now().hour * 60 + datetime.now().minute
+        OPEN_MINUTES  = 8 * 60 + 45   # 08:45
+        CLOSE_MINUTES = 13 * 60 + 45  # 13:45
         if OPEN_MINUTES <= now_minutes <= CLOSE_MINUTES:
-            return True
+            return True  # 盤中放行，日K昨日收盤 vs 今日即時價差距屬正常
 
         diff = abs(float(calculated_close) - float(snapshot_price))
-        if diff > 300:
-            print(
-                f"🚨 數據污染警報：日K收盤 {calculated_close} vs "
-                f"即時快照 {snapshot_price}，差距 {diff:.0f} 點，"
-                f"停止使用此資料"
-            )
+
+        # 動態門檻：3% 或 1000 點取小值
+        threshold_pct   = float(calculated_close) * 0.03
+        threshold_fixed = 1000.0
+        threshold       = min(threshold_pct, threshold_fixed)
+
+        if diff > threshold:
+            try:
+                print(
+                    f"[CONTAMINATION] close={calculated_close} snapshot={snapshot_price} "
+                    f"diff={diff:.0f} threshold={threshold:.0f} -> REJECTED"
+                )
+            except Exception:
+                pass
             return False
+
         return True
+
     except Exception:
         return True
 

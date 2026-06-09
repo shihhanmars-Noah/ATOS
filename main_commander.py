@@ -659,44 +659,82 @@ class AtosCommander:
     def startup_validation(self) -> bool:
         """
         啟動時驗證關鍵資料是否合理。
-        期貨日K收盤 vs 即時快照差距 > 300 點 → 發 Telegram 警報並拒絕啟動。
+
+        門檻放寬至 5%（取代固定 300 點），避免正常日內波動誤觸發。
+
+        盤中啟動（08:45-13:45）：
+          日K 是昨日收盤，即時快照是今日盤中價，差距大屬正常，
+          只印警告，不拒絕啟動。
+
+        盤外啟動：
+          差距超過 5% 才視為真正的污染，發 Telegram 警報並拒絕啟動。
+
+        levels is None：
+          FinMind 無法取得資料時，不阻止啟動，讓系統繼續用快取跑。
         """
         try:
             from data_engine import get_dynamic_resistance_support
             levels = get_dynamic_resistance_support(futures_id="TX")
 
             if levels is None:
-                msg = "🚨 ATOS 啟動警報\n無法取得期貨日K資料（可能資料污染），請確認合約月份後重啟"
-                print(msg)
-                try:
-                    from messenger import send_to_telegram
-                    send_to_telegram(msg)
-                except Exception:
-                    pass
-                return False
+                print("⚠️ 無法取得期貨點位資料，使用快取繼續啟動")
+                return True  # 不阻止啟動，讓系統繼續跑
 
             close    = levels.get("close", 0)
             snapshot = self.state.get("price", 0)
 
-            if snapshot and close and abs(float(close) - float(snapshot)) > 300:
-                diff = abs(float(close) - float(snapshot))
-                msg = (
-                    f"🚨 ATOS 啟動警報\n"
-                    f"期貨日K收盤 {int(round(float(close)))} vs 即時快照 {int(round(float(snapshot)))}\n"
-                    f"差距 {diff:.0f} 點\n"
-                    f"資料可能污染，請確認合約月份後重啟"
+            if not snapshot or not close:
+                print(
+                    f"✅ 啟動驗證略過（快照或日K其中一項為空）："
+                    f"收盤 {close}，快照 {snapshot if snapshot else '(無快照)'}"
                 )
-                print(msg)
-                try:
-                    from messenger import send_to_telegram
-                    send_to_telegram(msg)
-                except Exception:
-                    pass
-                return False
+                return True
+
+            diff      = abs(float(close) - float(snapshot))
+            threshold = float(close) * 0.05  # 5%
+
+            if diff > threshold:
+                now          = datetime.now()
+                now_minutes  = now.hour * 60 + now.minute
+                is_intraday  = (8 * 60 + 45) <= now_minutes <= (13 * 60 + 45)
+
+                if is_intraday:
+                    # 盤中：日K昨日收盤 vs 今日即時快照差距大為正常，警告即可
+                    print(
+                        f"⚠️ 注意：日K收盤 {int(round(float(close)))} vs "
+                        f"即時快照 {int(round(float(snapshot)))}，差距 {diff:.0f} 點"
+                    )
+                    print("⚠️ 盤中啟動，日K為昨日資料，差距屬正常，繼續啟動")
+                    return True
+                else:
+                    # 盤外：差距超過 5% 才是真正的污染
+                    msg = (
+                        f"[STARTUP WARNING] ATOS\n"
+                        f"close={int(round(float(close)))} snapshot={int(round(float(snapshot)))}\n"
+                        f"diff={diff:.0f} threshold={threshold:.0f}\n"
+                        f"Please verify contract month and restart"
+                    )
+                    try:
+                        print(msg)
+                    except Exception:
+                        pass
+                    try:
+                        tg_msg = (
+                            f"🚨 ATOS 啟動警報\n"
+                            f"期貨日K收盤 {int(round(float(close)))} vs "
+                            f"即時快照 {int(round(float(snapshot)))}\n"
+                            f"差距 {diff:.0f} 點（門檻 {threshold:.0f} 點）\n"
+                            f"請確認合約月份後重啟"
+                        )
+                        from messenger import send_to_telegram
+                        send_to_telegram(tg_msg)
+                    except Exception:
+                        pass
+                    return False
 
             print(
                 f"✅ 啟動驗證通過：日K收盤 {close}，"
-                f"快照 {snapshot if snapshot else '(無快照)'}，"
+                f"快照 {snapshot}，差距 {diff:.0f} 點，"
                 f"合約 {levels.get('contract_date', 'N/A')}，"
                 f"{levels.get('days_to_settlement', '?')} 天後結算"
             )
