@@ -297,11 +297,14 @@ def get_night_session_data() -> dict:
     """
     從 TaiwanFuturesTick 取得最近一個夜盤的高低收資料。
 
-    夜盤定義：某交易日 15:00 以後的 tick。
+    夜盤定義：昨日 15:00 ~ 今日 08:45 的 tick。
     注意事項：
       - date 欄位格式為 'YYYY-MM-DD HH:MM:SS'（含日期+時間），以 dt.hour 判斷
       - 含多合約（近月/次月/展期價差），用「成交量最大合約」過濾主力
       - 若最近夜盤資料超過 3 天前，視為過時不使用（市場可能跳空很大）
+      - night_chg     = 夜盤收盤 - 夜盤開盤（15:00第一筆）
+      - vs_day_chg    = 夜盤收盤 - 昨日日盤收盤
+      - vs_day_chg_pct= vs_day_chg / day_close * 100
     """
     try:
         import pandas as pd
@@ -343,36 +346,54 @@ def get_night_session_data() -> dict:
 
         df["date_only"] = df["date"].dt.date
 
-        # ── 找最近一個有夜盤（hour >= 15）的交易日 ──
+        # ── 找最近一個有夜盤（hour >= 15）的交易日（夜盤開始日 = 昨日）──
         night_mask = df["date"].dt.hour >= 15
-        night_days = sorted(df.loc[night_mask, "date_only"].unique())
+        night_start_days = sorted(df.loc[night_mask, "date_only"].unique())
 
-        if not night_days:
+        if not night_start_days:
             print("⚠️ 夜盤資料：近7日無夜盤 tick 資料")
             return {}
 
-        latest_night_day = night_days[-1]
+        target_day = night_start_days[-1]   # 夜盤開始的日期（昨日）
 
         # ── 資料新鮮度：夜盤資料超過 3 天前則視為過時 ──
-        days_old = (today_date - latest_night_day).days
+        days_old = (today_date - target_day).days
         if days_old > 3:
             print(
-                f"⚠️ 夜盤資料過時（{days_old}天前，{latest_night_day}），"
+                f"⚠️ 夜盤資料過時（{days_old}天前，{target_day}），"
                 f"市場可能已大幅跳空，不使用"
             )
             return {}
 
-        # ── 取夜盤 tick ──
-        df_that_day = df[df["date_only"] == latest_night_day]
-        night_df = df_that_day[df_that_day["date"].dt.hour >= 15].copy()
+        # ── 夜盤 tick 窗口：target_day 15:00 ~ next_day 08:45 ──
+        next_day = target_day + timedelta(days=1)
+
+        next_day_mask = (
+            (df["date_only"] == next_day) &
+            (
+                (df["date"].dt.hour < 8) |
+                ((df["date"].dt.hour == 8) & (df["date"].dt.minute < 45))
+            )
+        )
+        target_day_night_mask = (
+            (df["date_only"] == target_day) &
+            (df["date"].dt.hour >= 15)
+        )
+
+        night_df = df[target_day_night_mask | next_day_mask].copy()
+
+        if night_df.empty:
+            # 備援：只取 target_day 15:00 以後
+            night_df = df[target_day_night_mask].copy()
 
         if night_df.empty:
             return {}
 
-        # ── 日盤收盤（同日 08:45 ~ 13:45）──
-        day_df = df_that_day[
-            (df_that_day["date"].dt.hour >= 8) &
-            (df_that_day["date"].dt.hour < 14)
+        # ── 日盤收盤（target_day 08:45 ~ 13:45）──
+        day_df = df[
+            (df["date_only"] == target_day) &
+            (df["date"].dt.hour >= 8) &
+            (df["date"].dt.hour < 14)
         ].copy()
 
         night_open    = float(night_df["price"].iloc[0])
@@ -383,28 +404,31 @@ def get_night_session_data() -> dict:
         night_chg_pct = round(night_chg / night_open * 100, 2) if night_open > 0 else 0
         night_range   = round(night_high - night_low, 0)
 
-        day_close  = float(day_df["price"].iloc[-1]) if not day_df.empty else 0
-        vs_day_chg = round(night_close - day_close, 0) if day_close else 0
+        day_close       = float(day_df["price"].iloc[-1]) if not day_df.empty else 0
+        vs_day_chg      = round(night_close - day_close, 0) if day_close else 0
+        vs_day_chg_pct  = round(vs_day_chg / day_close * 100, 2) if day_close else 0
 
         result = {
-            "night_open":    night_open,
-            "night_close":   night_close,
-            "night_high":    night_high,
-            "night_low":     night_low,
-            "night_chg":     night_chg,
-            "night_chg_pct": night_chg_pct,
-            "night_range":   night_range,
-            "day_close":     day_close,
-            "vs_day_chg":    vs_day_chg,
-            "is_big_move":   abs(night_chg_pct) > 2.0,
-            "data_date":     str(latest_night_day),
-            "days_old":      days_old,
+            "night_open":       night_open,
+            "night_close":      night_close,
+            "night_high":       night_high,
+            "night_low":        night_low,
+            "night_chg":        night_chg,
+            "night_chg_pct":    night_chg_pct,
+            "night_range":      night_range,
+            "day_close":        day_close,
+            "vs_day_chg":       vs_day_chg,
+            "vs_day_chg_pct":   vs_day_chg_pct,
+            "is_big_move":      abs(night_chg_pct) > 2.0,
+            "data_date":        str(target_day),
+            "days_old":         days_old,
         }
 
         print(
-            f"✅ 夜盤資料（{latest_night_day}，{days_old}天前）："
+            f"✅ 夜盤資料（{target_day}，{days_old}天前）："
             f"收{night_close:.0f} 高{night_high:.0f} 低{night_low:.0f} "
             f"夜盤{night_chg:+.0f}點（{night_chg_pct:+.1f}%）"
+            f" | 日收{day_close:.0f} vs日{vs_day_chg:+.0f}點"
         )
 
         return result

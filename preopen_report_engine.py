@@ -363,6 +363,14 @@ def build_preopen_payload() -> dict:
     except Exception:
         night_data = {}
 
+    # 估算今日開盤前外資部位（日盤 + 夜盤）
+    _fn_val  = (chip_ctx or {}).get("foreign_net", 0) or 0
+    _ah_val  = (chip_ctx or {}).get("foreign_ah_net", 0) or 0
+    try:
+        estimated_foreign_net = int(_fn_val) + int(_ah_val)
+    except Exception:
+        estimated_foreign_net = 0
+
     return {
         "today": today,
         "now_time": now_time,
@@ -384,9 +392,10 @@ def build_preopen_payload() -> dict:
         "sentiment_info": sentiment_info,
         "chip_ctx": chip_ctx,
         "bias": bias,
-        "scenarios":          scenarios,
-        "night_context_text": night_context_text,
-        "night_data":         night_data,
+        "scenarios":            scenarios,
+        "night_context_text":   night_context_text,
+        "night_data":           night_data,
+        "estimated_foreign_net": estimated_foreign_net,
     }
 
 
@@ -616,6 +625,260 @@ def _incentive_one_liner(sentiment_score, call_wall, put_wall, fn) -> str:
         return "以 Put wall / Call wall 為核心，等量能確認再進場"
 
 
+def _build_oi_invalid_night_report(
+    today: str,
+    now_time: str,
+    night_data: dict,
+    estimated_foreign_net: int,
+    chip_ctx: dict,
+    call_wall,
+    put_wall,
+    days_to_settlement,
+    atr_5d,
+) -> str:
+    """OI框架失效 + 夜盤資料可用時，使用夜盤框架的完整報告。"""
+
+    # ── 夜盤資料 ──
+    night_close   = float(night_data.get("night_close", 0))
+    night_high    = float(night_data.get("night_high", 0))
+    night_low     = float(night_data.get("night_low", 0))
+    night_chg     = float(night_data.get("night_chg", 0))
+    night_chg_pct = float(night_data.get("night_chg_pct", 0))
+    vs_day_chg    = float(night_data.get("vs_day_chg", 0))
+    day_close     = float(night_data.get("day_close", 0))
+    night_date_str= night_data.get("data_date", "")
+
+    # ── 籌碼 ──
+    fn          = chip_ctx.get("foreign_net", 0) or 0
+    fn_level    = chip_ctx.get("foreign_net_level", "N/A")
+    spot_val    = chip_ctx.get("spot_foreign_net_buy_bn") or 0
+    spot_5d     = chip_ctx.get("spot_foreign_5d_sum_bn") or 0
+    spot_dir    = _spot_dir(spot_val)
+
+    call_put_ratio   = chip_ctx.get("call_put_ratio")
+    max_pain         = chip_ctx.get("max_pain")
+    sentiment_score  = chip_ctx.get("sentiment_score", 0)
+    sentiment_bias   = chip_ctx.get("sentiment_bias", "N/A")
+    fear_greed       = chip_ctx.get("fear_greed_index", "N/A")
+    fear_greed_emo   = _fmt_emo(chip_ctx.get("fear_greed_emotion", ""))
+    warnings         = chip_ctx.get("warnings", [])
+    chip_date        = (chip_ctx.get("source_dates") or {}).get("futures", "")
+
+    # ── 夜盤法人 ──
+    foreign_ah_net   = chip_ctx.get("foreign_ah_net", 0) or 0
+    foreign_ah_long  = chip_ctx.get("foreign_ah_long", 0) or 0
+    foreign_ah_short = chip_ctx.get("foreign_ah_short", 0) or 0
+    dealer_ah_net    = chip_ctx.get("dealer_ah_net", 0) or 0
+    ah_date          = chip_ctx.get("ah_source_date") or ""
+
+    # ── ATR ──
+    atr_5d_f = float(atr_5d) if atr_5d else 0
+    atr_half  = int(round(atr_5d_f * 0.5)) if atr_5d_f else 0
+
+    # ── 衍生 ──
+    dtl = int(days_to_settlement) if days_to_settlement is not None else 99
+    settle_note = "（結算週 ⚠️）" if dtl <= 7 else ""
+    score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
+    chip_date_disp = chip_date or datetime.now().strftime("%Y-%m-%d")
+
+    # ── 特殊狀況描述 ──
+    if night_chg > 300:
+        situation = "昨夜盤大幅軋空"
+    elif night_chg < -300:
+        situation = "昨夜盤大幅下殺"
+    else:
+        situation = "昨夜盤OI框架失效"
+
+    # ── 關鍵背景（靜態一句話）──
+    if abs(night_chg) > 500:
+        if night_chg > 0:
+            bg = (
+                f"夜盤軋空 {int(night_chg)} 點，外資估算仍為空方主導（{fn_level}），"
+                f"短線空單回補不代表轉多，今日以觀察為主"
+            )
+        else:
+            bg = (
+                f"夜盤重挫 {int(abs(night_chg))} 點，外資估算空方延伸（{fn_level}），"
+                f"今日開盤方向未定，先觀察第一根5分K"
+            )
+    elif abs(vs_day_chg) > 300:
+        bg = (
+            f"夜盤收盤較日盤{vs_day_chg:+.0f}點，昨日OI框架完全失效，"
+            f"外資估算部位 {estimated_foreign_net:+,} 口，改用夜盤高低點框架"
+        )
+    else:
+        bg = (
+            f"OI框架失效，外資估算部位 {estimated_foreign_net:+,} 口（{fn_level}），"
+            f"今日改用夜盤高低點作為操作依據"
+        )
+
+    # ── AI 矛盾分析（失敗時用靜態）──
+    ai_analysis = ""
+    try:
+        from ai_report_engine import generate_preopen_contradiction
+        _ai_ctx = dict(chip_ctx)
+        _ai_ctx["_oi_invalid_note"] = (
+            f"【OI框架失效】夜盤{night_chg:+.0f}點，外資估算{estimated_foreign_net:+,}口，"
+            f"夜盤高{int(night_high)}/低{int(night_low)}/收{int(night_close)}，"
+            f"C/P比{call_put_ratio}，結算{dtl}天"
+        )
+        ai_analysis = generate_preopen_contradiction(
+            _ai_ctx, int(night_close), int(night_high), int(night_low)
+        ) or ""
+    except Exception:
+        pass
+
+    if not ai_analysis:
+        if fn < -30000 and night_chg > 300:
+            ai_analysis = (
+                f"矛盾訊號：外資估算空單 {estimated_foreign_net:+,} 口（{fn_level}）"
+                f"卻夜盤軋空 {int(night_chg)} 點。\n"
+                f"解讀：短線空單被迫回補，不代表空頭方向逆轉。\n"
+                f"C/P比 {call_put_ratio}，結算 {dtl} 天後，大戶選擇權部位仍可能壓制反彈高度。\n"
+                f"今日觀察重點：開盤後能否守住夜盤低點 {int(night_low)}。"
+            )
+        elif night_chg < -300:
+            ai_analysis = (
+                f"OI框架失效後夜盤繼續下跌 {int(abs(night_chg))} 點。\n"
+                f"外資估算部位 {estimated_foreign_net:+,} 口（{fn_level}），空方壓力持續。\n"
+                f"C/P比 {call_put_ratio}，結算 {dtl} 天後。\n"
+                f"今日不設定預設進場條件，等開盤方向確認後再行動。"
+            )
+        else:
+            ai_analysis = (
+                f"OI框架失效，夜盤波動 {night_chg:+.0f} 點，改用夜盤框架。\n"
+                f"外資估算部位 {estimated_foreign_net:+,} 口，仍為{fn_level}。\n"
+                f"C/P比 {call_put_ratio}，結算 {dtl} 天。\n"
+                f"今日以夜盤高低點為操作依據，等14:30 OI更新再建立新框架。"
+            )
+
+    # ── 建立報告 ──
+    L = []
+
+    L.append(f"🛡️ ATOS 盤前 {today} {now_time}")
+    L.append("")
+    L.append(f"⚠️ 特殊狀況：{situation}")
+    if day_close > 0:
+        L.append(f"昨日日盤收盤：{int(day_close)}")
+    L.append(
+        f"今日夜盤收盤：{int(night_close)}"
+        f"（{vs_day_chg:+.0f}點 {night_chg_pct:+.1f}%）"
+    )
+    L.append("昨日OI框架完全失效，今日改用夜盤框架操作")
+    L.append("")
+
+    # 今天的結構
+    L.append("━━ 今天的結構 ━━")
+    L.append(f"外資昨日空單：{fn:+,}口（{fn_level}）")
+    if foreign_ah_net != 0:
+        L.append(
+            f"外資夜盤{'回補' if foreign_ah_net > 0 else '加碼'}："
+            f"{foreign_ah_net:+,}口"
+        )
+    L.append(f"估算今日開盤前部位：約 {estimated_foreign_net:+,}口")
+    L.append(f"現貨昨日{spot_dir}：{abs(spot_val):.1f}億（資料為昨日）")
+    L.append(f"結算：{dtl}天後{settle_note}")
+    L.append("")
+    L.append("關鍵背景：")
+    L.append(bg)
+    L.append("")
+
+    # 今日操作框架
+    L.append("━━ 今日操作框架（夜盤框架）━━")
+    L.append(f"上壓：夜盤高點 {int(night_high)}")
+    L.append(f"參考中軸：夜盤收盤 {int(night_close)}")
+    L.append(f"支撐：夜盤低點 {int(night_low)}")
+    L.append("")
+
+    # 今天等什麼
+    L.append("━━ 今天等什麼 ━━")
+    L.append(f"等一（多方）：站上夜盤高點 {int(night_high)} 且5分K量能確認")
+    L.append(f"等二（空方）：跌破夜盤低點 {int(night_low)} 且5分K確認")
+    L.append(f"等三（觀望）：在 {int(night_low)}～{int(night_high)} 之間震盪 → 不做")
+    L.append("")
+
+    # 進場怎麼做
+    L.append("━━ 進場怎麼做 ━━")
+    L.append("多方：")
+    L.append(f"  進場：站上 {int(night_high)} 且5分K確認+量能放大")
+    L.append(f"  停損：{int(night_high) - 100}（高點下方100點）（一口計=NT$20,000）")
+    if atr_5d_f > 0:
+        L.append(f"  （參考：ATR={int(atr_5d_f)}點，0.5×ATR={atr_half}點）")
+    L.append(f"  目標一：{int(night_high) + 300}｜目標二：依動能延伸")
+    L.append("")
+    L.append("空方：")
+    L.append(f"  進場：跌破 {int(night_low)} 且5分K確認")
+    L.append("  （若破線太快現價離低點已超過50點，放棄追單）")
+    L.append(f"  停損：{int(night_low) + 100}（低點上方100點）（一口計=NT$20,000）")
+    L.append(f"  目標一：{int(night_low) - 300}｜目標二：{int(night_low) - 600}")
+    L.append("")
+
+    # 今天完全不做
+    L.append("━━ 今天完全不做 ━━")
+    L.append("✗ 開盤第一根追單")
+    L.append(f"✗ 用昨日 Call wall {_fp(call_wall)} / Put wall {_fp(put_wall)} 操作")
+    if night_chg > 300:
+        L.append("✗ 軋空後直接追多，需等回測確認")
+    if dtl <= 7:
+        L.append("✗ 結算週前不做模糊訊號")
+    L.append("")
+
+    # 關鍵價位
+    L.append("━━ 關鍵價位（夜盤框架）━━")
+    L.append(f"上壓：夜盤高點 {int(night_high)}")
+    L.append(f"參考：夜盤收盤 {int(night_close)}")
+    L.append(f"支撐：夜盤低點 {int(night_low)}")
+    L.append(f"⚠️ 昨日 Call wall {_fp(call_wall)} / Put wall {_fp(put_wall)} 失效，不使用")
+    L.append("")
+
+    # 籌碼數據
+    L.append(f"━━ 籌碼數據（{chip_date_disp} 昨日，今日13:50後更新）━━")
+    ah_dir_word = "回補" if foreign_ah_net >= 0 else "加碼"
+    L.append(
+        f"外資期貨：{fn_level} {fn:+,}口"
+        f"｜夜盤{ah_dir_word} {foreign_ah_net:+,}口"
+    )
+    L.append(f"估算今日部位：約 {estimated_foreign_net:+,}口")
+    L.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億｜5日累計 {spot_5d:+.1f}億")
+    L.append(f"C/P比：{call_put_ratio or 'N/A'}｜Max Pain：{_fp(max_pain)}")
+    L.append(
+        f"情緒：{score_str} {sentiment_bias}"
+        f"｜Fear&Greed：{fear_greed} {fear_greed_emo}"
+    )
+    for w in warnings:
+        L.append(str(w))
+    L.append("")
+
+    # 夜盤法人動向
+    if ah_date:
+        L.append("━━ 夜盤法人動向 ━━")
+        if foreign_ah_net > 0:
+            ah_dir = f"淨買 +{foreign_ah_net:,}口"
+            ah_note = "回補，空單壓力略減"
+        elif foreign_ah_net < 0:
+            ah_dir = f"淨賣 {foreign_ah_net:,}口"
+            ah_note = "加碼，空單壓力加重"
+        else:
+            ah_dir = "持平"
+            ah_note = ""
+        L.append(f"外資夜盤（{ah_date}）：{ah_dir}")
+        L.append(f"（多{foreign_ah_long:,}/空{foreign_ah_short:,}）")
+        if dealer_ah_net != 0:
+            L.append(
+                f"自營商夜盤：淨"
+                f"{'+' if dealer_ah_net >= 0 else ''}{dealer_ah_net:,}口"
+            )
+        if ah_note:
+            L.append(f"→ {ah_note}")
+        L.append("")
+
+    # AI 矛盾分析
+    L.append("━━ AI 矛盾分析 ━━")
+    L.append(ai_analysis)
+
+    return "\n".join(L)
+
+
 def build_preopen_sip_message(payload: dict | None = None) -> str:
     """建立新版決策工具格式盤前報告。"""
 
@@ -796,6 +1059,22 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
             )
     # ── OI 框架有效性檢查結束 ──────────────────────────────────────────
 
+    # ── 早返回：OI失效 + 夜盤資料可用 → 使用全新夜盤框架報告 ──────────
+    if not oi_framework_valid and night_high > 0:
+        estimated_foreign_net = payload.get("estimated_foreign_net", 0) or 0
+        return _build_oi_invalid_night_report(
+            today=today,
+            now_time=now_time,
+            night_data=night_data,
+            estimated_foreign_net=estimated_foreign_net,
+            chip_ctx=chip_ctx,
+            call_wall=call_wall,
+            put_wall=put_wall,
+            days_to_settlement=days_to_settlement,
+            atr_5d=atr_5d,
+        )
+    # ── ──────────────────────────────────────────────────────────────
+
     lines = []
 
     lines.append(f"🛡️ ATOS 盤前 {today} {now_time}")
@@ -911,6 +1190,9 @@ def build_preopen_sip_message(payload: dict | None = None) -> str:
         lines.append(f"參考：夜盤收盤 {int(night_close)}")
         lines.append(f"支撐：夜盤低點 {int(night_low)}")
         lines.append(f"⚠️ 昨日 Call wall {_fp(call_wall)} / Put wall {_fp(put_wall)} 失效，不使用")
+    elif not oi_framework_valid:
+        lines.append(f"Call wall：{_fp(call_wall)} | Pivot：{_fp(active_pivot)} | Put wall：{_fp(put_wall)}")
+        lines.append("⚠️ 以上為昨日數值，市場已大幅跳空，今日不使用昨日 Call/Put wall 操作")
     else:
         lines.append(f"Call wall：{_fp(call_wall)} | Pivot：{_fp(active_pivot)} | Put wall：{_fp(put_wall)}")
     lines.append("")

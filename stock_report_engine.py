@@ -1002,67 +1002,95 @@ def send_stock_picks_report(
     top_b: int = 5,
 ):
     """
-    發送 ATOS 個股觀察報告（新版緊湊格式）。
+    發送 ATOS 個股觀察報告（夜盤框架 + 結算週版本）。
     """
 
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M")
+    today_str = date_str
 
-    # 籌碼背景
+    # ── 籌碼背景 ──
     try:
         from chip_data_engine import build_chip_context
         chip_ctx = build_chip_context() or {}
     except Exception:
         chip_ctx = {}
 
-    source_dates = chip_ctx.get("source_dates", {}) or {}
+    source_dates     = chip_ctx.get("source_dates", {}) or {}
     chip_source_date = source_dates.get("futures") or source_dates.get("spot") or "N/A"
-    oi_source_date = source_dates.get("option_oi") or "N/A"
+    oi_source_date   = source_dates.get("option_oi") or "N/A"
 
-    # 夜盤資料
+    # ── 夜盤資料 ──
     try:
         from night_session_engine import get_night_session_data
         night_data = get_night_session_data()
     except Exception:
         night_data = {}
-    nd_close    = night_data.get("night_close", 0)
-    nd_high     = night_data.get("night_high", 0)
-    nd_low      = night_data.get("night_low", 0)
-    nd_chg      = night_data.get("night_chg", 0)
-    nd_chg_pct  = night_data.get("night_chg_pct", 0)
-    nd_big_move = night_data.get("is_big_move", False)
+    nd_close    = float(night_data.get("night_close", 0) or 0)
+    nd_high     = float(night_data.get("night_high",  0) or 0)
+    nd_low      = float(night_data.get("night_low",   0) or 0)
+    nd_chg      = float(night_data.get("night_chg",   0) or 0)
+    nd_chg_pct  = float(night_data.get("night_chg_pct", 0) or 0)
+    nd_day_close= float(night_data.get("day_close",   0) or 0)
+    nd_big_move = bool(night_data.get("is_big_move", False))
 
-    # 大盤判斷
+    # ── 法人籌碼 ──
+    sentiment_score     = chip_ctx.get("sentiment_score", 0)
+    bias_label          = chip_ctx.get("sentiment_bias", "N/A")
+    fear_greed          = chip_ctx.get("fear_greed_index", "N/A")
+    fear_greed_emotion  = _fmt_fear_greed(chip_ctx.get("fear_greed_emotion", ""))
+    foreign_net         = chip_ctx.get("foreign_net", 0) or 0
+    foreign_net_level   = chip_ctx.get("foreign_net_level", "N/A")
+    foreign_ah_net      = chip_ctx.get("foreign_ah_net", 0) or 0
+    spot_val            = chip_ctx.get("spot_foreign_net_buy_bn") or 0
+    spot_5d             = chip_ctx.get("spot_foreign_5d_sum_bn") or 0
+    spot_dir            = _spot_direction(spot_val)
+    call_wall           = chip_ctx.get("call_wall", "N/A")
+    put_wall            = chip_ctx.get("put_wall", "N/A")
+    price_position_pct  = chip_ctx.get("price_position_pct")
+    max_pain            = chip_ctx.get("max_pain")
+    pivot               = chip_ctx.get("pivot")
+    call_put_ratio      = chip_ctx.get("call_put_ratio")
+
+    try:
+        estimated_net = int(foreign_net) + int(foreign_ah_net)
+    except Exception:
+        estimated_net = foreign_net
+
+    pos_label   = _price_position_label(price_position_pct)
+    score_str   = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
+
+    # ── 結算天數 ──
+    try:
+        from settlement_engine import get_days_to_settlement
+        days_settle = get_days_to_settlement()
+        if days_settle is None:
+            days_settle = 99
+    except Exception:
+        days_settle = 99
+    try:
+        days_settle = int(days_settle)
+    except Exception:
+        days_settle = 99
+
+    # ── OI 框架有效性 ──
+    oi_invalid = False
+    try:
+        _state_price = float(load_state().get("price") or 0)
+        _cw = float(call_wall) if call_wall not in ("N/A", None, "") else 0
+        _pw = float(put_wall)  if put_wall  not in ("N/A", None, "") else 0
+        if oi_source_date != today_str and _state_price > 0:
+            if _cw > 0 and _state_price > _cw + 500:
+                oi_invalid = True
+            elif _pw > 0 and _state_price < _pw - 500:
+                oi_invalid = True
+    except Exception:
+        pass
+
+    # ── 大盤判斷 ──
     market = get_market_bias_from_state()
-    market_label = market.get("label", "N/A")
 
-    # 從 chip_ctx 取欄位
-    sentiment_score = chip_ctx.get("sentiment_score", 0)
-    bias_label = chip_ctx.get("sentiment_bias", "N/A")
-    fear_greed = chip_ctx.get("fear_greed_index", "N/A")
-    fear_greed_emotion = _fmt_fear_greed(chip_ctx.get("fear_greed_emotion", ""))
-
-    foreign_net = chip_ctx.get("foreign_net", 0)
-    foreign_net_level = chip_ctx.get("foreign_net_level", "N/A")
-    foreign_notional_bn = chip_ctx.get("foreign_notional_bn")
-
-    spot_val = chip_ctx.get("spot_foreign_net_buy_bn") or 0
-    spot_5d = chip_ctx.get("spot_foreign_5d_sum_bn") or 0
-    spot_dir = _spot_direction(spot_val)
-
-    call_wall = chip_ctx.get("call_wall", "N/A")
-    put_wall = chip_ctx.get("put_wall", "N/A")
-    price_position_pct = chip_ctx.get("price_position_pct")
-    max_pain = chip_ctx.get("max_pain")
-    pivot = chip_ctx.get("pivot")  # 用 pivot 作為現價估算（盤後）
-
-    pos_label = _price_position_label(price_position_pct)
-    pain_label = _max_pain_label(max_pain, pivot)
-
-    score_str = f"{int(sentiment_score):+d}" if sentiment_score is not None else "N/A"
-
-    # 建立股票清單
+    # ── 建立股票清單 ──
     result = build_stock_watchlist(
         candidate_limit=candidate_limit,
         top_a=top_a,
@@ -1079,27 +1107,49 @@ def send_stock_picks_report(
 
     lines = []
 
-    # 標頭
+    # ── 標頭 ──
     lines.append(f"📈 個股觀察 {date_str}")
-    _nd_line = (
-        f"台指夜盤：{nd_close:.0f}（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
-        if nd_close else "台指夜盤：資料取得中"
-    )
-    lines.append(_nd_line)
-    lines.append(
-        f"大盤：{market_label}｜台指情緒：{bias_label}({score_str})"
-        f"｜Fear&Greed：{fear_greed} {fear_greed_emotion}"
-    )
     lines.append("")
 
-    # 夜盤大波動提示
+    # ── 大盤環境 ──
+    lines.append("━━ 大盤環境 ━━")
+    if nd_close > 0:
+        lines.append(f"台指夜盤：{int(nd_close)}")
+        if nd_day_close > 0:
+            lines.append(
+                f"（昨日日盤 {int(nd_day_close)}，"
+                f"夜盤 {nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
+            )
+        lines.append(f"夜盤區間：{int(nd_low)} ～ {int(nd_high)}")
+    else:
+        lines.append("台指夜盤：資料取得中")
+
+    if foreign_ah_net != 0:
+        ah_dir_word = "買" if foreign_ah_net > 0 else "賣"
+        lines.append(f"外資夜盤：淨{ah_dir_word} {foreign_ah_net:+,}口")
+    lines.append(f"外資估算部位：約 {estimated_net:+,}口")
+    lines.append(
+        f"台指情緒：{bias_label}({score_str})"
+        f"（昨日，今日13:50更新）"
+    )
+    lines.append(f"Fear&Greed：{fear_greed} {fear_greed_emotion}")
+    lines.append(f"結算：{days_settle}天後")
+    lines.append("")
+
+    # ── 夜盤大波動警示 ──
     if nd_big_move and nd_close > 0:
         lines.append(f"⚠️ 夜盤大幅波動（{nd_chg_pct:+.1f}%）")
-        lines.append("以下為「預備清單」，開盤跳空後進場點位需重新評估")
-        lines.append("建議等開盤第一根5分K確認方向後再決定是否操作")
+        lines.append("個股今日開盤跳空，昨日技術數據僅供參考")
+        lines.append("所有個股進場點位需依今日開盤後實際點位重新評估")
+        lines.append("不主動追高，等開盤第一根5分K確認方向後再決定")
         lines.append("")
 
-    # 偏空環境提示
+    # ── 結算週警示 ──
+    if days_settle <= 7:
+        lines.append(f"⚠️ 結算週（{days_settle}天後結算）：個股受大盤換倉影響較大，降低操作頻率")
+        lines.append("")
+
+    # ── 偏空環境提示 ──
     try:
         _ss = int(sentiment_score) if sentiment_score is not None else 0
         if _ss <= -3:
@@ -1110,7 +1160,15 @@ def send_stock_picks_report(
     except Exception:
         pass
 
-    # A 級 — 批次取 AI 點評（一次呼叫）
+    # ── 大盤定位文字 ──
+    if nd_big_move and nd_chg > 0:
+        lines.append("軋空後開盤方向不確定，今日為觀察日，等確認後操作")
+        lines.append("")
+    elif nd_big_move and nd_chg < 0:
+        lines.append("夜盤大跌後開盤風險高，今日以觀察為主")
+        lines.append("")
+
+    # ── A 級 — 批次 AI 點評 ──
     batch_commentaries: dict = {}
     if a_items:
         try:
@@ -1119,10 +1177,11 @@ def send_stock_picks_report(
         except Exception:
             pass
 
+    # A 級標題
     try:
         _ss2 = int(sentiment_score) if sentiment_score is not None else 0
         if nd_big_move and nd_close > 0:
-            lines.append("🟢 A級（大盤方向確認後首選）")
+            lines.append("🟢 A級（方向確認後首選）")
             lines.append("（今日夜盤大幅波動，進場點位需依開盤後實際點位調整）")
         elif _ss2 <= -3:
             lines.append("🟢 A級（反彈首選）")
@@ -1131,17 +1190,19 @@ def send_stock_picks_report(
             lines.append("🟢 A級優先觀察")
     except Exception:
         lines.append("🟢 A級優先觀察")
+
     if not a_items:
         lines.append("今日無A級標的")
     else:
         for item in a_items:
-            stock_id = item.get("id") or item.get("stock_id", "N/A")
-            tech = item.get("tech", {}) or {}
-            chip = item.get("chip", {}) or {}
-            close = tech.get("close", "N/A")
-            ma5 = tech.get("ma5", "N/A")
-            consecutive = chip.get("consecutive_trust_buy_days", 0)
-            vol_ratio = tech.get("volume_ratio", "N/A")
+            stock_id   = item.get("id") or item.get("stock_id", "N/A")
+            tech       = item.get("tech", {}) or {}
+            chip       = item.get("chip", {}) or {}
+            close      = tech.get("close", "N/A")
+            ma5        = tech.get("ma5", "N/A")
+            consecutive= chip.get("consecutive_trust_buy_days", 0)
+            vol_ratio  = tech.get("volume_ratio", "N/A")
+            item_date  = chip.get("date", chip_source_date)
             lines.append(
                 f"{stock_id}｜{close}｜5MA {ma5}"
                 f"｜投信連買{consecutive}日｜量比{vol_ratio}"
@@ -1150,26 +1211,31 @@ def send_stock_picks_report(
             commentary = batch_commentaries.get(str(stock_id), "")
             if commentary:
                 lines.append(f"AI點評：{commentary}")
+            lines.append(f"（技術數據：{item_date}，今日開盤後點位不同）")
     lines.append("")
 
-    # B 級
+    # ── B 級標題 ──
     try:
         _ss3 = int(sentiment_score) if sentiment_score is not None else 0
-        if _ss3 <= -3:
+        if nd_big_move and nd_close > 0:
+            lines.append("🟡 B級（次選觀察，今日跳空開盤請重新評估進場點位）")
+        elif _ss3 <= -3:
             lines.append("🟡 B級（次選觀察，不建議主動進場）")
         else:
             lines.append("🟡 B級觀察（不主動進場）")
     except Exception:
         lines.append("🟡 B級觀察（不主動進場）")
+
     if not b_items:
         lines.append("今日無B級標的")
     else:
         for item in b_items:
-            stock_id = item.get("id") or item.get("stock_id", "N/A")
-            tech = item.get("tech", {}) or {}
-            close = tech.get("close", "N/A")
-            dist = tech.get("distance_to_ma5")
-            dist_str = f"{dist:+.2f}%" if dist is not None else "N/A"
+            stock_id   = item.get("id") or item.get("stock_id", "N/A")
+            tech       = item.get("tech", {}) or {}
+            chip       = item.get("chip", {}) or {}
+            close      = tech.get("close", "N/A")
+            dist       = tech.get("distance_to_ma5")
+            dist_str   = f"{dist:+.2f}%" if dist is not None else "N/A"
             position_word = "站在5MA上方" if tech.get("above_ma5") else "低於5MA下方"
             _vr = tech.get("volume_ratio")
             if _vr is None:
@@ -1182,48 +1248,67 @@ def send_stock_picks_report(
                 vol_desc = "量縮"
             else:
                 vol_desc = "量能正常"
-            lines.append(f"{stock_id}｜{close}｜距5MA {dist_str}，{position_word}，{vol_desc}")
+            item_date = chip.get("date", chip_source_date)
+            lines.append(
+                f"{stock_id}｜{close}｜距5MA {dist_str}，"
+                f"{position_word}，{vol_desc}"
+                f"（{item_date}）"
+            )
     lines.append("")
 
-    # 市場狀態
-    lines.append("")
+    # ── 目前市場狀態 ──
     lines.append("━━ 目前市場狀態 ━━")
+    lines.append(
+        f"外資期貨：{foreign_net_level} {estimated_net:+,}口（估算含夜盤）"
+    )
+    lines.append(f"現貨外資：{spot_dir} {abs(spot_val):.1f}億（昨日）")
 
-    # 夜盤區間（有資料才顯示）
-    if nd_close > 0:
+    if oi_invalid:
         lines.append(
-            f"台指夜盤：收{nd_close:.0f} 高{nd_high:.0f} 低{nd_low:.0f}"
-            f"（{nd_chg:+.0f}點 {nd_chg_pct:+.1f}%）"
+            f"OI框架：昨日 Call wall {call_wall} / Put wall {put_wall} 失效"
         )
+        lines.append("等14:30 OI更新後建立新框架")
+    else:
+        lines.append(f"Call wall：{call_wall}｜Put wall：{put_wall}")
 
-    notional_str = f"（NT${foreign_notional_bn}億）" if foreign_notional_bn is not None else ""
-    lines.append(f"外資期貨：{foreign_net_level} {foreign_net:+,}口{notional_str}（{chip_source_date}籌碼）")
-    lines.append(f"現貨外資：{spot_dir} {spot_val:+.1f}億｜5日累計 {spot_5d:+.1f}億")
-    lines.append(f"Call wall：{call_wall}｜Put wall：{put_wall}")
+    mp_label = "失效" if oi_invalid else _max_pain_label(max_pain, pivot)
+    lines.append(f"Max Pain：{max_pain}（{mp_label}）")
 
-    pos_pct_str = f"{price_position_pct:.1f}" if price_position_pct is not None else "N/A"
-    lines.append(f"現價位置：區間{pos_pct_str}%（{pos_label}）")
-    lines.append(f"Max Pain：{max_pain}（{pain_label}）")
-    if max_pain is not None and pivot is not None:
+    if max_pain is not None and pivot is not None and not oi_invalid:
         try:
             if float(max_pain) < float(pivot):
-                lines.append(f"⚠️ Max Pain {max_pain} 低於現價，大戶希望往下結算，個股多方需謹慎")
+                lines.append(
+                    f"⚠️ Max Pain {max_pain} 低於現價，大戶希望往下結算，個股多方需謹慎"
+                )
         except Exception:
             pass
-    if spot_5d and spot_val:
-        try:
-            _avg_5d = abs(float(spot_5d)) / 5
-            if _avg_5d > 0 and float(spot_val) < 0 and abs(float(spot_val)) > 2 * _avg_5d:
-                lines.append(f"⚠️ 外資現貨今日大幅賣超 {spot_val:+.1f}億，較近期明顯放大，需特別注意")
-        except Exception:
-            pass
+
     lines.append(f"情緒總分：{score_str}｜{bias_label}")
 
-    # AI 市場解讀
-    market_commentary = _get_market_ai_commentary(chip_ctx)
+    # ── AI 市場解讀 ──
+    try:
+        _ai_chip = dict(chip_ctx)
+        # 注入夜盤背景讓 AI 有更好的上下文
+        _ai_chip["_night_context"] = (
+            f"夜盤{nd_chg:+.0f}點，外資估算{estimated_net:+,}口，"
+            f"結算{days_settle}天，C/P比{call_put_ratio}"
+        )
+        if nd_big_move:
+            _ai_chip["_analysis_request"] = (
+                f"昨夜盤大幅波動{nd_chg:+.0f}點，請說明對個股操作的影響"
+            )
+        if foreign_ah_net != 0:
+            _ai_chip["_ah_note"] = (
+                f"外資夜盤已{'回補' if foreign_ah_net > 0 else '加碼'}"
+                f"{foreign_ah_net:+,}口，估算部位{estimated_net:+,}口"
+            )
+        market_commentary = _get_market_ai_commentary(_ai_chip)
+    except Exception:
+        market_commentary = ""
+
     if market_commentary:
         lines.append("")
-        lines.append("AI市場解讀：")
+        lines.append("━━ AI 市場解讀 ━━")
         lines.append(market_commentary)
 
     send_to_telegram("\n".join(lines))
