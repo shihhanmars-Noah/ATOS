@@ -1433,8 +1433,12 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
         lines.append(f"  停損：{_fp(_sl_short)}（進場點上方100點）")
         lines.append(f"  目標：{_fp(_tp1_short)}（尋找缺口支撐）")
         lines.append("")
+        # 觀望區間設在兩個進場點之間的中間地帶，避免與任何進場點重疊
+        _observe_low  = round(_entry_pullback + (price_f - _entry_pullback) * 0.25)
+        _observe_high = round(price_f - (price_f - _entry_pullback) * 0.15)
         lines.append("觀望條件：")
-        lines.append(f"在 {_fp(_entry_pullback)}～{_fp(price_f)} 之間無量震盪 → 不做")
+        lines.append(f"在 {_fp(_observe_low)}～{_fp(_observe_high)} 之間無量震盪 → 不做")
+        lines.append(f"（低於 {_fp(_observe_low)} 靠近 {_fp(_entry_pullback)} 才啟動低接計畫）")
     elif _is_big_move_dn:
         # 大跌收低：順勢空方策略
         lines.append(f"今日大跌{abs(day_chg):.0f}點，收在低點附近，以順勢空方為主")
@@ -1450,8 +1454,12 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
         lines.append(f"  停損：{_fp(price_f + 200)}")
         lines.append(f"  目標：{_fp(price_f + 600)}")
         lines.append("")
+        # 觀望區間設在空方進場點和反彈覆蓋點之間，不與進場點重疊
+        _entry_cover_dn  = price_f + 300
+        _observe_low_dn  = price_f + round((_entry_cover_dn - price_f) * 0.15)   # 進場點上方 15% 處
+        _observe_high_dn = price_f + round((_entry_cover_dn - price_f) * 0.75)   # 反彈點下方 25% 處
         lines.append("觀望條件：")
-        lines.append(f"  在 {_fp(price_f - 100)}～{_fp(price_f + 300)} 之間震盪 → 等方向")
+        lines.append(f"  在 {_fp(_observe_low_dn)}～{_fp(_observe_high_dn)} 之間震盪 → 等方向")
     else:
         # 一般行情：原有 Call/Put wall 框架
         lines.append(f"做多條件：重新突破 Call wall {_fp(call_wall)} 且5分K確認")

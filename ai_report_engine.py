@@ -820,6 +820,46 @@ def generate_evening_guidance(
     if _direction_constraint:
         user_prompt = _direction_constraint + "\n\n" + user_prompt
 
+    # ── 防線約束：用今日實際 Pivot，不用遠在千點外的 OI 牆 ──
+    try:
+        _ph = float(today_high) if today_high else 0
+        _pl = float(today_low)  if today_low  else 0
+        _pc = float(price)      if price      else 0
+        if _ph > 0 and _pl > 0 and _pc > 0:
+            real_pivot = round((_ph + _pl + _pc) / 3, 0)
+        else:
+            real_pivot = None
+    except Exception:
+        real_pivot = None
+
+    if real_pivot:
+        _day_chg_val = ctx.get("_day_chg", 0) or 0
+        if _day_chg_val > 500:
+            # 大漲：多方防線用今日 Pivot
+            defense_line_prompt = (
+                f"多方實質生命線是今日 Pivot {int(real_pivot)}，"
+                f"不是遠在千點外的 Put wall。"
+                f"你的解讀結尾必須說：「多方今晚實質生命防線就是 Pivot {int(real_pivot)}，"
+                f"此處不破，任何拉回都是多方買點；跌破則多方優勢結束。」"
+                f"不要引用 Put wall 或 Call wall 作為夜盤的多空防線。"
+            )
+        elif _day_chg_val < -500:
+            # 大跌：空方防線用今日 Pivot
+            defense_line_prompt = (
+                f"空方實質生命線是今日 Pivot {int(real_pivot)}，"
+                f"反彈站回 Pivot 就是空方優勢結束的訊號。"
+                f"你的解讀結尾必須說：「空方今晚實質生命防線就是 Pivot {int(real_pivot)}，"
+                f"反彈未過此處，空方持續；站回則空方優勢結束。」"
+                f"不要引用 Call wall 作為夜盤空方防線。"
+            )
+        else:
+            # 一般行情：告知今日 Pivot 作為支撐壓力參考
+            defense_line_prompt = (
+                f"今日實際 Pivot（日內重心）為 {int(real_pivot)}，"
+                f"請以此作為夜盤多空分水嶺，而非遠離現價的 OI 牆。"
+            )
+        user_prompt = user_prompt + "\n\n" + defense_line_prompt
+
     full_prompt = f"{_EVENING_GUIDANCE_SYSTEM}\n\n{user_prompt}"
 
     client = genai.Client(api_key=api_key)
