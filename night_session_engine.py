@@ -446,6 +446,26 @@ def get_night_session_data() -> dict:
         vs_day_chg     = round(night_close - day_close, 0) if day_close else 0
         vs_day_chg_pct = round(vs_day_chg / day_close * 100, 2) if day_close else 0
 
+        # ── is_big_move 雙條件：漲跌幅 > 1.5% 或 夜盤區間 > ATR×80% ──
+        try:
+            import json as _json
+            with open("chip_cache.json", "r", encoding="utf-8") as _f:
+                _cache = _json.load(_f)
+            atr_5d = float(_cache.get("tech_levels", {}).get("atr_5d") or 1000)
+        except Exception:
+            atr_5d = 1000.0
+
+        _chg_trigger   = abs(night_chg_pct) > 1.5
+        _range_trigger = atr_5d > 0 and night_range > atr_5d * 0.8
+        is_big_move    = _chg_trigger or _range_trigger
+
+        if _chg_trigger:
+            big_move_reason = f"夜盤漲跌幅{night_chg_pct:+.1f}%超過1.5%"
+        elif _range_trigger:
+            big_move_reason = f"夜盤區間{night_range:.0f}點超過ATR({atr_5d:.0f})的80%"
+        else:
+            big_move_reason = ""
+
         result = {
             "night_open":       night_open,
             "night_close":      night_close,
@@ -457,7 +477,9 @@ def get_night_session_data() -> dict:
             "day_close":        day_close,
             "vs_day_chg":       vs_day_chg,
             "vs_day_chg_pct":   vs_day_chg_pct,
-            "is_big_move":      abs(night_chg_pct) > 2.0,
+            "is_big_move":      is_big_move,
+            "big_move_reason":  big_move_reason,
+            "atr_5d_ref":       atr_5d,
             "data_date":        str(target_day),
             "days_old":         days_old,
         }

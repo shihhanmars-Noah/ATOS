@@ -28,10 +28,11 @@ except Exception:
 # --------------------------------------------------
 
 def format_price(value):
+    """格式化台指期價位：強制整數，None 回傳 'N/A'。"""
     if value is None:
         return "N/A"
     try:
-        return round(float(value), 1)
+        return int(round(float(value)))
     except Exception:
         return value
 
@@ -514,12 +515,11 @@ def save_preopen_plan_to_state(payload: dict) -> bool:
 # --------------------------------------------------
 
 def _fp(v) -> str:
-    """價格格式化：整數去小數點。"""
+    """價格格式化：強制整數，台指期不顯示小數。"""
     if v is None:
         return "N/A"
     try:
-        f = float(v)
-        return str(int(f)) if f == int(f) else str(round(f, 1))
+        return str(int(round(float(v))))
     except Exception:
         return "N/A"
 
@@ -1015,6 +1015,19 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
         pivot_zone_high = _state_pre.get('pivot_zone_high') or active_pivot
         yesterday_poc   = _state_pre.get('yesterday_poc')   or active_pivot
         _atr_5d_f = float(chip_ctx.get('atr_5d', 1000) or 1000) if chip_ctx else 1000.0
+
+        # 若夜盤大波動，用夜盤區間加權估算今日可能的 ATR
+        _nd_fm = payload.get('night_data') or {}
+        if _nd_fm.get('is_big_move'):
+            _night_range_fm = float(_nd_fm.get('night_high', 0) or 0) - float(_nd_fm.get('night_low', 0) or 0)
+            if _night_range_fm > _atr_5d_f:
+                _estimated_atr = round(_atr_5d_f * 0.6 + _night_range_fm * 0.4, 0)
+                try:
+                    print(f"[framework] big move ATR update: {_atr_5d_f:.0f} -> {_estimated_atr:.0f} (night_range={_night_range_fm:.0f})")
+                except Exception:
+                    pass
+                _atr_5d_f = _estimated_atr
+
         _cw_fm = float(call_wall) if call_wall else 0.0
         _pw_fm = float(put_wall)  if put_wall  else 0.0
         oi_width = _cw_fm - _pw_fm if _cw_fm > _pw_fm else 0.0

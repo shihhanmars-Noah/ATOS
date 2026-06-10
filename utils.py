@@ -2,11 +2,11 @@
 # 全域共用工具函式，避免各模組重複定義
 
 def format_price(value):
-    """格式化價位：保留一位小數，None 回傳 'N/A'。"""
+    """格式化台指期價位：強制整數，None 回傳 'N/A'。"""
     if value is None:
         return "N/A"
     try:
-        return round(float(value), 1)
+        return int(round(float(value)))
     except Exception:
         return value
 
