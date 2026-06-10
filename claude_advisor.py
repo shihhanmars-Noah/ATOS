@@ -592,8 +592,8 @@ def _build_observe_message(
     )
 
     lines = [
-        f"👁️ 觀察提示（{label}）",
-        f"現價：{int(round(float(current_price)))}｜方向感：{direction_zh}｜信心：{confidence}/5",
+        f"[ 觀察提示 ] {label}",
+        f"現價：{int(round(float(current_price)))} | 方向感：{direction_zh} | 信心：{confidence}/5",
     ]
 
     if level_info.get('key_defense'):
@@ -604,7 +604,7 @@ def _build_observe_message(
 
     # 夜盤流動性警示
     if session_name in ('NIGHT', 'NIGHT_LATE'):
-        lines.append("⚠️ 夜盤流動性不足，避免追單，等關鍵價確認後再行動")
+        lines.append("注意：夜盤流動性不足，避免追單，等關鍵價確認後再行動")
 
     lines.append(f"（{label}不發進場指令）")
 
