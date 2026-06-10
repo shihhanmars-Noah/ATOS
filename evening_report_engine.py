@@ -1554,7 +1554,9 @@ def send_evening_report() -> bool:
     result = send_to_telegram(msg)
     if result:
         state["evening_report_sent_date"] = today
+        state["evening_report_sent_time"] = now.strftime("%H:%M")
         save_state(state)
+        print(f"✅ 晚盤期貨報告發送記錄已寫入")
 
     return result
 

@@ -14,7 +14,7 @@ except Exception:
 from data_engine import get_finmind_api
 from error_handler import safe_execute
 from messenger import send_to_telegram
-from persistent_state import load_state
+from persistent_state import load_state, save_state
 
 
 CACHE_FILE = "stock_picks_cache.pkl"
@@ -1593,6 +1593,17 @@ def send_stock_picks_report(
         lines.append(market_commentary)
 
     send_to_telegram("\n".join(lines))
+    _state = load_state()
+    _now = datetime.now()
+    if _is_evening_mode():
+        _state['evening_stock_report_sent_date'] = _now.strftime('%Y-%m-%d')
+        _state['evening_stock_report_sent_time'] = _now.strftime('%H:%M')
+        print(f"✅ 晚盤選股報告發送記錄已寫入")
+    else:
+        _state['stock_report_sent_date'] = _now.strftime('%Y-%m-%d')
+        _state['stock_report_sent_time'] = _now.strftime('%H:%M')
+        print(f"✅ 早盤選股報告發送記錄已寫入")
+    save_state(_state)
 
 
 # --------------------------------------------------

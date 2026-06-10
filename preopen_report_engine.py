@@ -1286,7 +1286,14 @@ def send_preopen_sip_report(is_catchup: bool = False):
     payload = build_preopen_payload()
     save_preopen_plan_to_state(payload)
     msg = build_preopen_sip_message(payload, is_catchup=is_catchup)
-    return send_to_telegram(msg)
+    result = send_to_telegram(msg)
+    if result:
+        state = load_state()
+        state['preopen_report_sent_date'] = datetime.now().strftime('%Y-%m-%d')
+        state['preopen_report_sent_time'] = datetime.now().strftime('%H:%M')
+        save_state(state)
+        print(f"✅ 早盤期貨報告發送記錄已寫入")
+    return result
 
 
 # --------------------------------------------------

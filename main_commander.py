@@ -490,43 +490,30 @@ class AtosCommander:
         系統啟動時執行：
         檢查今天哪些報告沒發，自動補發。
         """
-        now = datetime.now()
+        from datetime import datetime as _dt
+        now = _dt.now()
         today = now.strftime('%Y-%m-%d')
         current_time = now.hour * 60 + now.minute
         state = load_state()
 
-        # 只在交易日執行（週一=0 ~ 週五=4）
         if now.weekday() >= 5:
-            try:
-                print('非交易日，跳過補發檢查')
-            except Exception:
-                pass
+            print('⚠️ 非交易日，跳過補發檢查')
             return
 
-        open_time = now.strftime('%H:%M')
-        try:
-            print(f'補發檢查：現在 {open_time}，檢查今日未發報告...')
-        except Exception:
-            pass
-
-        # 通知 Telegram 進入補發模式
-        send_to_telegram(
-            f"ATOS 補發模式啟動（{open_time}開機）\n"
-            f"正在補發今日未發送的報告..."
-        )
+        print(f'🔍 補發檢查：現在 {now.strftime("%H:%M")}')
 
         catchup_results = []
+        need_catchup = False
 
-        # ── 1. 早盤期貨報告（08:35 後 ~ 13:45 前）──
-        preopen_sent = state.get('preopen_report_sent_date') == today
+        # ── 1. 早盤期貨報告 ──
+        preopen_sent_date = state.get('preopen_report_sent_date', '')
+        preopen_sent = (preopen_sent_date == today)
+
         if not preopen_sent and 8*60+35 <= current_time <= 13*60+45:
-            try:
-                print('補發：早盤期貨報告...')
-            except Exception:
-                pass
+            need_catchup = True
+            print(f'📋 早盤期貨報告未發送（記錄：{preopen_sent_date or "無"}），補發中...')
             try:
                 from preopen_report_engine import (
-                    send_preopen_sip_report as _send_pre,
                     build_preopen_payload,
                     save_preopen_plan_to_state,
                     build_preopen_sip_message,
@@ -535,71 +522,70 @@ class AtosCommander:
                 save_preopen_plan_to_state(_payload)
                 _msg = build_preopen_sip_message(_payload, is_catchup=True)
                 send_to_telegram(_msg)
-                state['preopen_report_sent_date'] = today
-                save_state(state)
-                catchup_results.append('早盤期貨報告（補發）')
+                _s = load_state()
+                _s['preopen_report_sent_date'] = today
+                _s['preopen_report_sent_time'] = now.strftime('%H:%M')
+                save_state(_s)
+                catchup_results.append('✅ 早盤期貨報告（補發）')
             except Exception as e:
-                catchup_results.append(f'早盤期貨報告補發失敗：{e}')
+                catchup_results.append(f'❌ 早盤期貨報告補發失敗：{e}')
+        elif preopen_sent:
+            print(f'✅ 早盤期貨報告已於 {state.get("preopen_report_sent_time", "")} 發送')
 
-        # ── 2. 早盤選股報告（08:40 後 ~ 13:45 前）──
-        stock_sent = state.get('stock_report_sent_date') == today
+        # ── 2. 早盤選股報告 ──
+        stock_sent_date = state.get('stock_report_sent_date', '')
+        stock_sent = (stock_sent_date == today)
+
         if not stock_sent and 8*60+40 <= current_time <= 13*60+45:
-            try:
-                print('補發：早盤選股報告...')
-            except Exception:
-                pass
+            need_catchup = True
+            print(f'📋 早盤選股報告未發送（記錄：{stock_sent_date or "無"}），補發中...')
             try:
                 from stock_report_engine import send_stock_picks_report as _send_stock
                 _send_stock(is_catchup=True)
-                state['stock_report_sent_date'] = today
-                save_state(state)
-                catchup_results.append('早盤選股報告（補發）')
+                catchup_results.append('✅ 早盤選股報告（補發）')
             except Exception as e:
-                catchup_results.append(f'早盤選股報告補發失敗：{e}')
+                catchup_results.append(f'❌ 早盤選股報告補發失敗：{e}')
+        elif stock_sent:
+            print(f'✅ 早盤選股報告已於 {state.get("stock_report_sent_time", "")} 發送')
 
-        # ── 3. 晚盤期貨報告（15:30 後，今日尚未發）──
-        evening_sent = state.get('evening_report_sent_date') == today
+        # ── 3. 晚盤期貨報告 ──
+        evening_sent_date = state.get('evening_report_sent_date', '')
+        evening_sent = (evening_sent_date == today)
+
         if not evening_sent and current_time >= 15*60+30:
-            try:
-                print('補發：晚盤期貨報告（立刻觸發輪詢）...')
-            except Exception:
-                pass
+            need_catchup = True
+            print(f'📋 晚盤期貨報告未發送（記錄：{evening_sent_date or "無"}），補發中...')
             try:
                 self._trigger_evening_futures_report()
-                catchup_results.append('晚盤期貨報告（補發）')
+                catchup_results.append('✅ 晚盤期貨報告（補發）')
             except Exception as e:
-                catchup_results.append(f'晚盤期貨報告補發失敗：{e}')
+                catchup_results.append(f'❌ 晚盤期貨報告補發失敗：{e}')
+        elif evening_sent:
+            print(f'✅ 晚盤期貨報告已於 {state.get("evening_report_sent_time", "")} 發送')
 
-        # ── 4. 晚盤選股報告（16:30 後，今日尚未發）──
-        evening_stock_sent = state.get('evening_stock_report_sent_date') == today
+        # ── 4. 晚盤選股報告 ──
+        evening_stock_sent_date = state.get('evening_stock_report_sent_date', '')
+        evening_stock_sent = (evening_stock_sent_date == today)
+
         if not evening_stock_sent and current_time >= 16*60+30:
-            try:
-                print('補發：晚盤選股報告（立刻觸發輪詢）...')
-            except Exception:
-                pass
+            need_catchup = True
+            print(f'📋 晚盤選股報告未發送（記錄：{evening_stock_sent_date or "無"}），補發中...')
             try:
                 self._trigger_evening_stock_report()
-                catchup_results.append('晚盤選股報告（補發）')
+                catchup_results.append('✅ 晚盤選股報告（補發）')
             except Exception as e:
-                catchup_results.append(f'晚盤選股報告補發失敗：{e}')
+                catchup_results.append(f'❌ 晚盤選股報告補發失敗：{e}')
+        elif evening_stock_sent:
+            print(f'✅ 晚盤選股報告已於 {state.get("evening_stock_report_sent_time", "")} 發送')
 
         # ── 結果彙報 ──
         if catchup_results:
-            try:
-                print('補發結果：')
-                for r in catchup_results:
-                    print(f'  {r}')
-            except Exception:
-                pass
-            send_to_telegram(
-                "ATOS 補發完成\n"
-                + "\n".join(catchup_results)
-            )
-        else:
-            try:
-                print('今日所有報告均已發送，無需補發')
-            except Exception:
-                pass
+            summary = "🔄 ATOS 補發完成\n" + "\n".join(catchup_results)
+            send_to_telegram(summary)
+            for r in catchup_results:
+                print(f'  {r}')
+        elif not need_catchup:
+            print('✅ 當前時間點無需補發的報告')
 
     @safe_execute
     def send_preopen_report(self):
