@@ -45,7 +45,7 @@ ALERT_COOLDOWN = {
     "FLIP_RECOVER": 600,      # 10分鐘
     "R1_TOUCH": 900,          # 15分鐘
     "S1_TOUCH": 900,          # 15分鐘
-    "NEUTRAL_ZONE": 900,      # 15分鐘
+    # "NEUTRAL_ZONE": 900,  # 已廢棄：無觸發點，保留定義以防舊資料讀取但不主動使用
     "LONG_CONFIRM_V3": 600,   # 10分鐘
     "SHORT_RETEST_FAIL_V3": 600,  # 10分鐘
 }
@@ -245,9 +245,9 @@ def build_ai_advice_section(context: dict) -> str:
             _call_wall = context.get("call_wall")
             if not _put_wall or not _call_wall:
                 try:
-                    import json as _j
+                    import json
                     with open("chip_cache.json", encoding="utf-8") as _f:
-                        _cc = _j.load(_f)
+                        _cc = json.load(_f)
                     _oi = _cc.get("option_oi", {})
                     _put_wall  = _put_wall  or _oi.get("put_wall_strike")
                     _call_wall = _call_wall or _oi.get("call_wall_strike")

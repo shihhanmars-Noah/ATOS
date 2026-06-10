@@ -1125,9 +1125,8 @@ def calculate_sentiment_score(
 
     # 散戶貪婪 + 籌碼偏空警示
     try:
-        import json as _json
         with open("chip_cache.json", "r", encoding="utf-8") as _f:
-            _cache = _json.load(_f)
+            _cache = json.load(_f)
         fg_index = int(_cache.get("fear_greed", {}).get("fear_greed", 0) or 0)
     except Exception:
         fg_index = 0

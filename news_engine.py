@@ -17,6 +17,7 @@
 import hashlib
 import json
 import os
+import re
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -231,8 +232,6 @@ def _is_news_fresh(news: dict) -> bool:
     - 解析成功：超過時效上限則略過
     - 解析失敗：放行，交由 Gemini 判斷（不因格式問題誤殺）
     """
-    import re as _re
-
     news_time_str = (
         news.get("date") or
         news.get("publish_time") or

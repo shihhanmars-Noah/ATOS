@@ -18,11 +18,11 @@ except Exception:
 # --------------------------------------------------
 
 def format_price(value):
+    """格式化台指期價位：強制整數，None 回傳 'N/A'。"""
     if value is None:
         return "N/A"
-
     try:
-        return round(float(value), 1)
+        return int(round(float(value)))
     except Exception:
         return value
 

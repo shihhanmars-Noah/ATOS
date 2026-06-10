@@ -49,7 +49,7 @@ def _is_valid_level(price: float, level, pct: float = 0.05) -> bool:
         return False
 
 
-def _get_macro_context(state: dict, chip_ctx: dict) -> dict:
+def _get_macro_context(state: dict, chip_ctx: dict = None) -> dict:
     """
     判斷當前宏觀市場位置，供警報過濾器使用。
 
