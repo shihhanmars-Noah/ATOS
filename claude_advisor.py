@@ -112,12 +112,11 @@ def _cooldown_remaining(event: str, direction: str) -> int:
 # --------------------------------------------------
 
 def _p(v) -> str:
-    """價格格式化，去掉多餘小數點。"""
+    """價格格式化：強制整數，台指期不顯示小數。"""
     if v is None:
         return "N/A"
     try:
-        f = float(v)
-        return str(int(f)) if f == int(f) else str(round(f, 1))
+        return str(int(round(float(v))))
     except Exception:
         return "N/A"
 
@@ -192,6 +191,101 @@ def _build_chip_summary(ctx: dict) -> str:
     for w in ctx.get("warnings", []):
         lines.append(f"警示：{w}")
     return "\n".join(lines)
+
+
+def _calculate_targets(
+    direction: str,
+    current_price: float,
+    pivot,
+    put_wall,
+    call_wall,
+    s1,
+    r1,
+):
+    """
+    計算目標價，確保目標方向正確。
+    空方目標必須低於現價；多方目標必須高於現價。
+    回傳 (tp1, tp2)，均為 float。
+    """
+    try:
+        cp = float(current_price)
+        if direction == 'SHORT':
+            candidates = []
+            if put_wall is not None:
+                v = float(put_wall)
+                if v < cp:
+                    candidates.append(v)
+            if s1 is not None:
+                v = float(s1)
+                if v < cp:
+                    candidates.append(v)
+            if pivot is not None:
+                v = float(pivot)
+                if v < cp:
+                    candidates.append(v)
+            candidates = sorted(set(candidates), reverse=True)   # 近→遠
+            if len(candidates) >= 2:
+                return candidates[0], candidates[1]
+            elif len(candidates) == 1:
+                return candidates[0], candidates[0] - 500
+            else:
+                return cp - 300, cp - 600
+        else:  # LONG
+            candidates = []
+            if call_wall is not None:
+                v = float(call_wall)
+                if v > cp:
+                    candidates.append(v)
+            if r1 is not None:
+                v = float(r1)
+                if v > cp:
+                    candidates.append(v)
+            if pivot is not None:
+                v = float(pivot)
+                if v > cp:
+                    candidates.append(v)
+            candidates = sorted(set(candidates))                  # 近→遠
+            if len(candidates) >= 2:
+                return candidates[0], candidates[1]
+            elif len(candidates) == 1:
+                return candidates[0], candidates[0] + 500
+            else:
+                return cp + 300, cp + 600
+    except Exception:
+        if direction == 'SHORT':
+            return float(current_price) - 300, float(current_price) - 600
+        else:
+            return float(current_price) + 300, float(current_price) + 600
+
+
+def _calculate_stop_loss_points(atr_5d: float, session: str) -> int:
+    """
+    依 ATR 和時段動態計算停損點數。
+
+    高波動（ATR > 1000）：0.07 × ATR（約 70-100 點）
+    一般波動（ATR 500-1000）：0.10 × ATR（約 50-100 點）
+    低波動（ATR < 500）：0.12 × ATR，最少 50 點
+    夜盤（NIGHT / NIGHT_LATE）：流動性差，停損再放大 20%
+    上限 200 點，避免異常放大
+    """
+    if not atr_5d or atr_5d <= 0:
+        base_sl = 100
+    elif atr_5d > 1000:
+        base_sl = int(atr_5d * 0.07)
+    elif atr_5d > 500:
+        base_sl = int(atr_5d * 0.10)
+    else:
+        base_sl = max(50, int(atr_5d * 0.12))
+
+    if session in ('NIGHT', 'NIGHT_LATE'):
+        base_sl = int(base_sl * 1.2)
+
+    base_sl = min(base_sl, 200)
+    try:
+        print(f"[stop_loss] {base_sl}pt (ATR={atr_5d:.0f}, session={session})")
+    except Exception:
+        pass
+    return base_sl
 
 
 def _extract_confidence(text: str) -> int:
@@ -321,10 +415,37 @@ def _build_observe_message(
         else '中性'
     )
 
+    # 關鍵防線
+    key_defense = ""
+    try:
+        if direction == '做空' and put_wall:
+            key_defense = f"下方關鍵防線：Put wall {int(round(float(put_wall)))}"
+        elif direction == '做多' and call_wall:
+            key_defense = f"上方關鍵壓力：Call wall {int(round(float(call_wall)))}"
+    except Exception:
+        pass
+
+    # 夜盤流動性警告
+    liquidity_note = ""
+    if session_name in ('NIGHT', 'NIGHT_LATE'):
+        liquidity_note = "⚠️ 夜盤流動性不足，避免追單，等反彈測試關鍵價再判斷"
+
+    pivot_text = ""
+    try:
+        if pivot:
+            pivot_text = f"中軸 Pivot：{int(round(float(pivot)))}"
+    except Exception:
+        pass
+
     lines = [
-        f"觀察提示（{label}）",
+        f"👁️ 觀察提示（{label}）",
         f"現價：{int(round(float(current_price)))}｜方向感：{direction_zh}｜信心：{confidence}/5",
     ]
+
+    if key_defense:
+        lines.append(key_defense)
+    if pivot_text:
+        lines.append(pivot_text)
 
     # 有效點位彙總
     if r1 and pivot and s1:
@@ -345,6 +466,9 @@ def _build_observe_message(
             )
         except Exception:
             pass
+
+    if liquidity_note:
+        lines.append(liquidity_note)
 
     # 依方向給觀察重點
     if direction == '做多' and pivot:
@@ -595,6 +719,23 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         f"外資方向轉多（chg_1d>2000且chg_3d>0）：{'成立' if foreign_turning_bull else '不成立'}"
     )
 
+    # ── 動態停損計算（ATR × 係數，夜盤放大 20%）──
+    _atr_5d = float(chip_ctx.get('atr_5d') or 1000) if chip_ctx else 1000.0
+    _sl_pts = _calculate_stop_loss_points(_atr_5d, _session['name'])
+    _sl_nt  = _sl_pts * 200
+    _sl_pct = round(_sl_pts / _atr_5d * 100, 0) if _atr_5d > 0 else 0
+    _sl_note = (
+        f"建議停損：{_sl_pts}點"
+        f"（ATR={_atr_5d:.0f}點的{_sl_pct:.0f}%，"
+        f"一口計=NT${_sl_nt:,}）"
+    )
+    if _atr_5d > 1000:
+        _position_note = f"⚠️ 高波動環境（ATR={_atr_5d:.0f}），建議縮減部位（最多1口）"
+    elif _atr_5d > 700:
+        _position_note = f"注意波動（ATR={_atr_5d:.0f}），建議半倉（1-2口）"
+    else:
+        _position_note = ""
+
     now_dt = datetime.now()
     now = now_dt.strftime("%H:%M")
     alert_text = _build_alert_text(alert_context)
@@ -605,6 +746,7 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         f"=== 警報資訊 ===\n{alert_text}\n\n"
         f"=== 籌碼背景 ===\n{chip_text}\n\n"
         f"=== 條件預判 ===\n{conditions_text}\n\n"
+        f"=== 動態停損參考 ===\n{_sl_note}\n\n"
         "請根據以上資訊，產生 ATOS 結構化指令。"
     )
 
@@ -709,6 +851,8 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         text += "\n" + "\n".join(extra_notes)
     if big_player_note:
         text += f"\n【大戶動向】{big_player_note}"
+    if _position_note:
+        text += f"\n{_position_note}"
 
     # --------------------------------------------------
     # 記錄指令到 trade_logger（只記錄有方向的指令）
@@ -734,6 +878,25 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
             t2_parsed = float(re.sub(r"[,，]", "", t2_match.group(1))) if t2_match else t1_parsed
 
             direction_en = "LONG" if direction == "做多" else "SHORT"
+
+            # 目標價方向驗證：若 AI 目標方向錯誤，用計算值替換
+            _cp = float(price) if price else 0.0
+            if _cp > 0 and t1_parsed > 0:
+                _dir_wrong = (
+                    (direction_en == 'SHORT' and t1_parsed >= _cp) or
+                    (direction_en == 'LONG'  and t1_parsed <= _cp)
+                )
+                if _dir_wrong:
+                    try:
+                        print(f"[targets] AI target {t1_parsed:.0f} wrong direction vs price {_cp:.0f}, recalculating")
+                    except Exception:
+                        pass
+                    t1_parsed, t2_parsed = _calculate_targets(
+                        direction_en, _cp,
+                        alert_context.get('pivot'), chip_ctx.get('put_wall') if chip_ctx else None,
+                        chip_ctx.get('call_wall') if chip_ctx else None,
+                        alert_context.get('s1'), alert_context.get('r1'),
+                    )
 
             trade_id = log_signal(
                 direction=direction_en,
