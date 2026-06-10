@@ -313,13 +313,16 @@ class AtosCommander:
                 self.state["previous_futures_close"] = levels.get("close")
                 self.sentinel.state["previous_futures_close"] = levels.get("close")
 
+            # 注意：不寫入 state["r1"] / state["s1"]
+            # 這兩個欄位由 preopen_report_engine（08:35）用夜盤H/L/C寫入，不應被覆蓋
+            # ATR 計算的戰術支撐壓力存入 tactical_r1 / tactical_s1
             if levels.get("R1"):
-                self.state["r1"] = levels.get("R1")
-                self.sentinel.state["r1"] = levels.get("R1")
+                self.state["tactical_r1"] = levels.get("R1")
+                self.sentinel.state["tactical_r1"] = levels.get("R1")
 
             if levels.get("S1"):
-                self.state["s1"] = levels.get("S1")
-                self.sentinel.state["s1"] = levels.get("S1")
+                self.state["tactical_s1"] = levels.get("S1")
+                self.sentinel.state["tactical_s1"] = levels.get("S1")
 
             high = levels.get("high")
             low  = levels.get("low")

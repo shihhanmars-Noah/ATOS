@@ -236,6 +236,38 @@ def build_ai_advice_section(context: dict) -> str:
     r1 = get_context_value(context, "r1", "R1")
     s1 = get_context_value(context, "s1", "S1")
 
+    # S1/R1 有效性驗證：若方向錯誤（S1 > price 或 R1 < price），改用 Put/Call wall 替代
+    if price:
+        try:
+            _pf = float(price)
+            # 嘗試從 context 或 chip_cache 取得 put_wall / call_wall
+            _put_wall  = context.get("put_wall")
+            _call_wall = context.get("call_wall")
+            if not _put_wall or not _call_wall:
+                try:
+                    import json as _j
+                    with open("chip_cache.json", encoding="utf-8") as _f:
+                        _cc = _j.load(_f)
+                    _oi = _cc.get("option_oi", {})
+                    _put_wall  = _put_wall  or _oi.get("put_wall_strike")
+                    _call_wall = _call_wall or _oi.get("call_wall_strike")
+                except Exception:
+                    pass
+            if s1 is not None:
+                try:
+                    if float(s1) > _pf * 0.99:   # S1 不應高於現價
+                        s1 = _put_wall or s1
+                except Exception:
+                    pass
+            if r1 is not None:
+                try:
+                    if float(r1) < _pf * 1.01:   # R1 不應低於現價
+                        r1 = _call_wall or r1
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     sentiment = get_context_value(
         context,
         "sentiment",

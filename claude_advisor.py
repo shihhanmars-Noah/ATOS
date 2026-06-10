@@ -672,6 +672,40 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         except Exception:
             pass
 
+    # ── S1/R1 方向性驗證：若 S1 > 現價 或 R1 < 現價，改用 Put/Call wall 替代 ──
+    _cp_v = alert_context.get("price")
+    if _cp_v and chip_ctx:
+        try:
+            _pf_v = float(_cp_v)
+            _pw_v = chip_ctx.get("put_wall")
+            _cw_v = chip_ctx.get("call_wall")
+            _s1_v = alert_context.get("s1")
+            _r1_v = alert_context.get("r1")
+            if _s1_v is not None:
+                try:
+                    if float(_s1_v) > _pf_v * 0.99 and _pw_v:   # S1 不應高於現價
+                        alert_context = dict(alert_context)
+                        alert_context["s1"] = _pw_v
+                        try:
+                            print(f"[claude_advisor] s1={_s1_v} > price*0.99, fallback to put_wall={_pw_v}")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+            if _r1_v is not None:
+                try:
+                    if float(_r1_v) < _pf_v * 1.01 and _cw_v:   # R1 不應低於現價
+                        alert_context = dict(alert_context)
+                        alert_context["r1"] = _cw_v
+                        try:
+                            print(f"[claude_advisor] r1={_r1_v} < price*1.01, fallback to call_wall={_cw_v}")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     # 結算日資訊（後續多處使用）
     days_to_settlement = _get_days_to_settlement()
     price = alert_context.get("price")
