@@ -375,24 +375,174 @@ def _get_days_to_settlement() -> int:
         return 99
 
 
+def _get_price_direction(
+    price: float,
+    pivot,
+    put_wall,
+    call_wall,
+) -> str:
+    """
+    根據現價和關鍵價位動態判斷方向感。
+    不依賴舊的訊號方向，只看現價相對大戶框架的位置。
+    """
+    try:
+        price = float(price)
+
+        # 已跌破 Put wall：強烈偏空
+        if put_wall and price < float(put_wall):
+            return 'STRONG_BEAR'
+
+        # 已突破 Call wall：強烈偏多
+        if call_wall and price > float(call_wall):
+            return 'STRONG_BULL'
+
+        # 在 Pivot 下方：偏空
+        if pivot and price < float(pivot):
+            # 距 Put wall < 5%：非常接近大戶防線
+            if put_wall:
+                distance_pct = (price - float(put_wall)) / float(put_wall)
+                if distance_pct < 0.05:
+                    return 'STRONG_BEAR'
+            return 'BEAR'
+
+        # 在 Pivot 上方：偏多
+        if pivot and price > float(pivot):
+            # 距 Call wall < 5%：非常接近大戶壓線
+            if call_wall:
+                distance_pct = (float(call_wall) - price) / float(call_wall)
+                if distance_pct < 0.05:
+                    return 'STRONG_BULL'
+            return 'BULL'
+
+        return 'NEUTRAL'
+
+    except Exception:
+        return 'NEUTRAL'
+
+
+def _get_nearest_meaningful_level(
+    current_price: float,
+    direction: str,
+    pivot,
+    put_wall,
+    call_wall,
+    s1,
+    r1,
+    atr_5d: float = 1000,
+) -> dict:
+    """
+    根據現價和方向，找出最近且有意義的觀察點位。
+    過濾掉離現價超過 1.5×ATR 的點位（無實戰意義）。
+    """
+    max_distance = atr_5d * 1.5
+
+    result = {
+        'observe_level': None,
+        'observe_text': '',
+        'key_defense': '',
+    }
+
+    try:
+        if direction in ('STRONG_BEAR', 'BEAR'):
+            # 偏空：找下方最近的支撐
+            candidates = []
+
+            if put_wall:
+                diff = current_price - float(put_wall)
+                if diff <= 0:
+                    # 已跌破 Put wall
+                    result['observe_text'] = (
+                        f"Put wall {int(put_wall)} 已跌破（{abs(diff):.0f} 點），"
+                        f"觀察是否快速彈回（假跌破訊號）"
+                    )
+                    result['key_defense'] = (
+                        f"下方支撐：S1 {int(s1) if s1 else 'N/A'}"
+                    )
+                    return result
+                elif diff < max_distance:
+                    candidates.append((diff, float(put_wall), f"Put wall {int(put_wall)}（大戶防線）"))
+
+            if s1:
+                diff = current_price - float(s1)
+                if 0 < diff < max_distance:
+                    candidates.append((diff, float(s1), f"S1 {int(s1)}"))
+
+            if pivot:
+                diff = current_price - float(pivot)
+                if 0 < diff < max_distance:
+                    candidates.append((diff, float(pivot), f"Pivot {int(pivot)}"))
+
+            if candidates:
+                candidates.sort(key=lambda x: x[0])  # 最近的優先
+                nearest = candidates[0]
+                result['observe_level'] = nearest[1]
+                result['observe_text'] = f"5分K 在 {nearest[2]} 附近是否止跌反彈"
+                result['key_defense'] = f"下方防線：{nearest[2]}"
+            else:
+                result['observe_text'] = "所有已知支撐均超出有效範圍，等待新框架建立"
+
+        elif direction in ('STRONG_BULL', 'BULL'):
+            # 偏多：找上方最近的壓力
+            candidates = []
+
+            if call_wall:
+                diff = float(call_wall) - current_price
+                if 0 < diff < max_distance:
+                    candidates.append((diff, float(call_wall), f"Call wall {int(call_wall)}（大戶壓線）"))
+
+            if r1:
+                diff = float(r1) - current_price
+                if 0 < diff < max_distance:
+                    candidates.append((diff, float(r1), f"R1 {int(r1)}"))
+
+            if pivot:
+                diff = float(pivot) - current_price
+                if 0 < diff < max_distance:
+                    candidates.append((diff, float(pivot), f"Pivot {int(pivot)}"))
+
+            if candidates:
+                candidates.sort(key=lambda x: x[0])
+                nearest = candidates[0]
+                result['observe_level'] = nearest[1]
+                result['observe_text'] = f"5分K 能否站穩 {nearest[2]} 之上"
+                result['key_defense'] = f"上方壓力：{nearest[2]}"
+            else:
+                result['observe_text'] = "所有已知壓力均超出有效範圍，等待新框架建立"
+
+        else:
+            result['observe_text'] = "在 Pivot 附近震盪，觀察方向確認"
+
+    except Exception as e:
+        try:
+            print(f"[observe] _get_nearest_meaningful_level failed: {e}")
+        except Exception:
+            pass
+        result['observe_text'] = "點位計算失敗，等待確認"
+
+    return result
+
+
 def _build_observe_message(
     current_price: float,
     direction: str,
     confidence: int,
     key_levels: dict,
     session_name: str,
+    chip_ctx: dict = None,
 ) -> str:
     """
     觀察模式訊息（OBSERVE 時段）。
 
-    只描述方向感與參考點位，不含進場條件或停損目標。
+    方向感由現價相對大戶框架動態判斷，不沿用舊訊號方向。
+    觀察點位過濾超過 1.5×ATR 的無效點位。
 
     Args:
         current_price: 當前價格
-        direction:     '做多' / '做空' / '觀察'（來自 _extract_direction）
+        direction:     原始訊號方向（已不用於判斷，改由 _get_price_direction 覆蓋）
         confidence:    調整後信心分
         key_levels:    dict with pivot / r1 / s1 / call_wall / put_wall
         session_name:  時段名稱（DAY_OPEN / DAY_CLOSE / NIGHT / NIGHT_LATE）
+        chip_ctx:      chip context（取 atr_5d）
     """
     _session_labels = {
         'DAY_OPEN':   '開盤冷靜期',
@@ -409,84 +559,54 @@ def _build_observe_message(
     call_wall = key_levels.get('call_wall')
     put_wall  = key_levels.get('put_wall')
 
-    direction_zh = (
-        '偏多' if direction == '做多'
-        else '偏空' if direction == '做空'
-        else '中性'
+    # 動態判斷方向感（忽略傳入的 direction）
+    actual_direction = _get_price_direction(current_price, pivot, put_wall, call_wall)
+
+    _dir_label = {
+        'STRONG_BEAR': '強烈偏空',
+        'BEAR':        '偏空',
+        'NEUTRAL':     '中性',
+        'BULL':        '偏多',
+        'STRONG_BULL': '強烈偏多',
+    }
+    direction_zh = _dir_label.get(actual_direction, '中性')
+
+    # ATR 參考（用於過濾遠距離點位）
+    atr_5d = 1000.0
+    if chip_ctx:
+        try:
+            atr_5d = float(chip_ctx.get('atr_5d') or 1000)
+        except Exception:
+            pass
+
+    # 最近有效觀察點位
+    level_info = _get_nearest_meaningful_level(
+        current_price=current_price,
+        direction=actual_direction,
+        pivot=pivot,
+        put_wall=put_wall,
+        call_wall=call_wall,
+        s1=s1,
+        r1=r1,
+        atr_5d=atr_5d,
     )
-
-    # 關鍵防線
-    key_defense = ""
-    try:
-        if direction == '做空' and put_wall:
-            key_defense = f"下方關鍵防線：Put wall {int(round(float(put_wall)))}"
-        elif direction == '做多' and call_wall:
-            key_defense = f"上方關鍵壓力：Call wall {int(round(float(call_wall)))}"
-    except Exception:
-        pass
-
-    # 夜盤流動性警告
-    liquidity_note = ""
-    if session_name in ('NIGHT', 'NIGHT_LATE'):
-        liquidity_note = "⚠️ 夜盤流動性不足，避免追單，等反彈測試關鍵價再判斷"
-
-    pivot_text = ""
-    try:
-        if pivot:
-            pivot_text = f"中軸 Pivot：{int(round(float(pivot)))}"
-    except Exception:
-        pass
 
     lines = [
         f"👁️ 觀察提示（{label}）",
         f"現價：{int(round(float(current_price)))}｜方向感：{direction_zh}｜信心：{confidence}/5",
     ]
 
-    if key_defense:
-        lines.append(key_defense)
-    if pivot_text:
-        lines.append(pivot_text)
+    if level_info.get('key_defense'):
+        lines.append(level_info['key_defense'])
 
-    # 有效點位彙總
-    if r1 and pivot and s1:
-        try:
-            lines.append(
-                f"參考：R1 {int(round(float(r1)))} / "
-                f"Pivot {int(round(float(pivot)))} / "
-                f"S1 {int(round(float(s1)))}"
-            )
-        except Exception:
-            pass
+    if level_info.get('observe_text'):
+        lines.append(f"觀察：{level_info['observe_text']}")
 
-    if call_wall and put_wall:
-        try:
-            lines.append(
-                f"大戶牆：Call {int(round(float(call_wall)))} / "
-                f"Put {int(round(float(put_wall)))}"
-            )
-        except Exception:
-            pass
+    # 夜盤流動性警示
+    if session_name in ('NIGHT', 'NIGHT_LATE'):
+        lines.append("⚠️ 夜盤流動性不足，避免追單，等關鍵價確認後再行動")
 
-    if liquidity_note:
-        lines.append(liquidity_note)
-
-    # 依方向給觀察重點
-    if direction == '做多' and pivot:
-        try:
-            lines.append(f"觀察：5分K 是否守穩 {int(round(float(pivot)))} 以上")
-        except Exception:
-            pass
-        lines.append("不進場，等日盤主力時段確認方向")
-    elif direction == '做空' and pivot:
-        try:
-            lines.append(f"觀察：5分K 是否跌破 {int(round(float(pivot)))} 且無法站回")
-        except Exception:
-            pass
-        lines.append("不進場，等日盤主力時段確認方向")
-    else:
-        lines.append("方向不明，觀察為主，不進場")
-
-    lines.append(f"（{label}不發進場指令，僅供參考）")
+    lines.append(f"（{label}不發進場指令）")
 
     return "\n".join(lines)
 
@@ -579,6 +699,7 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
             confidence=0,          # 未呼叫 AI，信心分不適用
             key_levels=_obs_levels,
             session_name=_session['name'],
+            chip_ctx=chip_ctx,
         )
 
     event = str(alert_context.get("event", "")).upper()
@@ -870,6 +991,7 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
             confidence=adjusted_confidence,
             key_levels=_key_levels,
             session_name='DAY_MAIN',  # FULL 時段但信心不足
+            chip_ctx=chip_ctx,
         )
 
     # 有方向指令才做冷卻檢查
