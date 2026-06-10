@@ -743,6 +743,11 @@ def send_human_alert(context: dict):
     if not base_msg:
         return False
 
+    # 宏觀背景提示（由 monitor_engine._fire_alert 注入）
+    macro_note = context.get('macro_note', '')
+    if macro_note:
+        base_msg = base_msg + macro_note
+
     scenario_text = build_scenario_section(context)
     strategy_filter_text = build_strategy_filter_text(context)
     ai_advice = build_ai_advice_section(context)

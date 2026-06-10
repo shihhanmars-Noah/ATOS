@@ -49,6 +49,101 @@ def _is_valid_level(price: float, level, pct: float = 0.05) -> bool:
         return False
 
 
+def _get_macro_context(state: dict, chip_ctx: dict) -> dict:
+    """
+    判斷當前宏觀市場位置，供警報過濾器使用。
+
+    回傳欄位：
+    - macro_bias:      宏觀偏向（BELOW_PUT_WALL / NEAR_PUT_WALL /
+                       ABOVE_CALL_WALL / BELOW_PIVOT / NEUTRAL）
+    - intraday_trend:  日內趨勢（STRONG_DOWN / DOWN / FLAT / UP / STRONG_UP）
+    - day_change:      日內點數變化
+    - day_change_pct:  日內漲跌幅（小數）
+    - current_price / put_wall / call_wall
+    """
+    try:
+        current_price = float(state.get('price', 0) or 0)
+        put_wall  = float(state.get('put_wall', 0) or 0)
+        call_wall = float(state.get('call_wall', 0) or 0)
+        pivot     = float(state.get('pivot', 0) or 0)
+        day_open  = float(state.get('day_session_open', current_price) or current_price)
+
+        day_change     = current_price - day_open
+        day_change_pct = day_change / day_open if day_open > 0 else 0.0
+
+        if put_wall > 0 and current_price < put_wall:
+            macro_bias = 'BELOW_PUT_WALL'
+        elif put_wall > 0 and current_price < put_wall * 1.02:
+            macro_bias = 'NEAR_PUT_WALL'
+        elif call_wall > 0 and current_price > call_wall:
+            macro_bias = 'ABOVE_CALL_WALL'
+        elif pivot > 0 and current_price < pivot:
+            macro_bias = 'BELOW_PIVOT'
+        else:
+            macro_bias = 'NEUTRAL'
+
+        if day_change_pct < -0.03:
+            intraday_trend = 'STRONG_DOWN'
+        elif day_change_pct < -0.01:
+            intraday_trend = 'DOWN'
+        elif day_change_pct > 0.03:
+            intraday_trend = 'STRONG_UP'
+        elif day_change_pct > 0.01:
+            intraday_trend = 'UP'
+        else:
+            intraday_trend = 'FLAT'
+
+        return {
+            'macro_bias':      macro_bias,
+            'intraday_trend':  intraday_trend,
+            'day_change':      day_change,
+            'day_change_pct':  day_change_pct,
+            'current_price':   current_price,
+            'put_wall':        put_wall,
+            'call_wall':       call_wall,
+        }
+
+    except Exception as e:
+        try:
+            print(f"[macro_ctx] failed: {e}")
+        except Exception:
+            pass
+        return {'macro_bias': 'NEUTRAL', 'intraday_trend': 'FLAT',
+                'day_change': 0, 'day_change_pct': 0,
+                'current_price': 0, 'put_wall': 0, 'call_wall': 0}
+
+
+def _should_suppress_alert(event_type: str, macro: dict) -> tuple:
+    """
+    判斷警報是否應被宏觀過濾器抑制。
+
+    回傳 (should_suppress: bool, reason: str)
+    """
+    macro_bias     = macro.get('macro_bias', 'NEUTRAL')
+    intraday_trend = macro.get('intraday_trend', 'FLAT')
+    day_chg_pct    = macro.get('day_change_pct', 0.0)
+
+    # 極端偏空環境：抑制多方警報
+    if macro_bias in ('BELOW_PUT_WALL', 'NEAR_PUT_WALL') or intraday_trend == 'STRONG_DOWN':
+        suppress_in_bear = {'BULLISH_SWEEP', 'LONG_TRAP', 'FLIP_RECOVER', 'R1_TOUCH'}
+        if event_type in suppress_in_bear:
+            return True, (
+                f"宏觀過濾：{macro_bias}（日內{day_chg_pct:.1%}），"
+                f"{event_type} 在偏空背景下無實戰意義"
+            )
+
+    # 極端偏多環境：抑制空方警報
+    if macro_bias == 'ABOVE_CALL_WALL' or intraday_trend == 'STRONG_UP':
+        suppress_in_bull = {'BEARISH_SWEEP', 'SHORT_TRAP', 'S1_TOUCH'}
+        if event_type in suppress_in_bull:
+            return True, (
+                f"宏觀過濾：{macro_bias}（日內{day_chg_pct:.1%}），"
+                f"{event_type} 在偏多背景下無實戰意義"
+            )
+
+    return False, ""
+
+
 class AtosSentinel:
     def __init__(self):
         self.state = load_state()
@@ -386,13 +481,14 @@ class AtosSentinel:
             previous_flip_alert = self.state.get("previous_flip_alert", False)
 
             if not previous_flip_alert:
-                send_human_alert(
+                self._fire_alert(
+                    "FLIP_INVALID",
                     self.build_alert_context(
                         event="FLIP_INVALID",
                         price=five_min_close,
                         snapshot=snapshot,
                         trade_plan=trade_plan,
-                    )
+                    ),
                 )
 
                 self.state["previous_flip_alert"] = True
@@ -436,7 +532,8 @@ class AtosSentinel:
             current_trap == "LONG_TRAP"
             and previous_trap != "LONG_TRAP"
         ):
-            send_human_alert(
+            self._fire_alert(
+                "LONG_TRAP",
                 self.build_alert_context(
                     event="LONG_TRAP",
                     price=current_price,
@@ -445,7 +542,7 @@ class AtosSentinel:
                     behavior=behavior,
                     trap=current_trap,
                     sweep=current_sweep,
-                )
+                ),
             )
 
         # --------------------------------------------------
@@ -456,7 +553,8 @@ class AtosSentinel:
             current_trap == "SHORT_TRAP"
             and previous_trap != "SHORT_TRAP"
         ):
-            send_human_alert(
+            self._fire_alert(
+                "SHORT_TRAP",
                 self.build_alert_context(
                     event="SHORT_TRAP",
                     price=current_price,
@@ -465,7 +563,7 @@ class AtosSentinel:
                     behavior=behavior,
                     trap=current_trap,
                     sweep=current_sweep,
-                )
+                ),
             )
 
         # --------------------------------------------------
@@ -476,7 +574,8 @@ class AtosSentinel:
             current_sweep in ["BEARISH_SWEEP", "BULLISH_SWEEP"]
             and current_sweep != previous_sweep
         ):
-            send_human_alert(
+            self._fire_alert(
+                current_sweep,
                 self.build_alert_context(
                     event=current_sweep,
                     price=current_price,
@@ -485,7 +584,7 @@ class AtosSentinel:
                     behavior=behavior,
                     trap=current_trap,
                     sweep=current_sweep,
-                )
+                ),
             )
 
         # --------------------------------------------------
@@ -558,24 +657,26 @@ class AtosSentinel:
 
                 # 站回中軸
                 if previous_close < flip_value <= current_close:
-                    send_human_alert(
+                    self._fire_alert(
+                        "FLIP_RECOVER",
                         self.build_alert_context(
                             event="FLIP_RECOVER",
                             price=five_min_close,
                             snapshot=snapshot,
                             trade_plan=trade_plan,
-                        )
+                        ),
                     )
 
                 # 跌破中軸
                 elif previous_close > flip_value >= current_close:
-                    send_human_alert(
+                    self._fire_alert(
+                        "FLIP_BREAK",
                         self.build_alert_context(
                             event="FLIP_BREAK",
                             price=five_min_close,
                             snapshot=snapshot,
                             trade_plan=trade_plan,
-                        )
+                        ),
                     )
 
             except Exception:
@@ -585,13 +686,14 @@ class AtosSentinel:
         if r1:
             try:
                 if abs(float(five_min_close) - float(r1)) <= 50:
-                    send_human_alert(
+                    self._fire_alert(
+                        "R1_TOUCH",
                         self.build_alert_context(
                             event="R1_TOUCH",
                             price=five_min_close,
                             snapshot=snapshot,
                             trade_plan=trade_plan,
-                        )
+                        ),
                     )
             except Exception:
                 pass
@@ -600,16 +702,70 @@ class AtosSentinel:
         if s1:
             try:
                 if abs(float(five_min_close) - float(s1)) <= 50:
-                    send_human_alert(
+                    self._fire_alert(
+                        "S1_TOUCH",
                         self.build_alert_context(
                             event="S1_TOUCH",
                             price=five_min_close,
                             snapshot=snapshot,
                             trade_plan=trade_plan,
-                        )
+                        ),
                     )
             except Exception:
                 pass
+
+    # --------------------------------------------------
+    # Alert Fire (with macro filter)
+    # --------------------------------------------------
+
+    def _fire_alert(self, event: str, context: dict) -> None:
+        """
+        統一警報發送入口：先跑宏觀過濾器，再決定是否呼叫 send_human_alert。
+
+        若警報被抑制，印出原因並直接返回。
+        若警報通過但宏觀背景特殊，在 context 中加入 macro_note 供訊息末尾顯示。
+        """
+        chip_ctx = {}
+        try:
+            chip_ctx = load_chip_cache() or {}
+        except Exception:
+            pass
+
+        macro = _get_macro_context(self.state, chip_ctx)
+        should_suppress, suppress_reason = _should_suppress_alert(event, macro)
+
+        if should_suppress:
+            try:
+                print(f"[macro_filter] suppressed {event}: {suppress_reason}")
+            except Exception:
+                pass
+            return
+
+        # 宏觀背景特殊時，在 context 中加入提示（alert_engine_v2 會附加到訊息末）
+        macro_note = ""
+        macro_bias     = macro.get('macro_bias', 'NEUTRAL')
+        day_chg_pct    = macro.get('day_change_pct', 0.0)
+        if macro_bias == 'BELOW_PUT_WALL':
+            macro_note = (
+                f"\n⚠️ 宏觀背景：現價已跌破 Put wall {int(macro['put_wall'])}，"
+                f"日內跌幅 {day_chg_pct:.1%}，請在大趨勢偏空背景下謹慎解讀此警報"
+            )
+        elif macro_bias == 'NEAR_PUT_WALL':
+            macro_note = (
+                f"\n⚠️ 宏觀背景：現價逼近 Put wall {int(macro['put_wall'])}，"
+                f"日內跌幅 {day_chg_pct:.1%}，大趨勢偏空，請謹慎解讀"
+            )
+        elif macro_bias == 'ABOVE_CALL_WALL':
+            macro_note = (
+                f"\n⚠️ 宏觀背景：現價突破 Call wall {int(macro['call_wall'])}，"
+                f"日內漲幅 {day_chg_pct:.1%}，大趨勢偏多，請謹慎解讀空方警報"
+            )
+
+        if macro_note:
+            context = dict(context)
+            context['macro_note'] = macro_note
+
+        send_human_alert(context)
 
     # --------------------------------------------------
     # Alert Context Builder
