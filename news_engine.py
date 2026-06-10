@@ -60,8 +60,46 @@ YAHOO_RSS_URLS = [
 ]
 
 NEWS_FRESH_WINDOW    = 30   # 分鐘，啟動時防炸版（_is_fresh）
-MAX_NEWS_AGE_MINUTES = 120  # 分鐘，有時間戳的新聞有效期（120分鐘）
+MAX_NEWS_AGE_MINUTES = 120  # 分鐘，一般新聞有效期（120分鐘）
                              # 無時間戳的新聞：直接放行，交由 Gemini 判斷
+
+# 財報/重要公司新聞：時效延長
+EARNINGS_KEYWORDS = [
+    'Sales', 'Revenue', 'Earnings', 'EPS', 'Profit',
+    '營收', '獲利', '財報', '法說', 'Q1', 'Q2', 'Q3', 'Q4',
+    'quarterly', 'annual',
+]
+
+IMPORTANT_COMPANIES = [
+    'TSMC', 'Taiwan Semiconductor', '台積電',
+    'Nvidia', 'NVDA', '輝達',
+    'Apple', 'Microsoft', 'Fed', 'Federal Reserve',
+]
+
+
+def _get_max_age_minutes(title: str) -> int:
+    """
+    依新聞類型決定時效上限：
+    - 央行/Fed 政策：720 分鐘（12 小時）
+    - 重要公司財報：480 分鐘（8 小時）
+    - 重要公司（非財報）：240 分鐘（4 小時）
+    - 一般新聞：MAX_NEWS_AGE_MINUTES（120 分鐘）
+    """
+    title_lower = title.lower()
+
+    fed_keywords = ['fed', 'federal reserve', 'fomc', 'rate decision', '央行', '升息', '降息']
+    if any(kw in title_lower for kw in fed_keywords):
+        return 720
+
+    is_important = any(kw.lower() in title_lower for kw in IMPORTANT_COMPANIES)
+    is_earnings  = any(kw.lower() in title_lower for kw in EARNINGS_KEYWORDS)
+
+    if is_important and is_earnings:
+        return 480
+    if is_important:
+        return 240
+
+    return MAX_NEWS_AGE_MINUTES
 
 COLLECTION_WINDOW_MINUTES = 5   # Level 3 收集窗口（分鐘）
 
@@ -177,14 +215,20 @@ def _is_fresh(pub_time_str: str) -> bool:
 
 def _is_news_fresh(news: dict) -> bool:
     """
-    判斷新聞是否在 MAX_NEWS_AGE_MINUTES（120分鐘）以內。
+    判斷新聞是否在動態時效內。
 
     時間欄位來源（依序嘗試）：
         date / publish_time / pub_time / time / published / pubDate / pub_date
 
+    時效上限由 _get_max_age_minutes(title) 決定：
+    - 央行/Fed 政策：720 分鐘（12 小時）
+    - 重要公司財報：480 分鐘（8 小時）
+    - 重要公司（非財報）：240 分鐘（4 小時）
+    - 一般新聞：MAX_NEWS_AGE_MINUTES（120 分鐘）
+
     處理策略：
     - 無時間戳：放行，交由 Gemini Tier 2 判斷（RSS 常見情況）
-    - 解析成功：超過 MAX_NEWS_AGE_MINUTES 則略過
+    - 解析成功：超過時效上限則略過
     - 解析失敗：放行，交由 Gemini 判斷（不因格式問題誤殺）
     """
     import re as _re
@@ -248,10 +292,11 @@ def _is_news_fresh(news: dict) -> bool:
         return True
 
     elapsed_min = (datetime.now() - news_dt).total_seconds() / 60
+    max_age = _get_max_age_minutes(news.get('title', ''))
 
-    if elapsed_min > MAX_NEWS_AGE_MINUTES:
+    if elapsed_min > max_age:
         print(
-            f"⏸️ [news_engine] 舊聞略過（{elapsed_min:.0f}分鐘前）：{title_short}"
+            f"[news_engine] skip old news ({elapsed_min:.0f}min, limit {max_age}min): {title_short}"
         )
         return False
 
