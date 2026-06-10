@@ -1008,6 +1008,68 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
             f"等三（多方）：突破 Call wall {_fp(call_wall)} 且量能確認 → 追多（機率低，需外資同步回補）"
         )
 
+    # ── 框架模式判斷 ──
+    try:
+        _state_pre = load_state()
+        pivot_zone_low  = _state_pre.get('pivot_zone_low')  or active_pivot
+        pivot_zone_high = _state_pre.get('pivot_zone_high') or active_pivot
+        yesterday_poc   = _state_pre.get('yesterday_poc')   or active_pivot
+        _atr_5d_f = float(chip_ctx.get('atr_5d', 1000) or 1000) if chip_ctx else 1000.0
+        _cw_fm = float(call_wall) if call_wall else 0.0
+        _pw_fm = float(put_wall)  if put_wall  else 0.0
+        oi_width = _cw_fm - _pw_fm if _cw_fm > _pw_fm else 0.0
+        _snap_price_fm = float(_state_pre.get('price') or ref_price or 0)
+
+        if _cw_fm > 0 and _snap_price_fm > 0 and (
+            _snap_price_fm > _cw_fm + 500 or _snap_price_fm < _pw_fm - 500
+        ):
+            framework_mode = 1
+            framework_note = ""
+        elif oi_width > 0 and _atr_5d_f > 0 and oi_width > _atr_5d_f * 2 and (
+            pivot_zone_low is not None and yesterday_poc is not None
+        ):
+            framework_mode = 2
+            _pz_low  = int(float(pivot_zone_low))
+            _pz_high = int(float(pivot_zone_high))
+            _poc_i   = int(float(yesterday_poc))
+            _pw_i    = int(_pw_fm)
+            _cw_i    = int(_cw_fm)
+            try:
+                _mp_i = int(chip_ctx.get('max_pain') or _pw_i - 1000)
+            except Exception:
+                _mp_i = _pw_i - 1000
+            scenario_wait = (
+                f"等一（中繼空方）：反彈到 Pivot 緩衝區 {_pz_low}～{_pz_high} 量縮轉弱\n"
+                f"  停損：{_pz_high + 50}（緩衝區上方50點）\n"
+                f"  目標：{_pw_i + int(_pw_i * 0.005)} → Put wall {_pw_i}\n"
+                f"\n"
+                f"等二（籌碼密集區空方）：拉到昨日POC {_poc_i} 附近爆量不漲\n"
+                f"  停損：{_poc_i + int(_atr_5d_f * 0.1)}（POC上方10%ATR）\n"
+                f"  目標：{_pz_low} → {_pw_i}\n"
+                f"\n"
+                f"等三（破Put wall追擊）：跌破 Put wall {_pw_i} 且5分K確認\n"
+                f"  （破線超過100點放棄，等反彈測試不破再進場）\n"
+                f"  停損：{_pw_i + 150}（Put wall上方150點）\n"
+                f"  目標：{_pw_i - 500} → Max Pain {_mp_i}\n"
+                f"\n"
+                f"等四（短多，低機率）：守穩 Pivot {_pz_low} 且外資急劇回補>5000口\n"
+                f"  停損：{_pz_low - 100}\n"
+                f"  目標：{_poc_i}"
+            )
+            framework_note = (
+                f"⚠️ OI框架過寬（{int(oi_width)}點 > ATR×2 {int(_atr_5d_f * 2)}點）\n"
+                f"今日日內操作用中繼戰場，不等邊界觸發\n"
+                f"核心中繼站：Pivot {_pz_low}～{_pz_high}\n"
+                f"昨日籌碼密集區：{_poc_i}"
+            )
+        else:
+            framework_mode = 3
+            framework_note = ""
+    except Exception:
+        framework_mode = 3
+        framework_note = ""
+        pivot_zone_low = pivot_zone_high = yesterday_poc = active_pivot
+
     incentive = _incentive_one_liner(sentiment_score, call_wall, put_wall, fn)
     scenario = _scenario_one_liner(sentiment_score, price_position_pct, call_wall, put_wall)
 
@@ -1099,6 +1161,8 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
     lines.append("━━ 今天的結構 ━━")
     lines.append(f"外資 {fn_level} {fn:+,}口，現貨{spot_dir} {abs(spot_val):.1f}億")
     lines.append(f"大戶框架：Put wall {_fp(put_wall)} ~ Call wall {_fp(call_wall)}（寬度{width}點）")
+    if framework_note:
+        lines.append(framework_note)
     lines.append(f"現價 {_fp(ref_price)}，{position_label}")
     _dtl = int(days_to_settlement) if days_to_settlement is not None else "?"
     lines.append(f"合約：{contract_date}（{_dtl}天後結算）")

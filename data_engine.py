@@ -2209,6 +2209,87 @@ def get_dynamic_resistance_support(
 
 
 # --------------------------------------------------
+# POC (Point of Control)
+# --------------------------------------------------
+
+def calculate_poc(api, contract: str = 'TX') -> dict:
+    """
+    計算昨日日盤成交量最大價位（POC）。
+    只取日盤時段 08:45:00-13:45:00 的 tick 資料。
+    """
+    yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+
+    try:
+        # 使用 taiwan_futures_tick 取得含 Time 欄位的逐筆資料
+        df = api.taiwan_futures_tick(futures_id=contract, date=yesterday)
+
+        if df is None or df.empty:
+            return {'poc': None, 'source': 'no_data'}
+
+        # 只取主力合約
+        if 'contract_date' in df.columns:
+            main_contract = (
+                df.groupby('contract_date')['volume']
+                .sum().idxmax()
+            )
+            df = df[df['contract_date'] == main_contract].copy()
+
+        # 若有 Time 欄位則篩選日盤時段，否則使用全日資料
+        time_col = 'Time' if 'Time' in df.columns else ('time' if 'time' in df.columns else None)
+        if time_col:
+            df['_time'] = df[time_col].astype(str)
+            day_df = df[
+                (df['_time'] >= '08:45:00') &
+                (df['_time'] <= '13:45:00')
+            ].copy()
+            if day_df.empty:
+                day_df = df.copy()
+        else:
+            day_df = df.copy()
+
+        if day_df.empty:
+            return {'poc': None, 'source': 'no_day_data'}
+
+        # 計算每個價位的成交量
+        volume_profile = (
+            day_df.groupby('price')['volume']
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        poc = float(volume_profile.index[0])
+        poc_volume = int(volume_profile.iloc[0])
+
+        # 整數關卡附近（500的倍數 ±100點內最大量）
+        poc_rounded = round(poc / 500) * 500
+        nearby = volume_profile[
+            (volume_profile.index >= poc_rounded - 100) &
+            (volume_profile.index <= poc_rounded + 100)
+        ]
+        poc_integer = float(nearby.index[0]) if not nearby.empty else poc_rounded
+
+        try:
+            print(f"[POC] calc done: poc={poc} int={poc_integer} vol={poc_volume:,}")
+        except Exception:
+            pass
+
+        return {
+            'poc': poc,
+            'poc_integer': poc_integer,
+            'poc_volume': poc_volume,
+            'source': 'calculated',
+            'date': yesterday,
+        }
+
+    except Exception as e:
+        try:
+            print(f"[POC] calc failed: {e}")
+        except Exception:
+            pass
+        return {'poc': None, 'source': 'error', 'error': str(e)}
+
+
+# --------------------------------------------------
 # Manual Test
 # --------------------------------------------------
 

@@ -386,6 +386,43 @@ class AtosCommander:
                 except Exception:
                     pass
 
+        # ── POC（昨日日盤成交量最大價位）──
+        try:
+            from data_engine import get_finmind_api as _get_api, calculate_poc as _calc_poc
+            _api = _get_api()
+            _poc_result = _calc_poc(_api)
+            _poc = _poc_result.get('poc_integer') or _poc_result.get('poc')
+            if _poc:
+                self.state['yesterday_poc'] = _poc
+                self.state['yesterday_poc_volume'] = _poc_result.get('poc_volume')
+                self.state['yesterday_poc_date'] = _poc_result.get('date')
+                self.sentinel.state['yesterday_poc'] = _poc
+            else:
+                self.state['yesterday_poc'] = self.state.get('pivot')
+                print(f"⚠️ POC 無結果，使用 Pivot 替代：{self.state.get('pivot')}")
+        except Exception as _e:
+            self.state['yesterday_poc'] = self.state.get('pivot')
+            print(f"⚠️ POC 計算失敗，使用 Pivot 替代：{_e}")
+
+        # ── Pivot 緩衝區（Pivot ~ Pivot + 0.15×ATR）──
+        try:
+            _pivot = self.state.get('pivot') or self.state.get('flip')
+            _atr_5d = self.state.get('atr_5d') or 1000
+            if _pivot:
+                _pivot_f = float(_pivot)
+                _atr_f = float(_atr_5d)
+                self.state['pivot_zone_low'] = round(_pivot_f, 0)
+                self.state['pivot_zone_high'] = round(_pivot_f + 0.15 * _atr_f, 0)
+                self.sentinel.state['pivot_zone_low'] = self.state['pivot_zone_low']
+                self.sentinel.state['pivot_zone_high'] = self.state['pivot_zone_high']
+                print(
+                    f"✅ Pivot 緩衝區：{self.state['pivot_zone_low']:.0f}"
+                    f"～{self.state['pivot_zone_high']:.0f}"
+                    f"（Pivot {_pivot} + 0.15×ATR {_atr_5d}）"
+                )
+        except Exception as _e:
+            print(f"⚠️ Pivot 緩衝區計算失敗：{_e}")
+
         save_state(self.state)
 
         try:
