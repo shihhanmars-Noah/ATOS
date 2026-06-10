@@ -650,6 +650,10 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         return None
 
     if _session['mode'] == 'OBSERVE':
+        # chip_ctx 在 OBSERVE 分支提早 return，需在這裡確保已載入（ATR 過濾需要）
+        if chip_ctx is None:
+            chip_ctx = build_chip_context()
+
         # 從事件名稱推斷方向（不呼叫 Gemini，節省 API 用量）
         _obs_event = str(alert_context.get("event", "")).upper()
         _event_direction_map = {
@@ -683,8 +687,8 @@ def advise(alert_context: dict, chip_ctx: Optional[dict] = None) -> Optional[str
         except Exception:
             pass
 
-        # 補入 alert_context 中已有的點位（可能來自 monitor_engine）
-        for _lk in ('pivot', 'r1', 's1'):
+        # 補入 alert_context 中已有的點位（chip_cache 讀取失敗時的保底）
+        for _lk in ('pivot', 'r1', 's1', 'call_wall', 'put_wall'):
             if not _obs_levels.get(_lk):
                 _obs_levels[_lk] = alert_context.get(_lk)
 

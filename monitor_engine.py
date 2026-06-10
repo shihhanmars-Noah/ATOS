@@ -68,8 +68,10 @@ def _get_macro_context(state: dict, chip_ctx: dict) -> dict:
         pivot     = float(state.get('pivot', 0) or 0)
         day_open  = float(state.get('day_session_open', current_price) or current_price)
 
-        day_change     = current_price - day_open
-        day_change_pct = day_change / day_open if day_open > 0 else 0.0
+        # day_session_open 未設定（0）時不計算日內趨勢，避免第一根 tick 誤判
+        _open_unknown = (day_open <= 0 or day_open == current_price)
+        day_change     = (current_price - day_open) if not _open_unknown else 0.0
+        day_change_pct = (day_change / day_open)    if (not _open_unknown and day_open > 0) else 0.0
 
         if put_wall > 0 and current_price < put_wall:
             macro_bias = 'BELOW_PUT_WALL'
@@ -82,7 +84,9 @@ def _get_macro_context(state: dict, chip_ctx: dict) -> dict:
         else:
             macro_bias = 'NEUTRAL'
 
-        if day_change_pct < -0.03:
+        if _open_unknown:
+            intraday_trend = 'FLAT'   # 開盤價未知，不做趨勢判斷
+        elif day_change_pct < -0.03:
             intraday_trend = 'STRONG_DOWN'
         elif day_change_pct < -0.01:
             intraday_trend = 'DOWN'
@@ -176,14 +180,28 @@ class AtosSentinel:
                 self.state['put_wall'] = _new_put
 
             # ── pivot / r1 / s1：只在過期時補回 ──
-            for _key, _cache_key in (('pivot', 'pivot'), ('r1', 'r1'), ('s1', 's1')):
+            # 優先順序：preopen 寫入的值 > tactical（ATR 計算）> chip_cache
+            for _key, _cache_key, _tactical_key in (
+                ('pivot', 'pivot', None),
+                ('r1',    'r1',    'tactical_r1'),
+                ('s1',    's1',    'tactical_s1'),
+            ):
                 _cur = self.state.get(_key)
                 if not _is_valid_level(current_price, _cur, pct=0.05):
-                    _fresh = _tech.get(_cache_key)
+                    # 1. 先嘗試 tactical_r1 / tactical_s1（main_commander 08:00 寫入）
+                    _fresh = None
+                    if _tactical_key:
+                        _tac = self.state.get(_tactical_key)
+                        if _is_valid_level(current_price, _tac, pct=0.05):
+                            _fresh = _tac
+                    # 2. 若 tactical 也無效，從 chip_cache 補回
+                    if _fresh is None:
+                        _fresh = _tech.get(_cache_key)
                     if _fresh is not None:
                         self.state[_key] = _fresh
                         try:
-                            print(f"[Monitor] {_key} refreshed: {_cur} -> {_fresh}")
+                            _src = 'tactical' if (_tactical_key and _fresh == self.state.get(_tactical_key)) else 'chip_cache'
+                            print(f"[Monitor] {_key} refreshed from {_src}: {_cur} -> {_fresh}")
                         except Exception:
                             pass
 

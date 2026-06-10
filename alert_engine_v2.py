@@ -64,14 +64,14 @@ _last_any_alert_time = 0.0   # 全域最後一次發送時間
 
 def format_price(value):
     """
-    價格格式化。
+    價格格式化：強制整數，台指期不顯示小數。
     """
 
     if value is None:
         return "N/A"
 
     try:
-        return round(float(value), 1)
+        return int(round(float(value)))
     except Exception:
         return value
 
