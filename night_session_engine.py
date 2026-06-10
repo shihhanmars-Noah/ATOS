@@ -297,103 +297,141 @@ def get_night_session_data() -> dict:
     """
     從 TaiwanFuturesTick 取得最近一個夜盤的高低收資料。
 
-    夜盤定義：昨日 15:00 ~ 今日 08:45 的 tick。
-    注意事項：
-      - date 欄位格式為 'YYYY-MM-DD HH:MM:SS'（含日期+時間），以 dt.hour 判斷
-      - 含多合約（近月/次月/展期價差），用「成交量最大合約」過濾主力
-      - 若最近夜盤資料超過 3 天前，視為過時不使用（市場可能跳空很大）
-      - night_chg     = 夜盤收盤 - 夜盤開盤（15:00第一筆）
-      - vs_day_chg    = 夜盤收盤 - 昨日日盤收盤
-      - vs_day_chg_pct= vs_day_chg / day_close * 100
+    夜盤定義：昨日 15:00 ~ 今日 05:00 的 tick。
+
+    重要：FinMind TaiwanFuturesTick 每次 API 請求只回傳「指定日期當天」的資料，
+    不支援多日範圍查詢。因此需要：
+      1. 逐日嘗試從昨天往前，找到最近有資料的交易日（取得日盤 + 夜盤開始段）
+      2. 另外請求「今日」資料，取得夜盤尾段（00:00-05:00）
+
+    資料結構：
+      - target_day（昨日）的資料包含：
+          00:00-05:00  → 前前日夜盤尾段（非本次需要的）
+          08:45-13:45  → target_day 日盤（用來算 day_close）
+          15:00-23:59  → 本次夜盤開始段
+      - next_day（今日）的資料包含：
+          00:00-05:00  → 本次夜盤尾段（需要）
+
+    合約過濾：排除展期價差（含斜線），取成交量最大近月合約。
+    新鮮度：夜盤資料超過 3 天前視為過時。
     """
     try:
         import pandas as pd
         from data_engine import get_finmind_api
-        from datetime import datetime, timedelta, date as date_type
+        from datetime import datetime, timedelta
 
         api = get_finmind_api()
         now = datetime.now()
         today_date = now.date()
 
-        # 往前回溯 7 天，確保能找到最近一個夜盤（跨越週末/假日）
-        start_date = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-        df = api.get_data(
-            dataset="TaiwanFuturesTick",
-            data_id="TX",
-            start_date=start_date,
-        )
+        # ── 步驟 1：逐日往前找最近有日盤資料的交易日（target_day）──
+        target_day = None
+        df_target = None
 
-        if df is None or df.empty:
+        for days_back in range(1, 8):
+            candidate = today_date - timedelta(days=days_back)
+            _df = api.get_data(
+                dataset="TaiwanFuturesTick",
+                data_id="TX",
+                start_date=candidate.strftime("%Y-%m-%d"),
+            )
+            if _df is None or _df.empty:
+                continue
+            _df["date"] = pd.to_datetime(_df["date"], errors="coerce")
+            _df = _df.dropna(subset=["date"])
+            # 確認有日盤資料（08:45 以後）
+            if (_df["date"].dt.hour >= 8).any():
+                target_day = candidate
+                df_target = _df
+                break
+
+        if target_day is None or df_target is None:
+            try:
+                print("[night_session] 近7日找不到有效交易日資料")
+            except Exception:
+                pass
             return {}
 
-        df = df.copy()
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"]).sort_values("date")
+        days_old = (today_date - target_day).days
 
-        # ── 合約過濾：取總成交量最大的主力合約（排除展期價差，如 202606/202607）──
-        if "contract_date" in df.columns:
-            df["contract_date"] = df["contract_date"].astype(str)
-            # 只保留純月合約（6位數字，排除含斜線的展期價差）
-            pure_monthly = df[~df["contract_date"].str.contains("/", na=False)]
+        # ── 資料新鮮度檢查 ──
+        if days_old > 3:
+            try:
+                print(f"[night_session] 資料過時({days_old}天前, {target_day})，跳過")
+            except Exception:
+                pass
+            return {}
+
+        # ── 步驟 2：請求今日資料，取夜盤尾段（00:00-05:00）──
+        df_next = None
+        next_day = target_day + timedelta(days=1)
+        if next_day <= today_date:
+            _df2 = api.get_data(
+                dataset="TaiwanFuturesTick",
+                data_id="TX",
+                start_date=next_day.strftime("%Y-%m-%d"),
+            )
+            if _df2 is not None and not _df2.empty:
+                _df2["date"] = pd.to_datetime(_df2["date"], errors="coerce")
+                _df2 = _df2.dropna(subset=["date"])
+                df_next = _df2
+
+        # ── 步驟 3：合約過濾（合併兩天資料，取主力合約）──
+        frames = [df_target]
+        if df_next is not None:
+            frames.append(df_next)
+        df_all = pd.concat(frames, ignore_index=True).sort_values("date")
+
+        if "contract_date" in df_all.columns:
+            df_all["contract_date"] = df_all["contract_date"].astype(str)
+            pure_monthly = df_all[~df_all["contract_date"].str.contains("/", na=False)]
             if not pure_monthly.empty:
                 main_contract = (
                     pure_monthly.groupby("contract_date")["volume"]
                     .sum()
                     .idxmax()
                 )
-                df = df[df["contract_date"] == main_contract].copy()
-                print(f"🔍 夜盤資料使用主力合約：{main_contract}")
+                df_all = df_all[df_all["contract_date"] == main_contract].copy()
+                try:
+                    print(f"[night_session] main contract: {main_contract}")
+                except Exception:
+                    pass
 
-        df["date_only"] = df["date"].dt.date
+        df_all["date_only"] = df_all["date"].dt.date
 
-        # ── 找最近一個有夜盤（hour >= 15）的交易日（夜盤開始日 = 昨日）──
-        night_mask = df["date"].dt.hour >= 15
-        night_start_days = sorted(df.loc[night_mask, "date_only"].unique())
-
-        if not night_start_days:
-            print("⚠️ 夜盤資料：近7日無夜盤 tick 資料")
-            return {}
-
-        target_day = night_start_days[-1]   # 夜盤開始的日期（昨日）
-
-        # ── 資料新鮮度：夜盤資料超過 3 天前則視為過時 ──
-        days_old = (today_date - target_day).days
-        if days_old > 3:
-            print(
-                f"⚠️ 夜盤資料過時（{days_old}天前，{target_day}），"
-                f"市場可能已大幅跳空，不使用"
-            )
-            return {}
-
-        # ── 夜盤 tick 窗口：target_day 15:00 ~ next_day 08:45 ──
-        next_day = target_day + timedelta(days=1)
-
-        next_day_mask = (
-            (df["date_only"] == next_day) &
+        # ── 步驟 4：切割夜盤窗口 ──
+        # target_day 15:00-23:59（夜盤開始段）
+        target_night_mask = (
+            (df_all["date_only"] == target_day) &
+            (df_all["date"].dt.hour >= 15)
+        )
+        # next_day 00:00-05:00（夜盤尾段）
+        next_early_mask = (
+            (df_all["date_only"] == next_day) &
             (
-                (df["date"].dt.hour < 8) |
-                ((df["date"].dt.hour == 8) & (df["date"].dt.minute < 45))
+                (df_all["date"].dt.hour < 5) |
+                ((df_all["date"].dt.hour == 5) & (df_all["date"].dt.minute == 0))
             )
         )
-        target_day_night_mask = (
-            (df["date_only"] == target_day) &
-            (df["date"].dt.hour >= 15)
-        )
 
-        night_df = df[target_day_night_mask | next_day_mask].copy()
+        night_df = df_all[target_night_mask | next_early_mask].copy().sort_values("date")
 
         if night_df.empty:
-            # 備援：只取 target_day 15:00 以後
-            night_df = df[target_day_night_mask].copy()
+            # 備援：只用 target_day 夜盤開始段
+            night_df = df_all[target_night_mask].copy()
 
         if night_df.empty:
+            try:
+                print(f"[night_session] {target_day} 無夜盤 tick")
+            except Exception:
+                pass
             return {}
 
-        # ── 日盤收盤（target_day 08:45 ~ 13:45）──
-        day_df = df[
-            (df["date_only"] == target_day) &
-            (df["date"].dt.hour >= 8) &
-            (df["date"].dt.hour < 14)
+        # ── 步驟 5：日盤收盤（target_day 08:45-13:45）──
+        day_df = df_all[
+            (df_all["date_only"] == target_day) &
+            (df_all["date"].dt.hour >= 8) &
+            (df_all["date"].dt.hour < 14)
         ].copy()
 
         night_open    = float(night_df["price"].iloc[0])
@@ -404,9 +442,9 @@ def get_night_session_data() -> dict:
         night_chg_pct = round(night_chg / night_open * 100, 2) if night_open > 0 else 0
         night_range   = round(night_high - night_low, 0)
 
-        day_close       = float(day_df["price"].iloc[-1]) if not day_df.empty else 0
-        vs_day_chg      = round(night_close - day_close, 0) if day_close else 0
-        vs_day_chg_pct  = round(vs_day_chg / day_close * 100, 2) if day_close else 0
+        day_close      = float(day_df["price"].iloc[-1]) if not day_df.empty else 0
+        vs_day_chg     = round(night_close - day_close, 0) if day_close else 0
+        vs_day_chg_pct = round(vs_day_chg / day_close * 100, 2) if day_close else 0
 
         result = {
             "night_open":       night_open,
@@ -424,17 +462,23 @@ def get_night_session_data() -> dict:
             "days_old":         days_old,
         }
 
-        print(
-            f"✅ 夜盤資料（{target_day}，{days_old}天前）："
-            f"收{night_close:.0f} 高{night_high:.0f} 低{night_low:.0f} "
-            f"夜盤{night_chg:+.0f}點（{night_chg_pct:+.1f}%）"
-            f" | 日收{day_close:.0f} vs日{vs_day_chg:+.0f}點"
-        )
+        try:
+            print(
+                f"[night_session] {target_day}({days_old}d ago): "
+                f"close={night_close:.0f} H={night_high:.0f} L={night_low:.0f} "
+                f"chg={night_chg:+.0f}pt({night_chg_pct:+.1f}%) "
+                f"day_close={day_close:.0f} vs_day={vs_day_chg:+.0f}pt"
+            )
+        except Exception:
+            pass
 
         return result
 
     except Exception as e:
-        print(f"⚠️ 夜盤資料取得失敗：{e}")
+        try:
+            print(f"[night_session] failed: {e}")
+        except Exception:
+            pass
         return {}
 
 
