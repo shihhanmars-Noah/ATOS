@@ -368,23 +368,77 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
         .replace("{chip_text}", chip_text)
     )
 
-    # 在 EVENING_FUTURES 加入外資方向語意說明，避免 AI 把回補錯誤描述為增加
+    # 在 EVENING_FUTURES 加入即時現價、外資方向、Put wall 告急等語意修正
     if report_type == "EVENING_FUTURES":
-        chg_1d = chip_ctx.get("foreign_net_chg_1d") or 0
+        _extra_notes: list[str] = []
+
+        # ── 即時現價（比日盤收盤更準確）──
         try:
-            chg_1d = int(chg_1d)
-            if chg_1d > 0:
-                user_prompt += (
-                    f"\n\n重要：今日外資回補空單 {chg_1d:+,} 口（淨空部位減少），"
+            from persistent_state import load_state as _ls
+            _state = _ls()
+            _realtime_price = _state.get("price")
+            _tick_source = _state.get("tick_source", "")
+            _close_price_ai = chip_ctx.get("prev_close") or 0
+            if _realtime_price:
+                _rp = float(_realtime_price)
+                _price_ctx = (
+                    f"重要：現在的即時現價是 {_rp:.0f}"
+                    f"（{_tick_source}），"
+                    f"不是日盤收盤價 {_close_price_ai}。"
+                    f"請用即時現價判斷現價在框架的位置，不要用收盤價。"
+                )
+                _extra_notes.append(_price_ctx)
+
+                # Put wall 距離告急
+                _pw_ai = chip_ctx.get("put_wall")
+                if _pw_ai:
+                    _dist = _rp - float(_pw_ai)
+                    if _dist < 0:
+                        _extra_notes.append(
+                            f"緊急：現價已跌破 Put wall {_pw_ai}，"
+                            f"大戶選擇權防線已失守，請在解讀中說明後市含義。"
+                        )
+                    elif _dist < 300:
+                        _extra_notes.append(
+                            f"緊急：現價距 Put wall {_pw_ai} 只剩 {_dist:.0f} 點，"
+                            f"正面臨大戶防線崩潰邊緣，這不是「區間中段」，"
+                            f"而是「生死防線告急」，請在解讀中明確說明。"
+                        )
+        except Exception:
+            pass
+
+        # ── 外資方向語意說明（強化版）──
+        try:
+            chg_1d = int(chip_ctx.get("foreign_net_chg_1d") or 0)
+            foreign_net = int(chip_ctx.get("foreign_net") or 0)
+            if chg_1d < -1000:
+                _extra_notes.append(
+                    f"重要：外資今日繼續加碼空單 {chg_1d:,}口"
+                    f"（總部位 {foreign_net:,}口），"
+                    f"完全沒有回補跡象，空方壓力持續加重。"
+                    f"請不要說外資可能回補，事實相反。"
+                )
+            elif chg_1d > 1000:
+                _extra_notes.append(
+                    f"重要：外資今日回補空單 {chg_1d:+,}口"
+                    f"（總部位 {foreign_net:,}口），"
+                    f"空方壓力略減，但仍處極強空水位。"
+                )
+            elif chg_1d > 0:
+                _extra_notes.append(
+                    f"重要：今日外資回補空單 {chg_1d:+,} 口（淨空部位減少），"
                     "請正確描述為回補而非增加，並說明此變化對後市的含義"
                 )
             elif chg_1d < 0:
-                user_prompt += (
-                    f"\n\n重要：今日外資加碼空單 {chg_1d:+,} 口（淨空部位增加），"
+                _extra_notes.append(
+                    f"重要：今日外資加碼空單 {chg_1d:+,} 口（淨空部位增加），"
                     "請在解讀中特別強調空方壓力加重的含義"
                 )
         except Exception:
             pass
+
+        if _extra_notes:
+            user_prompt = "\n\n".join(_extra_notes) + "\n\n" + user_prompt
 
     full_prompt = f"{_SYSTEM}\n\n{user_prompt}"
 

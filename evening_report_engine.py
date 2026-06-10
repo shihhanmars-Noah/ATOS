@@ -1400,6 +1400,35 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
 
     # ━━ 夜盤怎麼做 ━━
     lines.append("━━ 夜盤怎麼做 ━━")
+
+    # Put wall 告急警示（即時現價 vs Put wall）
+    try:
+        _realtime_price = state.get("price")
+        if _realtime_price and put_wall:
+            _rp = float(_realtime_price)
+            _pw = float(put_wall)
+            _dist = _rp - _pw
+            if _dist <= 0:
+                lines.append(
+                    f"🚨 Put wall {int(_pw)} 已跌破"
+                )
+                lines.append(
+                    f"現價 {_rp:.0f}，跌破幅度 {abs(_dist):.0f} 點"
+                )
+                lines.append(f"不追空，等反彈測試 {int(_pw)} 守不住才確認")
+                lines.append("")
+            elif _dist < 300:
+                lines.append(
+                    f"🚨 Put wall 告急：現價 {_rp:.0f} 距 Put wall {int(_pw)} 僅 {_dist:.0f} 點"
+                )
+                lines.append(f"若跌破 {int(_pw)}：")
+                lines.append("  → 不追空（流動性陷阱風險）")
+                lines.append(f"  → 等反彈測試 {int(_pw)} 不過再空")
+                lines.append("  → 觀察是否快速彈回（假跌破訊號）")
+                lines.append("")
+    except Exception:
+        pass
+
     if _is_big_move_up:
         # 大漲收高：順勢多方策略（含正確的分層停損）
         try:
