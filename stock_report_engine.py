@@ -202,11 +202,25 @@ def get_market_bias_from_state():
                 "score": 40,
             }
 
-        # 台指期籌碼極端偏空 → 強制 BEAR_CHIP（優先於價格判斷）
+        # 台指期籌碼極端偏空 → 強制 BEAR_CHIP 或 BEAR_HIGH_VOL（優先於價格判斷）
         if sentiment_score is not None:
             try:
                 s = int(sentiment_score)
                 if s <= -4:
+                    # 同時 ATR 高 → 偏空高波動模式
+                    atr_5d = state.get("atr_5d")
+                    try:
+                        _atr = float(atr_5d) if atr_5d else 0.0
+                    except Exception:
+                        _atr = 0.0
+                    if _atr >= 1000:
+                        return {
+                            "mode": "BEAR_HIGH_VOL",
+                            "label": f"🔴 偏空高波動（評分 {s}，ATR {int(_atr)}）",
+                            "score": 15,
+                            "sentiment_score": s,
+                            "atr_5d": _atr,
+                        }
                     return {
                         "mode": "BEAR_CHIP",
                         "label": f"🔴 台指期籌碼偏空（評分 {s}）",
@@ -480,12 +494,15 @@ def build_chip_table(df_inst: pd.DataFrame):
             stock_id=stock_id,
         )
 
+        trust_buy_shares = int(row.get("buy", 0) or 0)
+
         result.append({
             "stock_id": stock_id,
             "date": str(latest_date.date()),
             "trust_net_buy": trust_net_buy,
             "foreign_net_buy": foreign_net_buy,
             "consecutive_trust_buy_days": consecutive_days,
+            "trust_buy_shares": trust_buy_shares,
         })
 
     chip_df = pd.DataFrame(result)
@@ -554,6 +571,17 @@ def calculate_technical_features(df_price: pd.DataFrame):
     latest = df.iloc[-1]
     prev = df.iloc[-2]
 
+    # 5日漲跌幅（供相對強弱計算）
+    _return_5d = None
+    if len(df) >= 6:
+        try:
+            _c_now = float(df.iloc[-1]["close"])
+            _c_5d  = float(df.iloc[-6]["close"])
+            if _c_5d > 0:
+                _return_5d = round((_c_now - _c_5d) / _c_5d * 100, 2)
+        except Exception:
+            pass
+
     close = float(latest["close"])
     open_price = float(latest["open"])
     high = float(latest["max"])
@@ -611,6 +639,7 @@ def calculate_technical_features(df_price: pd.DataFrame):
         "ma20_up": bool(ma20 and prev_ma20 and ma20 > prev_ma20),
         "red_k": bool(close > open_price),
         "black_k": bool(close < open_price),
+        "return_5d": _return_5d,
     }
 
     return features
@@ -748,6 +777,30 @@ def classify_stock(scores: dict, tech: dict, market: dict, sentiment_score: int 
             return "B", "大盤偏空，降級為觀察"
         return "C", "大盤偏空，剔除"
 
+    # 偏空高波動防空洞模式：最嚴格篩選
+    if market["mode"] == "BEAR_HIGH_VOL":
+        _score = market.get("sentiment_score", sentiment_score)
+        # 爆量長上影直接剔除
+        if tech.get("upper_shadow_ratio", 0) >= 0.4 and tech.get("volume_ratio", 0) >= 1.5:
+            return "C", "爆量長上影，高波動下剔除"
+        # 距5MA超過5%剔除（比正常更嚴）
+        if distance_to_ma5 is not None and distance_to_ma5 > 5:
+            return "C", "偏空高波動：距5MA過遠，剔除"
+        # 相對強弱：個股5日跑輸大盤超過2%則剔除
+        _rs = tech.get("return_5d")
+        _idx_ret = market.get("taiex_return_5d")
+        if _rs is not None and _idx_ret is not None:
+            _rs_vs_idx = _rs - _idx_ret
+            if _rs_vs_idx < -2.0:
+                return "C", f"相對大盤弱勢（RS={_rs_vs_idx:+.1f}%），剔除"
+        # 投信控盤比例不足時降為B
+        _sitc_ratio = tech.get("sitc_volume_ratio", 0) or 0
+        if total >= 80 and _sitc_ratio >= 0.5:
+            return "A", f"A級（防空洞）：投信高控盤{_sitc_ratio:.1f}%，相對強勢"
+        if total >= 70:
+            return "B", f"偏空高波動降級觀察（評分 {_score}）"
+        return "C", "偏空高波動：條件不足，剔除"
+
     # 台指期籌碼極端偏空：A 級自動降為 B，且加嚴門檻
     if market["mode"] == "BEAR_CHIP":
         _score = market.get("sentiment_score", sentiment_score)
@@ -755,10 +808,7 @@ def classify_stock(scores: dict, tech: dict, market: dict, sentiment_score: int 
             return "C", "爆量長上影，疑似上方賣壓"
         if distance_to_ma5 is not None and distance_to_ma5 > 8:
             return "C", "距5MA過遠，剔除"
-        # 偏空環境 A 級加嚴（sentiment_score <= -3）
         if _score <= -3:
-            consec = scores.get("chip_score", 0)  # 從 chip 計算出的連買天數需從 chip dict 拿
-            # 直接用 market 傳入的 sentiment_score 判斷
             if tech.get("distance_to_ma5", 0) > 5:
                 return "B", "偏空環境：距5MA過遠，降為觀察"
         if total >= 80:
@@ -842,6 +892,16 @@ def build_stock_watchlist(
         api = get_finmind_api()
         market = get_market_bias_from_state()
 
+        # 取得大盤指數報酬，注入 market dict 供 classify_stock 使用
+        try:
+            from chip_data_engine import build_chip_context as _bcc
+            _chip_ctx = _bcc() or {}
+            _taiex_ret = _chip_ctx.get("taiex_return_5d")
+            if _taiex_ret is not None:
+                market["taiex_return_5d"] = _taiex_ret
+        except Exception:
+            pass
+
         df_inst = fetch_institutional_data(api)
         chip_df = build_chip_table(df_inst)
 
@@ -870,7 +930,24 @@ def build_stock_watchlist(
                 "trust_net_buy": int(row["trust_net_buy"]),
                 "foreign_net_buy": int(row["foreign_net_buy"]),
                 "consecutive_trust_buy_days": int(row["consecutive_trust_buy_days"]),
+                "trust_buy_shares": int(row.get("trust_buy_shares", 0) or 0),
             }
+
+            # 計算投信控盤比例：投信買入張數 / 個股成交量（%）
+            _tbv = chip["trust_buy_shares"]
+            _vol = tech.get("volume", 0) or 0
+            if _vol > 0 and _tbv > 0:
+                tech["sitc_volume_ratio"] = round(_tbv / _vol * 100, 2)
+            else:
+                tech["sitc_volume_ratio"] = 0.0
+
+            # 計算個股相對大盤強弱
+            _rs_5d = tech.get("return_5d")
+            _idx_ret = market.get("taiex_return_5d")
+            if _rs_5d is not None and _idx_ret is not None:
+                tech["relative_strength_5d"] = round(_rs_5d - _idx_ret, 2)
+            else:
+                tech["relative_strength_5d"] = None
 
             scores = calculate_scores(
                 chip=chip,
@@ -1356,12 +1433,22 @@ def send_stock_picks_report(
         lines.append("夜盤大跌後開盤風險高，今日以觀察為主")
         lines.append("")
 
+    # ── 偏空高波動防空洞模式 Banner ──
+    if market.get("mode") == "BEAR_HIGH_VOL":
+        _atr_val = market.get("atr_5d", 0)
+        _atr_str = f"{int(_atr_val)}" if _atr_val else "N/A"
+        lines.append(f"⚠️ 偏空高波動防空洞模式（ATR={_atr_str}點，情緒={score_str}）")
+        lines.append("選股條件已加嚴：僅保留相對強勢 + 高投信控盤標的")
+        lines.append("現在所有選股均為防守觀察，不主動做多，等市場穩定後操作")
+        lines.append("建議：縮小部位，若進場以防禦型個股優先，嚴格停損")
+        lines.append("")
+
     # ── 是否為偏空+大波動組合（決定是否改用分組顯示）──
     try:
         _ss_val = int(sentiment_score) if sentiment_score is not None else 0
     except Exception:
         _ss_val = 0
-    _is_bear_bigmove = (nd_big_move and nd_close > 0) or (_ss_val <= -3)
+    _is_bear_bigmove = (nd_big_move and nd_close > 0) or (_ss_val <= -3) or (market.get("mode") == "BEAR_HIGH_VOL")
 
     # ── A 級 — 批次 AI 點評 ──
     batch_commentaries: dict = {}

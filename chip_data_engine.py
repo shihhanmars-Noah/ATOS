@@ -1183,6 +1183,52 @@ def estimate_foreign_cost(futures_chip: dict, tech: dict) -> dict:
 
 
 # --------------------------------------------------
+# 市場對照：指數報酬（供個股相對強弱計算用）
+# --------------------------------------------------
+
+@safe_execute
+def fetch_index_returns() -> dict:
+    """
+    取得台灣加權指數近5日漲跌幅。
+    供 stock_report_engine 計算個股相對強弱用。
+    失敗時回傳空值，不影響主流程。
+    """
+    api = _get_api()
+    start = _start_date(14)
+    end = datetime.now().strftime("%Y-%m-%d")
+    try:
+        df = api.get_data(
+            dataset="TaiwanStockPrice",
+            data_id="Y9999",
+            start_date=start,
+            end_date=end,
+        )
+        if df is None or df.empty:
+            return {"taiex_return_5d": None, "taiex_close": None}
+        df = df.sort_values("date").tail(6)
+        if len(df) < 2:
+            return {"taiex_return_5d": None, "taiex_close": None}
+        close_now = float(df.iloc[-1]["close"])
+        close_5d  = float(df.iloc[0]["close"])
+        return_5d = round((close_now - close_5d) / close_5d * 100, 2) if close_5d else 0.0
+        try:
+            print(f"[index_returns] TAIEX 5d: {return_5d:+.2f}%")
+        except Exception:
+            pass
+        return {
+            "taiex_return_5d": return_5d,
+            "taiex_close": round(close_now, 0),
+            "updated_at": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        try:
+            print(f"[index_returns] failed: {e}")
+        except Exception:
+            pass
+        return {"taiex_return_5d": None, "taiex_close": None}
+
+
+# --------------------------------------------------
 # 主函式：統整更新 chip_cache.json
 # --------------------------------------------------
 
@@ -1202,6 +1248,7 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
     afterhours    = fetch_afterhours_institutional()
     fear_greed    = fetch_fear_greed()       # Backer+，失敗不影響主流程
     large_traders = fetch_large_traders()    # Backer+，失敗不影響主流程
+    index_returns = fetch_index_returns()    # 大盤指數報酬，失敗不影響主流程
 
     # 任何一個主要資料集失敗都記錄但繼續
     if futures_chip is None:
@@ -1239,6 +1286,9 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
             "top10_buy_oi": 0, "top10_sell_oi": 0, "top10_net": 0,
             "market_oi": 0, "top5_long_pct": 0, "top5_short_pct": 0,
         }
+
+    if index_returns is None:
+        index_returns = {"taiex_return_5d": None, "taiex_close": None}
 
     # 計算 SentimentScore（加入大額交易人 + 夜盤資料）
     sentiment = calculate_sentiment_score(
@@ -1282,6 +1332,7 @@ def update_chip_cache(reference_price: Optional[float] = None) -> bool:
         "large_traders":       large_traders,
         "foreign_cost_estimate": foreign_cost,
         "sentiment":           sentiment,
+        "index_returns":       index_returns,
     }
 
     try:
@@ -1331,6 +1382,7 @@ def build_chip_context() -> dict:
     cost = cache.get("foreign_cost_estimate", {})
     meta = cache.get("meta", {})
     ah   = cache.get("afterhours_chip", {})
+    ir   = cache.get("index_returns", {})
 
     return {
         # 基本資訊
@@ -1413,6 +1465,10 @@ def build_chip_context() -> dict:
         "foreign_ah_short": ah.get("foreign_ah_short", 0),
         "dealer_ah_net":    ah.get("dealer_ah_net", 0),
         "ah_source_date":   ah.get("ah_source_date"),
+
+        # 大盤指數報酬（供個股相對強弱計算用）
+        "taiex_return_5d":  ir.get("taiex_return_5d"),
+        "taiex_close":      ir.get("taiex_close"),
     }
 
 
