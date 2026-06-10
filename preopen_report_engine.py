@@ -1078,16 +1078,22 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
     lines = []
 
     if is_catchup:
-        lines.append(f"🛡️ ATOS 盤前 {today}（補發 {now_time}）")
-        lines.append(f"⚠️ 本報告為補發版")
-        lines.append(f"系統於 {now_time} 開機，資料為開機時最新狀態")
-        lines.append(f"日盤資料已自動補抓至開機時間點")
+        title_time = f"{now_time}（補發）"
+        catchup_note = (
+            f"⚠️ 補發版（{now_time}開機，原定08:35）\n"
+            f"資料為開機時最新狀態，部分盤中走勢已發生\n"
+        )
     else:
-        lines.append(f"🛡️ ATOS 盤前 {today} {now_time}")
+        title_time = now_time
+        catchup_note = ""
+
+    lines.append(f"🛡️ ATOS 盤前 {today} {title_time}")
     if not oi_framework_valid:
         lines.append("")
         lines.append(oi_warning)
     lines.append("")
+    if catchup_note:
+        lines.append(catchup_note)
 
     # ━━ 今天的結構 ━━
     lines.append("━━ 今天的結構 ━━")

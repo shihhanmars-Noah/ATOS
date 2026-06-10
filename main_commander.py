@@ -509,23 +509,12 @@ class AtosCommander:
         preopen_sent_date = state.get('preopen_report_sent_date', '')
         preopen_sent = (preopen_sent_date == today)
 
-        if not preopen_sent and 8*60+35 <= current_time <= 13*60+45:
+        if not preopen_sent and 8*60+35 <= current_time <= 16*60:
             need_catchup = True
             print(f'📋 早盤期貨報告未發送（記錄：{preopen_sent_date or "無"}），補發中...')
             try:
-                from preopen_report_engine import (
-                    build_preopen_payload,
-                    save_preopen_plan_to_state,
-                    build_preopen_sip_message,
-                )
-                _payload = build_preopen_payload()
-                save_preopen_plan_to_state(_payload)
-                _msg = build_preopen_sip_message(_payload, is_catchup=True)
-                send_to_telegram(_msg)
-                _s = load_state()
-                _s['preopen_report_sent_date'] = today
-                _s['preopen_report_sent_time'] = now.strftime('%H:%M')
-                save_state(_s)
+                from preopen_report_engine import send_preopen_sip_report
+                send_preopen_sip_report(is_catchup=True)
                 catchup_results.append('✅ 早盤期貨報告（補發）')
             except Exception as e:
                 catchup_results.append(f'❌ 早盤期貨報告補發失敗：{e}')
@@ -536,12 +525,12 @@ class AtosCommander:
         stock_sent_date = state.get('stock_report_sent_date', '')
         stock_sent = (stock_sent_date == today)
 
-        if not stock_sent and 8*60+40 <= current_time <= 13*60+45:
+        if not stock_sent and 8*60+40 <= current_time <= 16*60:
             need_catchup = True
             print(f'📋 早盤選股報告未發送（記錄：{stock_sent_date or "無"}），補發中...')
             try:
-                from stock_report_engine import send_stock_picks_report as _send_stock
-                _send_stock(is_catchup=True)
+                from stock_report_engine import send_stock_picks_report
+                send_stock_picks_report(is_catchup=True)
                 catchup_results.append('✅ 早盤選股報告（補發）')
             except Exception as e:
                 catchup_results.append(f'❌ 早盤選股報告補發失敗：{e}')
