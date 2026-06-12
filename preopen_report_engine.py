@@ -1038,7 +1038,7 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
         ):
             framework_mode = 1
             framework_note = ""
-        elif oi_width > 0 and _atr_5d_f > 0 and oi_width > _atr_5d_f * 2 and (
+        elif oi_width > 0 and _atr_5d_f > 0 and oi_width < _atr_5d_f * 1.5 and (
             pivot_zone_low is not None and yesterday_poc is not None
         ):
             framework_mode = 2
@@ -1051,6 +1051,10 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
                 _mp_i = int(chip_ctx.get('max_pain') or _pw_i - 1000)
             except Exception:
                 _mp_i = _pw_i - 1000
+            framework_trigger_reason = (
+                f"OI框架寬度{int(oi_width)}點 < ATR×1.5（{int(_atr_5d_f * 1.5)}點），"
+                f"框架防護力不足，啟用中繼戰場"
+            )
             scenario_wait = (
                 f"等一（中繼空方）：反彈到 Pivot 緩衝區 {_pz_low}～{_pz_high} 量縮轉弱\n"
                 f"  停損：{_pz_high + 50}（緩衝區上方50點）\n"
@@ -1070,7 +1074,7 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
                 f"  目標：{_poc_i}"
             )
             framework_note = (
-                f"⚠️ OI框架過寬（{int(oi_width)}點 > ATR×2 {int(_atr_5d_f * 2)}點）\n"
+                f"⚠️ {framework_trigger_reason}\n"
                 f"今日日內操作用中繼戰場，不等邊界觸發\n"
                 f"核心中繼站：Pivot {_pz_low}～{_pz_high}\n"
                 f"昨日籌碼密集區：{_poc_i}"

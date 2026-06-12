@@ -315,6 +315,35 @@ def _spot_direction(val) -> str:
     return "買超" if float(val) > 0 else "賣超"
 
 
+def _estimate_gap_dist_ma5(
+    dist_from_ma5: float,
+    night_chg_pct: float,
+) -> dict:
+    """
+    預估跳空開高後的距5MA乖離率。
+    假設個股開盤跟隨大盤跳空幅度的 80%（保守估算）
+    """
+    BETA_ESTIMATE = 0.8
+    estimated_gap = night_chg_pct * BETA_ESTIMATE
+    estimated_dist = dist_from_ma5 + estimated_gap
+
+    if estimated_dist > 5.0:
+        risk_level = 'HIGH'
+        risk_text = f"⚠️ 預估跳空乖離過大（+{estimated_dist:.2f}%），防禦失效"
+    elif estimated_dist > 3.0:
+        risk_level = 'MEDIUM'
+        risk_text = f"注意：預估開盤距5MA +{estimated_dist:.2f}%，接近追高門檻"
+    else:
+        risk_level = 'LOW'
+        risk_text = f"正常（預估距5MA +{estimated_dist:.2f}%）"
+
+    return {
+        'estimated_dist': round(estimated_dist, 2),
+        'risk_level': risk_level,
+        'risk_text': risk_text,
+    }
+
+
 def _get_stock_ai_commentary(item: dict) -> str:
     try:
         from ai_report_engine import generate_stock_commentary
@@ -1401,13 +1430,42 @@ def send_stock_picks_report(
         lines.append(f"結算：{days_settle}天後")
     lines.append("")
 
-    # ── 夜盤大波動警示 ──
+    # ── 跳空預估：偏空大波動下對 A/B 個股做乖離壓力測試 ──
+    if nd_big_move and abs(nd_chg_pct) > 1.0:
+        for item in list(a_items) + list(b_items):
+            tech = item.get('tech', {})
+            dist = tech.get('distance_to_ma5', 0) or 0
+            gap_estimate = _estimate_gap_dist_ma5(dist, nd_chg_pct)
+            item['gap_estimate'] = gap_estimate
+            if gap_estimate['risk_level'] == 'HIGH':
+                original_grade = item.get('grade', 'B')
+                if original_grade == 'A':
+                    item['grade'] = 'B'
+                    item['grade_reason'] = (
+                        f"跳空開高降級：預估距5MA {gap_estimate['estimated_dist']:.2f}%"
+                        f"（原A級，跳空後追高風險過高）"
+                    )
+                elif original_grade == 'B':
+                    item['downgraded_by_gap'] = True
+
+    # ── 夜盤大波動 / 跳空風控警示 ──
     if nd_big_move and nd_close > 0:
-        lines.append(f"⚠️ 夜盤大幅波動（{nd_chg_pct:+.1f}%）")
-        lines.append("個股今日開盤跳空，昨日技術數據僅供參考")
-        lines.append("所有個股進場點位需依今日開盤後實際點位重新評估")
-        lines.append("不主動追高，等開盤第一根5分K確認方向後再決定")
-        lines.append("")
+        if abs(nd_chg_pct) > 1.0:
+            direction = '上漲' if nd_chg_pct > 0 else '下跌'
+            gap_banner = (
+                f"⚠️ 夜盤極端跳空 ({nd_chg_pct:+.1f}%)\n"
+                f"風控鎖啟動：昨日個股技術數據已被跳空破壞\n"
+                f"系統已自動模擬開盤乖離壓力測試\n"
+                f"預估乖離 > 5% 的個股已自動降級\n"
+            )
+        else:
+            gap_banner = (
+                f"⚠️ 夜盤大幅波動（{nd_chg_pct:+.1f}%）\n"
+                f"個股今日開盤跳空，昨日技術數據僅供參考\n"
+                f"所有個股進場點位需依今日開盤後實際點位重新評估\n"
+                f"不主動追高，等開盤第一根5分K確認方向後再決定\n"
+            )
+        lines.append(gap_banner)
 
     # ── 結算週警示 ──
     if days_settle <= 7:
@@ -1479,6 +1537,13 @@ def send_stock_picks_report(
         commentary = batch_commentaries.get(str(stock_id), "")
         if commentary:
             lines.append(f"AI點評：{commentary}")
+        gap_est = item.get('gap_estimate')
+        if gap_est and nd_big_move:
+            dist_now = tech.get('distance_to_ma5', 0) or 0
+            lines.append(
+                f"跳空壓測：昨日距5MA {dist_now:.2f}% → 開盤預估距5MA {gap_est['estimated_dist']:.2f}%"
+                f" [{gap_est['risk_text']}]"
+            )
         lines.append(f"（技術數據：{item_date}，今日開盤後點位不同）")
 
     def _render_stock_item_b(item):
@@ -1509,6 +1574,13 @@ def send_stock_picks_report(
             f"{position_word}，{vol_desc}{note_str}"
             f"（{item_date}）"
         )
+        gap_est = item.get('gap_estimate')
+        if gap_est and nd_big_move:
+            dist_val = tech.get('distance_to_ma5', 0) or 0
+            lines.append(
+                f"  跳空壓測：昨日距5MA {dist_val:.2f}% → 預估 {gap_est['estimated_dist']:.2f}%"
+                f" [{gap_est['risk_text']}]"
+            )
 
     if _is_bear_bigmove:
         # ── 偏空+大波動：改用防禦/攻擊分組顯示 ──
