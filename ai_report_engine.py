@@ -331,13 +331,18 @@ OI框架驗證
 # --------------------------------------------------
 
 @safe_execute
-def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Optional[str]:
+def generate_report(
+    report_type: str,
+    chip_ctx: Optional[dict] = None,
+    market_state: Optional[dict] = None,
+) -> Optional[str]:
     """
-    呼叫 Claude API 產生籌碼整合報告。
+    呼叫 Gemini API 產生籌碼整合報告。
 
     Args:
-        report_type: PREOPEN_FUTURES / PREOPEN_STOCKS / EVENING_FUTURES / EVENING_STOCKS
-        chip_ctx:    build_chip_context() 的輸出；若 None 則自動呼叫
+        report_type:  PREOPEN_FUTURES / PREOPEN_STOCKS / EVENING_FUTURES / EVENING_STOCKS
+        chip_ctx:     build_chip_context() 的輸出；若 None 則自動呼叫
+        market_state: get_market_state() 輸出；若提供則將 ai_constraints 注入 prompt 最前面
 
     Returns:
         報告純文字，失敗回傳 None
@@ -361,8 +366,18 @@ def generate_report(report_type: str, chip_ctx: Optional[dict] = None) -> Option
     today = datetime.now().strftime("%Y-%m-%d")
     chip_text = _format_chip_text(chip_ctx)
 
+    # 若有 market_state，把 ai_constraints 插入 prompt 最前面
+    if market_state and market_state.get("ai_constraints"):
+        constraint_prefix = (
+            f"=== ATOS 系統最高約束（必須遵守）===\n"
+            f"{market_state['ai_constraints']}\n"
+            f"=== 以上約束優先於一切其他指示 ===\n\n"
+        )
+    else:
+        constraint_prefix = ""
+
     # 用 replace 避免 chip_text 內的 {} 干擾 .format()
-    user_prompt = (
+    user_prompt = constraint_prefix + (
         _PROMPTS[report_type]
         .replace("{today}", today)
         .replace("{chip_text}", chip_text)
@@ -594,6 +609,7 @@ def generate_preopen_contradiction(
     active_pivot,
     r1,
     s1,
+    market_state: Optional[dict] = None,
 ) -> Optional[str]:
     """
     產生盤前「AI 矛盾分析」段落。
@@ -618,7 +634,15 @@ def generate_preopen_contradiction(
         f"Call wall={cw}，Put wall={pw}，Max Pain={mp}"
     )
 
-    user_prompt = (
+    constraint_prefix = ""
+    if market_state and market_state.get("ai_constraints"):
+        constraint_prefix = (
+            f"=== ATOS 系統最高約束（必須遵守）===\n"
+            f"{market_state['ai_constraints']}\n"
+            f"=== 以上約束優先於一切其他指示 ===\n\n"
+        )
+
+    user_prompt = constraint_prefix + (
         f"外資期貨：{fn:+,}口（{chip_ctx.get('foreign_net_level', 'N/A')}）\n"
         f"情緒評分：{score:+d}（{chip_ctx.get('sentiment_bias', 'N/A')}）\n"
         f"C/P比：{cp}，Max Pain：{mp}\n"
@@ -766,6 +790,7 @@ def generate_evening_guidance(
     today_high=None,
     today_low=None,
     price=None,
+    market_state: Optional[dict] = None,
 ) -> Optional[str]:
     """
     產生晚盤 AI 矛盾解讀（4-5行）。
@@ -857,8 +882,17 @@ def generate_evening_guidance(
         f"現期背離判斷：{_divergence}"
     )
 
+    constraint_prefix = ""
+    if market_state and market_state.get("ai_constraints"):
+        constraint_prefix = (
+            f"=== ATOS 系統最高約束（必須遵守）===\n"
+            f"{market_state['ai_constraints']}\n"
+            f"=== 以上約束優先於一切其他指示 ===\n\n"
+        )
+
     user_prompt = (
-        chip_context_block + "\n\n"
+        constraint_prefix
+        + chip_context_block + "\n\n"
         f"=== 今日盤面事實（必須以此為準，不得推翻）===\n"
         + "\n".join(facts) + "\n\n"
         f"=== 籌碼數據 ===\n"

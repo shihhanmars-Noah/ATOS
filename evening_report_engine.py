@@ -1204,6 +1204,14 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
         except Exception:
             pass
 
+    # ── RealityCheck：所有報告生成前強制執行 ──
+    _market_state: dict = {}
+    try:
+        from reality_check import get_market_state as _get_ms
+        _market_state = _get_ms(state=state, chip_ctx=chip_ctx)
+    except Exception as _rc_err:
+        print(f"[evening] RealityCheck skipped: {_rc_err}")
+
     call_wall = chip_ctx.get("call_wall") or state.get("call_wall")
     put_wall  = chip_ctx.get("put_wall")  or state.get("put_wall")
 
@@ -1380,6 +1388,7 @@ def build_evening_report_message(readiness: dict | None = None) -> str | None:
             today_high=today_high,
             today_low=today_low,
             price=price,
+            market_state=_market_state or None,
         ) or ""
     except Exception:
         pass

@@ -888,6 +888,21 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
     today = payload.get("today")
     now_time = payload.get("now_time")
 
+    # ── RealityCheck：所有報告生成前強制執行 ──
+    _market_state: dict = {}
+    try:
+        from reality_check import get_market_state as _get_ms
+        from persistent_state import load_state as _ls_pre
+        _market_state = _get_ms(
+            state=_ls_pre(),
+            chip_ctx=payload.get("chip_ctx") or {},
+            night_data=payload.get("night_data") or {},
+        )
+    except Exception as _rc_err:
+        print(f"[preopen] RealityCheck skipped: {_rc_err}")
+    _rc_chosen_mode = _market_state.get("chosen_mode", "")
+    _rc_freshness   = _market_state.get("data_freshness", {})
+
     r1 = payload.get("r1")
     s1 = payload.get("s1")
     pivot = payload.get("pivot")
@@ -1087,6 +1102,13 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
         framework_note = ""
         pivot_zone_low = pivot_zone_high = yesterday_poc = active_pivot
 
+    # RealityCheck 框架模式覆蓋（優先採用 RealityCheck 判斷）
+    if _rc_chosen_mode == "MODE_1_OI_INVALID":
+        framework_mode = 1
+    elif _rc_chosen_mode == "MODE_2_DYNAMIC_MIDZONE":
+        framework_mode = 2
+    # MODE_3_OI_STANDARD 保留原始計算值（可能已是 2 或 3）
+
     incentive = _incentive_one_liner(sentiment_score, call_wall, put_wall, fn)
     scenario = _scenario_one_liner(sentiment_score, price_position_pct, call_wall, put_wall)
 
@@ -1094,7 +1116,10 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
     ai_contradiction = ""
     try:
         from ai_report_engine import generate_preopen_contradiction
-        ai_contradiction = generate_preopen_contradiction(chip_ctx, active_pivot, r1, s1) or ""
+        ai_contradiction = generate_preopen_contradiction(
+            chip_ctx, active_pivot, r1, s1,
+            market_state=_market_state or None,
+        ) or ""
     except Exception:
         pass
     if not ai_contradiction:
@@ -1173,6 +1198,15 @@ def build_preopen_sip_message(payload: dict | None = None, is_catchup: bool = Fa
     lines.append("")
     if catchup_note:
         lines.append(catchup_note)
+
+    # ━━ 資料信任度 ━━
+    if _rc_freshness:
+        lines.append("━━ 資料信任度 ━━")
+        lines.append(f"即時現價：{_rc_freshness.get('price', 'N/A')}")
+        lines.append(f"OI牆：{_rc_freshness.get('oi_walls', 'N/A')}")
+        lines.append(f"籌碼：{_rc_freshness.get('chip', 'N/A')}")
+        lines.append(f"夜盤：{_rc_freshness.get('night_session', 'N/A')}")
+        lines.append("")
 
     # ━━ 今天的結構 ━━
     lines.append("━━ 今天的結構 ━━")

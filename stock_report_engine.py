@@ -1279,6 +1279,17 @@ def send_stock_picks_report(
     nd_day_close= float(night_data.get("day_close",   0) or 0)
     nd_big_move = bool(night_data.get("is_big_move", False))
 
+    # ── RealityCheck：所有報告生成前強制執行 ──
+    _market_state: dict = {}
+    try:
+        from reality_check import get_market_state as _get_ms
+        _market_state = _get_ms(state=_state, chip_ctx=chip_ctx, night_data=night_data)
+        # is_night_shock 包含夜盤區間判斷，比 is_big_move 更全面
+        if _market_state.get("audit_metrics", {}).get("is_night_shock"):
+            nd_big_move = True
+    except Exception as _rc_err:
+        print(f"[stock] RealityCheck skipped: {_rc_err}")
+
     # ── 法人籌碼 ──
     sentiment_score     = chip_ctx.get("sentiment_score", 0)
     bias_label          = chip_ctx.get("sentiment_bias", "N/A")
